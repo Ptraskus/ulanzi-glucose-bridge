@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { copyFile, link, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, link, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -112,12 +112,18 @@ Write-Output $selectedNode.Source
 `);
     const sourceLaunch = run(root, "scripts/launch-app.ps1", ["-OpenPanel", "-Console"], nodePath);
     assert.equal(sourceLaunch.status, 0, sourceLaunch.stderr);
-    assert.equal(sourceLaunch.stdout.trim().toLowerCase(), join(firstDirectory, "node.exe").toLowerCase());
+    assert.equal(
+      (await realpath(sourceLaunch.stdout.trim())).toLowerCase(),
+      (await realpath(join(firstDirectory, "node.exe"))).toLowerCase(),
+    );
 
     await createNode(portableDirectory);
     const portableLaunch = run(root, "scripts/launch-app.ps1", ["-OpenPanel", "-Console"], nodePath);
     assert.equal(portableLaunch.status, 0, portableLaunch.stderr);
-    assert.equal(portableLaunch.stdout.trim().toLowerCase(), join(portableDirectory, "node.exe").toLowerCase());
+    assert.equal(
+      (await realpath(portableLaunch.stdout.trim())).toLowerCase(),
+      (await realpath(join(portableDirectory, "node.exe"))).toLowerCase(),
+    );
   } finally {
     await rm(root, { recursive: true, force: true });
   }
