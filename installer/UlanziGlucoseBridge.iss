@@ -147,8 +147,9 @@ begin
   { A prepared local package used this registry key before the rename. }
   if RegQueryStringValue(HKCU, 'Software\Microsoft\Windows\CurrentVersion\Uninstall\UlanziLibreBridge', 'InstallLocation', PreviousPath) then
   begin
-    PreviousPath := ExpandFileName(PreviousPath);
-    if (Pos(Lowercase(ProgramsRoot), Lowercase(AddBackslash(PreviousPath))) = 1) and
+    PreviousPath := RemoveBackslashUnlessRoot(ExpandFileName(PreviousPath));
+    if (Length(PreviousPath) > Length(ProgramsRoot)) and
+       (Pos(Lowercase(ProgramsRoot), Lowercase(AddBackslash(PreviousPath))) = 1) and
        FileExists(AddBackslash(PreviousPath) + 'checksums.sha256') then
     begin
       Result := PreviousPath;
