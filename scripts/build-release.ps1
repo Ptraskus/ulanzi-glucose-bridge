@@ -368,7 +368,7 @@ function Find-InnoCompiler {
         return $candidate
     }
 
-    $command = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+    $command = Get-Command ISCC.exe -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($null -ne $command) { return $command.Source }
     $candidates = [Collections.Generic.List[string]]::new()
     $installationRoots = @(

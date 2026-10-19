@@ -280,7 +280,7 @@ function Show-UlanziMaintenanceDialog {
     $resolvedProjectRoot = [IO.Path]::GetFullPath($ProjectRoot)
     $nodeCommand = Get-Command node -ErrorAction Stop
     $nodePath = if (-not [string]::IsNullOrWhiteSpace([string]$nodeCommand.Source)) { [string]$nodeCommand.Source } else { [string]$nodeCommand.Path }
-    $powerShellCommand = Get-Command powershell.exe -ErrorAction Stop
+    $powerShellCommand = Get-Command powershell.exe -ErrorAction Stop | Select-Object -First 1
     $powerShellPath = if (-not [string]::IsNullOrWhiteSpace([string]$powerShellCommand.Source)) { [string]$powerShellCommand.Source } else { [string]$powerShellCommand.Path }
     $updateCli = Join-Path $resolvedProjectRoot "src\update-cli.mjs"
     $historyCli = Join-Path $resolvedProjectRoot "src\config-history-cli.mjs"

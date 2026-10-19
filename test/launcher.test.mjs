@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, link, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -77,6 +77,47 @@ test("installer language initializes a new preference but preserves existing pre
     assert.equal(configured.status, 0, configured.stderr);
     assert.equal(JSON.parse(await readFile(preferencePath, "utf8")).language, undefined);
     assert.equal(await readFile(join(root, ".env"), "utf8"), "APP_LANGUAGE=en\n");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("launcher respects PATH precedence with two Node installations and prefers the bundled runtime", { skip: !windows }, async () => {
+  const root = await fixture();
+  const firstDirectory = join(root, "first-node");
+  const secondDirectory = join(root, "second-node");
+  const portableDirectory = join(root, "runtime", "node");
+  const createNode = async (directory) => {
+    await mkdir(directory, { recursive: true });
+    try {
+      await link(process.execPath, join(directory, "node.exe"));
+    } catch (error) {
+      if (!["EXDEV", "EPERM", "EACCES", "ENOTSUP"].includes(error.code)) throw error;
+      await copyFile(process.execPath, join(directory, "node.exe"));
+    }
+  };
+  try {
+    await createNode(firstDirectory);
+    await createNode(secondDirectory);
+    const nodePath = `${firstDirectory};${secondDirectory}`;
+    const checked = run(root, "scripts/launch-app.ps1", ["-Check"], nodePath);
+    assert.equal(checked.status, 0, checked.stderr);
+    assert.match(checked.stdout, /Ready: Node\.js v\d+/);
+
+    // Substitute only the tray entry point: exercise discovery without opening UI.
+    await writeFile(join(root, "scripts", "iniciar-bandeja.ps1"), String.raw`
+param([switch]$OpenPanel)
+$selectedNode = Get-Command node -ErrorAction Stop
+Write-Output $selectedNode.Source
+`);
+    const sourceLaunch = run(root, "scripts/launch-app.ps1", ["-OpenPanel", "-Console"], nodePath);
+    assert.equal(sourceLaunch.status, 0, sourceLaunch.stderr);
+    assert.equal(sourceLaunch.stdout.trim().toLowerCase(), join(firstDirectory, "node.exe").toLowerCase());
+
+    await createNode(portableDirectory);
+    const portableLaunch = run(root, "scripts/launch-app.ps1", ["-OpenPanel", "-Console"], nodePath);
+    assert.equal(portableLaunch.status, 0, portableLaunch.stderr);
+    assert.equal(portableLaunch.stdout.trim().toLowerCase(), join(portableDirectory, "node.exe").toLowerCase());
   } finally {
     await rm(root, { recursive: true, force: true });
   }

@@ -20,7 +20,7 @@ try {
     if (Test-Path -LiteralPath $portableNode -PathType Leaf) {
         $nodePath = $portableNode
     } else {
-        $nodeCommand = Get-Command node.exe -CommandType Application -ErrorAction SilentlyContinue
+        $nodeCommand = Get-Command node.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
         $nodePath = if ($null -ne $nodeCommand) { $nodeCommand.Source } else { $null }
     }
     $nodeHelp = if ($language -eq "pt-BR") {
