@@ -108,7 +108,7 @@ function Show-UlanziDiagnosticsDialog {
     }
 
     $form = [Windows.Forms.Form]::new()
-    $form.Text = (Get-UlanziText -Key 'Verificar tudo - Ulanzi Libre')
+    $form.Text = (Get-UlanziText -Key 'Verificar tudo - Ulanzi Glucose')
     $form.ClientSize = [Drawing.Size]::new(660, 525)
     $form.MinimumSize = [Drawing.Size]::new(660, 525)
     $form.StartPosition = if ($null -ne $Owner) { [Windows.Forms.FormStartPosition]::CenterParent } else { [Windows.Forms.FormStartPosition]::CenterScreen }
@@ -421,7 +421,7 @@ function Show-UlanziDiagnosticsDialog {
         & $updateFromStatus $runtimeStatus
         $displayAnswer = Show-UlanziOwnedMessageBox `
             -Owner $form `
-            -Text (Get-UlanziText -Key 'O TC001 esta mostrando a leitura atual do Ulanzi Libre?') `
+            -Text (Get-UlanziText -Key 'O TC001 esta mostrando a leitura atual do Ulanzi Glucose?') `
             -Caption (Get-UlanziText -Key 'Confirmar visor') `
             -Buttons ([Windows.Forms.MessageBoxButtons]::YesNo) `
             -Icon ([Windows.Forms.MessageBoxIcon]::Question)
@@ -473,7 +473,7 @@ function Show-UlanziDiagnosticsDialog {
         $dialog = [Windows.Forms.SaveFileDialog]::new()
         $dialog.Title = (Get-UlanziText -Key 'Salvar diagnostico higienizado')
         $dialog.Filter = (Get-UlanziText -Key 'Relatorio JSON (*.json)|*.json')
-        $dialog.FileName = "ulanzi-libre-diagnostico-$([DateTime]::Now.ToString('yyyyMMdd-HHmmss')).json"
+        $dialog.FileName = "ulanzi-glucose-diagnostico-$([DateTime]::Now.ToString('yyyyMMdd-HHmmss')).json"
         try {
             if ($dialog.ShowDialog($form) -ne [Windows.Forms.DialogResult]::OK) { return }
             $node = Get-Command node -ErrorAction Stop

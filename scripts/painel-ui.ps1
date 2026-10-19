@@ -110,7 +110,7 @@ function New-UlanziGlucoseMark {
     $mark.Size = [Drawing.Size]::new(46, 54)
     $mark.Tag = @{ PreserveColors = $true }
     $mark.AccessibleName = (Get-UlanziText -Key 'Simbolo de glicose e tendencia')
-    $mark.AccessibleDescription = (Get-UlanziText -Key 'Uma gota com uma linha de tendencia, identidade visual do Ulanzi Libre.')
+    $mark.AccessibleDescription = (Get-UlanziText -Key 'Uma gota com uma linha de tendencia, identidade visual do Ulanzi Glucose.')
     $mark.add_Paint(({
         param($sender, $eventArgs)
         try {
@@ -269,7 +269,7 @@ function New-UlanziControlPanel {
     )
 
     $form = [Windows.Forms.Form]::new()
-    $form.Text = (Get-UlanziText -Key 'Painel do Ulanzi Libre')
+    $form.Text = (Get-UlanziText -Key 'Painel do Ulanzi Glucose')
     $form.ClientSize = [Drawing.Size]::new(960, 680)
     $form.MinimumSize = [Drawing.Size]::new(940, 620)
     $form.StartPosition = [Windows.Forms.FormStartPosition]::CenterScreen
@@ -320,7 +320,7 @@ function New-UlanziControlPanel {
     $header.Height = 88
     $header.Tag = "Header"
     $glucoseMark = New-UlanziGlucoseMark
-    $title = New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Painel do Ulanzi Libre') -X 78 -Y 12 -Width 500 -Height 34 -Size 18 -Bold -Role "Text"
+    $title = New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Painel do Ulanzi Glucose') -X 78 -Y 12 -Width 500 -Height 34 -Size 18 -Bold -Role "Text"
     $subtitle = New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Glicose, alertas e conexoes em um unico lugar.') -X 80 -Y 50 -Width 520 -Height 24 -Role "HeaderMuted"
     $themeLabel = New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Tema') -X 698 -Y 13 -Width 220 -Height 20 -Bold -Role "HeaderMuted"
     $themeLabel.Anchor = [Windows.Forms.AnchorStyles]::Top -bor [Windows.Forms.AnchorStyles]::Right
@@ -472,7 +472,7 @@ function New-UlanziControlPanel {
     $setupPanel.Tag = "Elevated"
     $setupPanel.Visible = $false
     $setupPanel.AccessibleName = (Get-UlanziText -Key 'Primeira configuracao')
-    $setupTitle = New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Vamos configurar o Ulanzi Libre') -X 24 -Y 22 -Width 620 -Height 34 -Size 15 -Bold
+    $setupTitle = New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Vamos configurar o Ulanzi Glucose') -X 24 -Y 22 -Width 620 -Height 34 -Size 15 -Bold
     $setupDescription = New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Prepare o AWTRIX, conecte a fonte e teste o TC001 em um unico assistente. O aplicativo so comecara depois que tudo for salvo e conferido.') -X 24 -Y 64 -Width 640 -Height 50 -Size 10 -Role "Muted"
     $setupSteps = New-UlanziPanelLabel -Text (Get-UlanziText -Key '1. Preparar  2. AWTRIX  3. Fonte  4. Teste  5. TC001  6. Preferencias  7. Revisao') -X 24 -Y 126 -Width 640 -Height 30 -Size 9 -Role "Muted"
     $setupMessage = New-UlanziPanelLabel -Text (Get-UlanziText -Key 'A configuracao inicial ainda nao foi concluida.') -X 24 -Y 166 -Width 640 -Height 32 -Size 10 -Bold -Role "Warning"
@@ -495,7 +495,7 @@ function New-UlanziControlPanel {
     $alertNotice.Size = [Drawing.Size]::new(700, 78)
     $alertNotice.Anchor = [Windows.Forms.AnchorStyles]::Top -bor [Windows.Forms.AnchorStyles]::Left -bor [Windows.Forms.AnchorStyles]::Right
     $alertNotice.Tag = "Elevated"
-    $alertNoticeText = New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Os alertas deste aplicativo sao complementares. Mantenha os alarmes oficiais do Libre e use os limites definidos com sua equipe de saude.') -X 14 -Y 13 -Width 665 -Height 52 -Role "Text"
+    $alertNoticeText = New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Os alertas deste aplicativo sao complementares. Mantenha os alarmes oficiais do seu CGM e use os limites definidos com sua equipe de saude.') -X 14 -Y 13 -Width 665 -Height 52 -Role "Text"
     $alertNoticeText.Anchor = [Windows.Forms.AnchorStyles]::Top -bor [Windows.Forms.AnchorStyles]::Left -bor [Windows.Forms.AnchorStyles]::Right
     $alertNotice.Controls.Add($alertNoticeText)
     $alertsPage.Controls.Add($alertNotice)
@@ -514,7 +514,7 @@ function New-UlanziControlPanel {
     $displayPage.Controls.Add($displaySummary)
     $widgetFeature = New-UlanziPanelFeature -Parent $displayPage -Y 154 -Title (Get-UlanziText -Key 'Mostrador no computador') -Description (Get-UlanziText -Key 'Mostra a leitura perto do relogio do Windows. Esta escolha nao altera o TC001.') -ButtonText (Get-UlanziText -Key 'Mostrar ou ocultar') -Click ({ & $state.InvokeAction $ToggleWidget; & $state.RefreshWidgetText }).GetNewClosure()
     $widgetButton = $widgetFeature.PrimaryButton
-    [void](New-UlanziPanelFeature -Parent $displayPage -Y 272 -Title (Get-UlanziText -Key 'Tela do TC001 e sensor') -Description (Get-UlanziText -Key 'Ajuste cores, atualizacao da leitura e duracao do sensor Libre.') -ButtonText (Get-UlanziText -Key 'Configurar tela e sensor') -ButtonRole "Accent" -Click ({ & $state.InvokeAction $OpenSettings @("display") (Get-UlanziText -Key 'Abrindo configuracoes de tela e sensor...') }).GetNewClosure())
+    [void](New-UlanziPanelFeature -Parent $displayPage -Y 272 -Title (Get-UlanziText -Key 'Tela do TC001 e sensor') -Description (Get-UlanziText -Key 'Ajuste cores, atualizacao da leitura e duracao do sensor.') -ButtonText (Get-UlanziText -Key 'Configurar tela e sensor') -ButtonRole "Accent" -Click ({ & $state.InvokeAction $OpenSettings @("display") (Get-UlanziText -Key 'Abrindo configuracoes de tela e sensor...') }).GetNewClosure())
 
     $connectionsPage = $pages.connections
     $connectionsPage.Controls.Add((New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Conexoes') -X 24 -Y 18 -Width 500 -Height 34 -Size 16 -Bold))
@@ -562,7 +562,7 @@ function New-UlanziControlPanel {
         $packageData = Get-Content -Raw -LiteralPath (Join-Path $ProjectRoot "package.json") | ConvertFrom-Json
         $version = (Get-UlanziText -Key 'versao {0}' -Arguments @(($([string]$packageData.version))))
     } catch { }
-    $supportVersion = New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Ulanzi Libre Bridge - {0}. Consulte README, PRIVACY e SECURITY na pasta do aplicativo.' -Arguments @(($version))) -X 24 -Y 486 -Width 700 -Height 40 -Role "Muted"
+    $supportVersion = New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Ulanzi Glucose Bridge - {0}. Consulte README, PRIVACY e SECURITY na pasta do aplicativo.' -Arguments @(($version))) -X 24 -Y 486 -Width 700 -Height 40 -Role "Muted"
     $supportVersion.Anchor = [Windows.Forms.AnchorStyles]::Top -bor [Windows.Forms.AnchorStyles]::Left -bor [Windows.Forms.AnchorStyles]::Right
     $supportPage.Controls.Add($supportVersion)
 
@@ -674,7 +674,7 @@ function New-UlanziControlPanel {
             [void](Show-UlanziOwnedMessageBox `
                 -Owner $form `
                 -Text $_.Exception.Message `
-                -Caption "Ulanzi Libre" `
+                -Caption "Ulanzi Glucose" `
                 -Buttons ([Windows.Forms.MessageBoxButtons]::OK) `
                 -Icon ([Windows.Forms.MessageBoxIcon]::Error))
         } finally {
@@ -744,7 +744,8 @@ function New-UlanziControlPanel {
         } else {
             (Get-UlanziText -Key 'Alertas sonoros deste aplicativo estao desligados. A faixa visual continua ativa e nao produz som.')
         }
-        $newDisplaySummary = (Get-UlanziText -Key 'Faixa visual: {0} a {1} mg/dL. Sensor configurado para {2} dias; SEM DADO depois de {3} min; consulta a cada {4} s. Confirme a duracao correta do seu modelo de sensor.' -Arguments @(($($values.LOW_THRESHOLD_MGDL)), ($($values.HIGH_THRESHOLD_MGDL)), ($($values.LIBRE_SENSOR_LIFETIME_DAYS)), ($($values.STALE_AFTER_MINUTES)), ($($values.POLL_INTERVAL_SECONDS))))
+        $sensorEstimate = if ([decimal]$values.SENSOR_LIFETIME_DAYS -eq 0) { (Get-UlanziText -Key 'Estimativa do sensor desativada') } else { (Get-UlanziText -Key 'Estimativa do sensor: {0} dias' -Arguments @($values.SENSOR_LIFETIME_DAYS)) }
+        $newDisplaySummary = (Get-UlanziText -Key 'Faixa visual: {0} a {1} mg/dL. {2}. SEM DADO depois de {3} min; consulta a cada {4} s.' -Arguments @($values.LOW_THRESHOLD_MGDL, $values.HIGH_THRESHOLD_MGDL, $sensorEstimate, $values.STALE_AFTER_MINUTES, $values.POLL_INTERVAL_SECONDS))
         if ($alarmSummary.Text -cne $newAlarmSummary) { $alarmSummary.Text = $newAlarmSummary }
         if ($displaySummary.Text -cne $newDisplaySummary) { $displaySummary.Text = $newDisplaySummary }
     }).GetNewClosure()

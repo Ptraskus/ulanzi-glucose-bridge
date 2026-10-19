@@ -308,7 +308,7 @@ function Show-UlanziMaintenanceDialog {
     }
 
     $form = [Windows.Forms.Form]::new()
-    $form.Text = (Get-UlanziText -Key 'Atualizacoes e recuperacao - Ulanzi Libre')
+    $form.Text = (Get-UlanziText -Key 'Atualizacoes e recuperacao - Ulanzi Glucose')
     $form.ClientSize = [Drawing.Size]::new(690, 510)
     $form.MinimumSize = [Drawing.Size]::new(690, 510)
     $form.StartPosition = if ($null -ne $Owner) { [Windows.Forms.FormStartPosition]::CenterParent } else { [Windows.Forms.FormStartPosition]::CenterScreen }

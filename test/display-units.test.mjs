@@ -167,3 +167,25 @@ try {
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout.trim()), ["mmol", "mmol", "mgdl", "mgdl", "mgdl"]);
 });
+
+test("setup preserves generic and legacy sensor estimates with canonical precedence", { skip: process.platform !== "win32" }, async () => {
+  const configure = await readFile(join(root, "scripts", "configurar.ps1"), "utf8");
+  const preferenceRead = configure.slice(configure.indexOf('$initialDisplayUnits = "mgdl"'), configure.indexOf("function Read-WithDefault"));
+  const command = String.raw`
+$ErrorActionPreference='Stop'
+[Threading.Thread]::CurrentThread.CurrentCulture=[Globalization.CultureInfo]::GetCultureInfo('pt-BR')
+$envPath=[IO.Path]::GetTempFileName()
+try {
+  $results=@()
+  foreach($value in @('', 'LIBRE_SENSOR_LIFETIME_DAYS=14', 'SENSOR_LIFETIME_DAYS=10.5', "LIBRE_SENSOR_LIFETIME_DAYS=14\nSENSOR_LIFETIME_DAYS=0".Replace('\n', [Environment]::NewLine), "SENSOR_LIFETIME_DAYS=\nLIBRE_SENSOR_LIFETIME_DAYS=15".Replace('\n', [Environment]::NewLine), 'SENSOR_LIFETIME_DAYS=999999999999999999999999999999999999999999')) {
+    [IO.File]::WriteAllText($envPath,$value)
+    ${preferenceRead}
+    $results+=$initialSensorLifetimeDays
+  }
+  $results | ConvertTo-Json -Compress
+} finally { [IO.File]::Delete($envPath) }
+`;
+  const result = spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-EncodedCommand", Buffer.from(command, "utf16le").toString("base64")], { encoding: "utf8", windowsHide: true, timeout: 15_000 });
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout.trim()), [0, 14, 10.5, 0, 15, 0]);
+});

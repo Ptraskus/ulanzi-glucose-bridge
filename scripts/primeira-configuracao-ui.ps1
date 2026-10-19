@@ -397,7 +397,8 @@ function New-UlanziWizardHelpLink {
 function Show-UlanziFirstRunWizard {
     param(
         [switch]$HasExistingConfiguration,
-        [ValidateSet("mgdl", "mmol")][string]$InitialDisplayUnits = "mgdl"
+        [ValidateSet("mgdl", "mmol")][string]$InitialDisplayUnits = "mgdl",
+        [ValidateRange(0, 365)][decimal]$InitialSensorLifetimeDays = 0
     )
 
     [Windows.Forms.Application]::EnableVisualStyles()
@@ -412,7 +413,7 @@ function Show-UlanziFirstRunWizard {
     }
 
     $form = [Windows.Forms.Form]::new()
-    $form.Text = (Get-UlanziText -Key 'Primeira configuracao - Ulanzi Libre')
+    $form.Text = (Get-UlanziText -Key 'Primeira configuracao - Ulanzi Glucose')
     $form.StartPosition = [Windows.Forms.FormStartPosition]::CenterScreen
     $form.ClientSize = [Drawing.Size]::new(780, 590)
     $form.MinimumSize = [Drawing.Size]::new(720, 560)
@@ -437,7 +438,7 @@ function Show-UlanziFirstRunWizard {
     $header.Height = 82
     $header.BackColor = [Drawing.ColorTranslator]::FromHtml("#1D5D7A")
     $header.Tag = "Accent"
-    $titleLabel = New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Configurar o Ulanzi Libre') -X 24 -Y 13 -Width 700 -Height 30 -Bold
+    $titleLabel = New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Configurar o Ulanzi Glucose') -X 24 -Y 13 -Width 700 -Height 30 -Bold
     $titleLabel.Font = [Drawing.Font]::new("Segoe UI", 16, [Drawing.FontStyle]::Bold)
     $titleLabel.ForeColor = [Drawing.Color]::White
     $titleLabel.Tag = "AccentText"
@@ -582,7 +583,7 @@ function Show-UlanziFirstRunWizard {
 
     # Page 3: data source.
     $pages[2].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'De onde vem a glicemia?') -X 4 -Y 5 -Width 680 -Height 32 -Bold))
-    $pages[2].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Escolha a opcao usada no dia a dia. O aplicativo nunca pede sua senha da Abbott.') -X 4 -Y 42 -Width 690 -Height 30))
+    $pages[2].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Escolha a fonte que recebe os dados do seu CGM. O aplicativo nao pede a senha do fabricante.') -X 4 -Y 42 -Width 690 -Height 30))
     $nightscoutRadio = [Windows.Forms.RadioButton]::new()
     $nightscoutRadio.Text = (Get-UlanziText -Key 'Nightscout (recomendado)')
     $nightscoutRadio.Location = [Drawing.Point]::new(18, 96)
@@ -731,25 +732,29 @@ function Show-UlanziFirstRunWizard {
     $staleBox.Value = 15
     $pages[5].Controls.Add($staleBox)
     $pages[5].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'minutos') -X 370 -Y 174 -Width 100))
-    $pages[5].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Duracao do sensor Libre') -X 4 -Y 216 -Width 250 -Bold))
+    $pages[5].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Estimativa de duracao do sensor') -X 4 -Y 216 -Width 250 -Bold))
     $sensorDurationBox = [Windows.Forms.ComboBox]::new()
     $sensorDurationBox.Name = "sensorDurationControl"
     $sensorDurationBox.DropDownStyle = [Windows.Forms.ComboBoxStyle]::DropDownList
     $sensorDurationBox.Location = [Drawing.Point]::new(260, 212)
     $sensorDurationBox.Size = [Drawing.Size]::new(145, 28)
-    [void]$sensorDurationBox.Items.AddRange(@((Get-UlanziText -Key 'Selecione a duracao...'), (Get-UlanziText -Key '14 dias'), (Get-UlanziText -Key '15 dias'), (Get-UlanziText -Key 'Personalizado')))
-    $sensorDurationBox.SelectedIndex = 0
+    [void]$sensorDurationBox.Items.AddRange(@((Get-UlanziText -Key 'Desativada'), (Get-UlanziText -Key '7 dias'), (Get-UlanziText -Key '10 dias'), (Get-UlanziText -Key '14 dias'), (Get-UlanziText -Key '15 dias'), (Get-UlanziText -Key 'Personalizado')))
+    $sensorPresets = @(0, 7, 10, 14, 15)
+    $sensorDurationBox.SelectedIndex = if ($sensorPresets -contains $InitialSensorLifetimeDays) { [Array]::IndexOf($sensorPresets, [int]$InitialSensorLifetimeDays) } else { 5 }
     $sensorCustomBox = [Windows.Forms.NumericUpDown]::new()
     $sensorCustomBox.Name = "sensorCustomDurationControl"
     $sensorCustomBox.Location = [Drawing.Point]::new(420, 212)
     $sensorCustomBox.Size = [Drawing.Size]::new(80, 28)
-    $sensorCustomBox.Minimum = 1
-    $sensorCustomBox.Maximum = 30
-    $sensorCustomBox.Visible = $false
+    $sensorCustomBox.Minimum = 0.01
+    $sensorCustomBox.Maximum = 365
+    $sensorCustomBox.DecimalPlaces = 2
+    $sensorCustomBox.Increment = 0.5
+    $sensorCustomBox.Value = if ($InitialSensorLifetimeDays -gt 0) { $InitialSensorLifetimeDays } else { 1 }
+    $sensorCustomBox.Visible = $sensorDurationBox.SelectedIndex -eq 5
     $sensorCustomDaysLabel = New-UlanziWizardLabel -Text (Get-UlanziText -Key 'dias') -X 510 -Y 216 -Width 55
-    $sensorCustomDaysLabel.Visible = $false
+    $sensorCustomDaysLabel.Visible = $sensorCustomBox.Visible
     $pages[5].Controls.AddRange(@($sensorDurationBox, $sensorCustomBox, $sensorCustomDaysLabel))
-    $pages[5].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Confira a duracao na embalagem ou no aplicativo do Libre; ela varia conforme o modelo.') -X 260 -Y 244 -Width 420 -Height 32))
+    $pages[5].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Estimativa opcional: requer Sensor Start/Change no Nightscout. Confira a duracao do seu modelo; mantenha desativada se nao souber.') -X 4 -Y 246 -Width 690 -Height 32))
     $alarmEnabledBox = [Windows.Forms.CheckBox]::new()
     $alarmEnabledBox.Text = (Get-UlanziText -Key 'Ativar alarmes sonoros de glicemia')
     $alarmEnabledBox.Location = [Drawing.Point]::new(4, 282)
@@ -807,9 +812,8 @@ function Show-UlanziFirstRunWizard {
         return "token"
     }
     $getSensorLifetimeDays = {
-        if ($sensorDurationBox.SelectedIndex -eq 1) { return 14 }
-        if ($sensorDurationBox.SelectedIndex -eq 2) { return 15 }
-        if ($sensorDurationBox.SelectedIndex -eq 3) { return [int]$sensorCustomBox.Value }
+        if ($sensorDurationBox.SelectedIndex -ge 0 -and $sensorDurationBox.SelectedIndex -lt $sensorPresets.Count) { return $sensorPresets[$sensorDurationBox.SelectedIndex] }
+        if ($sensorDurationBox.SelectedIndex -eq 5) { return [decimal]$sensorCustomBox.Value }
         return $null
     }
     $setStatus = {
@@ -830,7 +834,7 @@ function Show-UlanziFirstRunWizard {
         $nightscoutSecretBox.Visible = $authentication -ne "public"
     }
     $refreshSensorDuration = {
-        $isCustom = $sensorDurationBox.SelectedIndex -eq 3
+        $isCustom = $sensorDurationBox.SelectedIndex -eq 5
         $sensorCustomBox.Visible = $isCustom
         $sensorCustomDaysLabel.Visible = $isCustom
         if ($isCustom) { $sensorCustomBox.Select() }
@@ -863,7 +867,7 @@ function Show-UlanziFirstRunWizard {
         }
         $awtrixCredential = if ([string]::IsNullOrWhiteSpace($awtrixUserBox.Text)) { (Get-UlanziText -Key 'Autenticacao desativada') } else { (Get-UlanziText -Key 'Usuario e senha protegidos') }
         $sensorLifetimeDays = & $getSensorLifetimeDays
-        $sensorLifetimeDescription = if ($null -eq $sensorLifetimeDays) { (Get-UlanziText -Key 'Nao escolhida') } else { (Get-UlanziText -Key '{0} dias' -Arguments @(($sensorLifetimeDays))) }
+        $sensorLifetimeDescription = if ($null -eq $sensorLifetimeDays) { (Get-UlanziText -Key 'Nao escolhida') } elseif ($sensorLifetimeDays -eq 0) { (Get-UlanziText -Key 'Desativada') } else { (Get-UlanziText -Key '{0} dias' -Arguments @(($sensorLifetimeDays))) }
         $alarmStatus = if ($alarmEnabledBox.Checked) { (Get-UlanziText -Key 'ATIVADOS') } else { (Get-UlanziText -Key 'DESATIVADOS - o TC001 nao emitira alertas de glicemia') }
         $reviewBox.Text = @(
             (Get-UlanziText -Key 'Fonte: {0}' -Arguments @(($sourceDescription))),
@@ -1169,7 +1173,7 @@ try {
         $helpText = @(
             (Get-UlanziText -Key 'Para usar dados reais, voce precisa ter um Nightscout que abra no navegador e ja mostre leituras, ou um endpoint JSON autorizado.'),
             "",
-            (Get-UlanziText -Key 'O Ulanzi Libre nao pede nem armazena sua senha Abbott ou LibreLinkUp. A criacao e alimentacao do Nightscout sao etapas externas e variam conforme o servico escolhido.'),
+            (Get-UlanziText -Key 'O Ulanzi Glucose le os dados disponiveis no Nightscout; nao se conecta diretamente ao fabricante do CGM. A integracao do sensor com o Nightscout e configurada separadamente.'),
             "",
             (Get-UlanziText -Key 'Se a fonte ainda nao estiver pronta, cancele sem medo e volte a este mesmo assistente depois. Nenhuma configuracao e substituida antes de Salvar e ativar.'),
             "",
@@ -1369,7 +1373,7 @@ try {
             } elseif ($state.Step -eq 5) {
                 if ($highBox.Value -le $lowBox.Value) { throw (Get-UlanziText -Key 'O limite alto deve ser maior que o limite baixo.') }
                 if ($null -eq (& $getSensorLifetimeDays)) {
-                    throw (Get-UlanziText -Key 'Escolha a duracao do seu sensor Libre antes de avancar.')
+                    throw (Get-UlanziText -Key 'Escolha a duracao do seu sensor antes de avancar.')
                 }
             }
             if ($state.Step -lt 6) {
@@ -1381,7 +1385,7 @@ try {
             $authentication = & $getNightscoutAuth
             $sensorLifetimeDays = & $getSensorLifetimeDays
             if ($null -eq $sensorLifetimeDays) {
-                throw (Get-UlanziText -Key 'Volte para Preferencias e escolha a duracao do seu sensor Libre.')
+                throw (Get-UlanziText -Key 'Volte para Preferencias e escolha a duracao do seu sensor.')
             }
             $toSecureString = {
                 param([string]$Value)
@@ -1402,7 +1406,7 @@ try {
                 LowThreshold = [string][int]$lowBox.Value
                 HighThreshold = [string][int]$highBox.Value
                 StaleMinutes = [string][int]$staleBox.Value
-                SensorLifetimeDays = [string][int]$sensorLifetimeDays
+                SensorLifetimeDays = ([decimal]$sensorLifetimeDays).ToString([Globalization.CultureInfo]::InvariantCulture)
                 AlarmEnabled = $alarmEnabledBox.Checked.ToString().ToLowerInvariant()
                 UpSlightThreshold = "140"
                 DownThreshold = "90"

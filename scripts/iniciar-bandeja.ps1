@@ -57,6 +57,7 @@ if (-not (Test-Path -LiteralPath $panelUiScript)) {
 . $diagnosticsUiScript
 . $maintenanceUiScript
 . $panelUiScript
+# Historical internal identity and mutex names retain taskbar/single-instance compatibility.
 [void](Initialize-UlanziWindowsIdentity -ApplicationId "UlanziLibre.Bridge")
 $script:applicationIcon = Get-UlanziUiApplicationIcon -ProjectRoot $projectRoot
 $powershellExe = Join-Path $env:SystemRoot "System32\WindowsPowerShell\v1.0\powershell.exe"
@@ -306,11 +307,11 @@ $menu.ShowImageMargin = $false
 $notifyIcon = [Windows.Forms.NotifyIcon]::new()
 $notifyIcon.Icon = if ($null -ne $script:applicationIcon) { $script:applicationIcon } else { [Drawing.SystemIcons]::Information }
 $notifyIcon.ContextMenuStrip = $menu
-$notifyIcon.Text = (Get-UlanziText -Key 'Ulanzi Libre: iniciando')
+$notifyIcon.Text = (Get-UlanziText -Key 'Ulanzi Glucose: iniciando')
 $notifyIcon.Visible = $true
 
 $widget = [Windows.Forms.Form]::new()
-$widget.Text = (Get-UlanziText -Key 'Ulanzi Libre Glicemia')
+$widget.Text = (Get-UlanziText -Key 'Ulanzi Glucose - Glicemia')
 [void](Set-UlanziUiApplicationIcon -Form $widget -ProjectRoot $projectRoot)
 $widget.FormBorderStyle = [Windows.Forms.FormBorderStyle]::None
 $widget.ShowInTaskbar = $false
@@ -988,7 +989,7 @@ function Set-TrayStatus {
     } else {
         $notifyIcon.Icon = if ($null -ne $script:applicationIcon) { $script:applicationIcon } else { [Drawing.SystemIcons]::Information }
     }
-    $tooltip = "Ulanzi Libre: $Status | $script:pollInterval s"
+    $tooltip = "Ulanzi Glucose: $Status | $script:pollInterval s"
     if ($tooltip.Length -gt 63) { $tooltip = $tooltip.Substring(0, 63) }
     $notifyIcon.Text = $tooltip
 }
@@ -1004,7 +1005,7 @@ function Show-TrayBalloon {
         [Parameter(Mandatory = $false)][Windows.Forms.ToolTipIcon]$Icon = [Windows.Forms.ToolTipIcon]::Info
     )
 
-    $notifyIcon.BalloonTipTitle = "Ulanzi Libre"
+    $notifyIcon.BalloonTipTitle = "Ulanzi Glucose"
     $notifyIcon.BalloonTipText = $Text
     $notifyIcon.BalloonTipIcon = $Icon
     $notifyIcon.ShowBalloonTip(5000)
@@ -1370,7 +1371,7 @@ function Complete-UlanziConfigurationCheck {
                 Show-TrayBalloon -Text (Get-UlanziText -Key 'A configuracao foi removida ou deixou de ser valida. A conexao nao sera reiniciada ate voce corrigir a configuracao.') -Icon ([Windows.Forms.ToolTipIcon]::Warning)
             }
             default {
-                Show-TrayBalloon -Text (Get-UlanziText -Key 'Antes de usar o Ulanzi Libre, conclua a configuracao da fonte de glicemia e do TC001.') -Icon ([Windows.Forms.ToolTipIcon]::Info)
+                Show-TrayBalloon -Text (Get-UlanziText -Key 'Antes de usar o Ulanzi Glucose, conclua a configuracao da fonte de glicemia e do TC001.') -Icon ([Windows.Forms.ToolTipIcon]::Info)
             }
         }
         Show-UlanziControlPanel
@@ -2105,7 +2106,7 @@ $exitItem.add_Click({
         $script:diagnosticsDialogOpen -or
         $script:maintenanceDialogOpen
     ) {
-        Show-TrayBalloon -Text (Get-UlanziText -Key 'Feche a janela aberta antes de encerrar o Ulanzi Libre.') -Icon ([Windows.Forms.ToolTipIcon]::Warning)
+        Show-TrayBalloon -Text (Get-UlanziText -Key 'Feche a janela aberta antes de encerrar o Ulanzi Glucose.') -Icon ([Windows.Forms.ToolTipIcon]::Warning)
         return
     }
     $script:closing = $true
@@ -2262,7 +2263,7 @@ try {
 
     Set-WidgetPosition
     $widget.Show()
-    $notifyIcon.BalloonTipTitle = "Ulanzi Libre"
+    $notifyIcon.BalloonTipTitle = "Ulanzi Glucose"
     $timer.Start()
     [void](Start-UlanziConfigurationCheck -Reason "startup")
     if ($OpenPanel) { $panelItem.PerformClick() }

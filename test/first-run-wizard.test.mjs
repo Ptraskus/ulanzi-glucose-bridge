@@ -234,7 +234,7 @@ $automationTimer.add_Tick({
             [Environment]::Exit(96)
         }
         $wizardForm = [Windows.Forms.Application]::OpenForms |
-            Where-Object { $_.Text -eq "Primeira configuracao - Ulanzi Libre" } |
+            Where-Object { $_.Text -eq "Primeira configuracao - Ulanzi Glucose" } |
             Select-Object -First 1
         if ($null -eq $wizardForm) { return }
         $controls = @(Get-TestWizardControls -Parent $wizardForm)
@@ -377,16 +377,21 @@ test("assistente oferece ajuda contextual segura para Nightscout e TC001", () =>
   );
 });
 
-test("duracao do sensor exige escolha explicita antes da revisao", () => {
+test("sensor duration estimate is optional and preserves fractional custom values", () => {
   assert.match(wizardScript, /sensorDurationControl/);
-  assert.match(wizardScript, /Items\.AddRange\(@\([^\r\n]*'Selecione a duracao\.\.\.'[^\r\n]*'14 dias'[^\r\n]*'15 dias'[^\r\n]*'Personalizado'/);
-  assert.match(wizardScript, /\$sensorDurationBox\.SelectedIndex = 0/);
-  assert.match(wizardScript, /\$isCustom = \$sensorDurationBox\.SelectedIndex -eq 3/);
+  assert.match(wizardScript, /Items\.AddRange\(@\([^\r\n]*'Desativada'[^\r\n]*'7 dias'[^\r\n]*'10 dias'[^\r\n]*'14 dias'[^\r\n]*'15 dias'[^\r\n]*'Personalizado'/);
+  assert.match(wizardScript, /\[decimal\]\$InitialSensorLifetimeDays = 0/);
+  assert.match(wizardScript, /\$sensorPresets = @\(0, 7, 10, 14, 15\)/);
+  assert.match(wizardScript, /\$isCustom = \$sensorDurationBox\.SelectedIndex -eq 5/);
   assert.doesNotMatch(wizardScript, /SelectedIndex -eq 0\) \{ return (?:14|15)/);
   assert.match(wizardScript, /\$sensorCustomBox\.Visible = \$isCustom/);
   assert.match(wizardScript, /if \(\$null -eq \(& \$getSensorLifetimeDays\)\)/);
-  assert.match(wizardScript, /Escolha a duracao do seu sensor Libre antes de avancar/);
-  assert.match(wizardScript, /SensorLifetimeDays = \[string\]\[int\]\$sensorLifetimeDays/);
+  assert.match(wizardScript, /Escolha a duracao do seu sensor antes de avancar/);
+  assert.match(wizardScript, /SensorLifetimeDays = \(\[decimal\]\$sensorLifetimeDays\)\.ToString\(\[Globalization\.CultureInfo\]::InvariantCulture\)/);
+  assert.match(wizardScript, /\$sensorCustomBox\.Maximum = 365/);
+  assert.match(wizardScript, /\$sensorCustomBox\.DecimalPlaces = 2/);
+  assert.match(configureScript, /-InitialSensorLifetimeDays \$initialSensorLifetimeDays/);
+  assert.match(configureScript, /"SENSOR_LIFETIME_DAYS", "LIBRE_SENSOR_LIFETIME_DAYS"/);
   assert.doesNotMatch(wizardScript, /\$sensorBox\.Value = 15/);
 });
 
@@ -426,7 +431,7 @@ test("instalacao nova deixa o alarme geral desativado e explica os defaults", ()
   assert.match(envExample, /^GLUCOSE_ALARM_ENABLED=false$/m);
   assert.match(envExample, /^GLUCOSE_ALARM_LOW_THRESHOLD_MGDL=70$/m);
   assert.match(envExample, /^GLUCOSE_ALARM_HIGH_THRESHOLD_MGDL=180$/m);
-  assert.match(wizardScript, /varia conforme o modelo/i);
+  assert.match(wizardScript, /Confira a duracao do seu modelo; mantenha desativada se nao souber/i);
   assert.match(wizardScript, /regras sonoras pre-selecionadas so terao efeito depois de ativar/i);
 });
 

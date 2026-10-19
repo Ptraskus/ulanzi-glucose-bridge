@@ -35,8 +35,8 @@ test("CLI language context does not change the environment or configuration", ()
 });
 
 test("clock status follows the selected language without changing glucose calculations", () => {
-  const english = config();
-  const portuguese = config({ APP_LANGUAGE: "pt-BR" });
+  const english = config({ SENSOR_LIFETIME_DAYS: "15" });
+  const portuguese = config({ APP_LANGUAGE: "pt-BR", SENSOR_LIFETIME_DAYS: "15" });
   const mmol = config({ DISPLAY_UNITS: "mmol" });
   const reading = normalizeReading({ valueMgDl: 112, timestamp: now, trend: "flat" });
   assert.equal(buildDisplayState(null, english, now).text, "NO DATA");

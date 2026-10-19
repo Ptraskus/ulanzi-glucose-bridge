@@ -42,7 +42,7 @@ export class NightscoutSource {
     this.apiSecretHash = config.nightscout.apiSecret
       ? createHash("sha1").update(config.nightscout.apiSecret).digest("hex")
       : "";
-    this.sensorLifetimeMs = (config.sensor?.lifetimeDays ?? 15) * 24 * 60 * 60_000;
+    this.sensorLifetimeMs = (config.sensor?.lifetimeDays ?? 0) * 24 * 60 * 60_000;
     this.sensorSession = null;
     this.nextSensorRefreshAtMs = 0;
   }
@@ -85,6 +85,9 @@ export class NightscoutSource {
   }
 
   async getSensorSession(now = new Date(), signal) {
+    // Expiry is an optional estimate, independent of the CGM manufacturer and
+    // the glucose feed. Disabled installations need no treatment permission.
+    if (!(this.sensorLifetimeMs > 0)) return null;
     const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime();
     if (!Number.isFinite(nowMs)) throw new TypeError(tr("invalid sensor query time", "horario de consulta do sensor invalido"));
     if (nowMs < this.nextSensorRefreshAtMs) return this.sensorSession;

@@ -30,6 +30,7 @@ $isDiagnosticRun = @($BridgeArgs | Where-Object {
 }).Count -gt 0
 if (-not $isDiagnosticRun) {
     $currentSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    # Historical mutex prevents the renamed app from running beside an older version.
     $instanceMutex = [Threading.Mutex]::new($false, "Local\UlanziLibreBridge-$currentSid")
     try {
         $ownsInstanceMutex = $instanceMutex.WaitOne(0, $false)
@@ -37,7 +38,7 @@ if (-not $isDiagnosticRun) {
         $ownsInstanceMutex = $true
     }
     if (-not $ownsInstanceMutex) {
-        Write-Host (Get-UlanziText -Key 'O Ulanzi Libre Bridge ja esta em execucao.')
+        Write-Host (Get-UlanziText -Key 'O Ulanzi Glucose Bridge ja esta em execucao.')
         $instanceMutex.Dispose()
         exit 0
     }

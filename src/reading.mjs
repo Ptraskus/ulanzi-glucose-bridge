@@ -117,15 +117,16 @@ function displayValue(valueMgDl, units) {
 }
 
 function sensorTiming(sensorSession, config, now) {
+  const lifetimeDays = config.sensor?.lifetimeDays;
+  if (!Number.isFinite(lifetimeDays) || lifetimeDays <= 0 || sensorSession?.startedAt == null) {
+    return null;
+  }
   const startedAt = sensorSession?.startedAt instanceof Date
     ? sensorSession.startedAt
     : new Date(sensorSession?.startedAt);
   const startedAtMs = startedAt.getTime();
-  const lifetimeDays = config.sensor?.lifetimeDays;
   if (
     !Number.isFinite(startedAtMs) ||
-    !Number.isFinite(lifetimeDays) ||
-    lifetimeDays <= 0 ||
     startedAtMs > now.getTime() + 5 * 60_000
   ) {
     return null;

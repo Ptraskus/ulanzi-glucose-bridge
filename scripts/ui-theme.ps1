@@ -25,6 +25,7 @@ $script:UlanziUiApplicationIconCache = $null
 $script:UlanziUiApplicationIconCachePath = ""
 
 function Initialize-UlanziWindowsIdentity {
+    # Keep the historical internal identity so upgrades retain taskbar grouping.
     param(
         [Parameter(Mandatory = $false)]
         [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$')]
@@ -56,7 +57,7 @@ function Get-UlanziUiApplicationIcon {
     )
 
     try {
-        $iconPath = [IO.Path]::GetFullPath((Join-Path $ProjectRoot "assets\ulanzi-libre.ico"))
+        $iconPath = [IO.Path]::GetFullPath((Join-Path $ProjectRoot "assets\ulanzi-glucose.ico"))
         if (-not [IO.File]::Exists($iconPath)) { return $null }
 
         if (
@@ -118,16 +119,7 @@ function Get-UlanziUiPreferencePath {
         [Parameter(Mandatory = $false)][AllowEmptyString()][string]$PreferenceRoot
     )
 
-    if ([string]::IsNullOrWhiteSpace($PreferenceRoot)) {
-        $localAppData = [Environment]::GetFolderPath([Environment+SpecialFolder]::LocalApplicationData)
-        if ([string]::IsNullOrWhiteSpace($localAppData)) {
-            $localAppData = [Environment]::GetEnvironmentVariable("LOCALAPPDATA")
-        }
-        if ([string]::IsNullOrWhiteSpace($localAppData)) {
-            throw (Get-UlanziText -Key 'Nao foi possivel localizar a pasta de preferencias do usuario.')
-        }
-        $PreferenceRoot = Join-Path $localAppData "Ulanzi Libre Bridge"
-    }
+    $PreferenceRoot = Resolve-UlanziUiPreferenceRoot -PreferenceRoot $PreferenceRoot
 
     return Join-Path ([IO.Path]::GetFullPath($PreferenceRoot)) "ui-preferences.json"
 }

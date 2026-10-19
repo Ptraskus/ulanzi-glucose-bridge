@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "urn:ulanzi-libre-bridge:update-manifest:schema:1",
-  "title": "Ulanzi Libre Bridge update manifest",
+  "$id": "urn:ulanzi-glucose-bridge:update-manifest:schema:1",
+  "title": "Ulanzi Glucose Bridge update manifest",
   "type": "object",
   "additionalProperties": false,
   "required": [

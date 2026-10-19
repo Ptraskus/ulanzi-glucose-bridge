@@ -5,6 +5,7 @@ import { readConfig } from "../src/config.mjs";
 const keys = [
   "LOW_THRESHOLD_MGDL",
   "HIGH_THRESHOLD_MGDL",
+  "SENSOR_LIFETIME_DAYS",
   "LIBRE_SENSOR_LIFETIME_DAYS",
   "GLUCOSE_ALARM_ENABLED",
   "GLUCOSE_ALARM_SOUND_PROFILE",
@@ -75,16 +76,30 @@ test("contingencia do Windows e opcional, limitada e usa schema versionado", () 
   assert.throws(() => readConfig({ source: "mock", dryRun: true }), /CONFIG_SCHEMA_VERSION/);
 });
 
-test("duracao do sensor Libre tem padrao de 15 dias e aceita ajuste", () => {
-  assert.equal(readConfig({ source: "mock", dryRun: true }).sensor.lifetimeDays, 15);
+test("sensor-expiry estimation is disabled by default and preserves the legacy duration", () => {
+  assert.equal(readConfig({ source: "mock", dryRun: true }).sensor.lifetimeDays, 0);
   process.env.LIBRE_SENSOR_LIFETIME_DAYS = "14";
+  assert.equal(readConfig({ source: "mock", dryRun: true }).sensor.lifetimeDays, 14);
+  process.env.SENSOR_LIFETIME_DAYS = "10.5";
+  assert.equal(readConfig({ source: "mock", dryRun: true }).sensor.lifetimeDays, 10.5);
+  process.env.SENSOR_LIFETIME_DAYS = "0";
+  assert.equal(readConfig({ source: "mock", dryRun: true }).sensor.lifetimeDays, 0);
+  process.env.SENSOR_LIFETIME_DAYS = "";
   assert.equal(readConfig({ source: "mock", dryRun: true }).sensor.lifetimeDays, 14);
 });
 
-test("duracao do sensor Libre exige dias inteiros entre 1 e 30", () => {
-  for (const invalid of ["0", "31", "14.5", "invalido"]) {
-    process.env.LIBRE_SENSOR_LIFETIME_DAYS = invalid;
-    assert.throws(() => readConfig({ source: "mock", dryRun: true }), /LIBRE_SENSOR_LIFETIME_DAYS/);
+test("sensor duration accepts 0..365 days with fractions and rejects invalid values", () => {
+  for (const valid of ["0", "7", "10", "10.5", "14", "15", "31", "180", "365"]) {
+    process.env.SENSOR_LIFETIME_DAYS = valid;
+    assert.equal(readConfig({ source: "mock", dryRun: true }).sensor.lifetimeDays, Number(valid));
+  }
+  delete process.env.SENSOR_LIFETIME_DAYS;
+  for (const key of ["SENSOR_LIFETIME_DAYS", "LIBRE_SENSOR_LIFETIME_DAYS"]) {
+    for (const invalid of ["-1", "365.1", "Infinity", "invalido"]) {
+      process.env[key] = invalid;
+      assert.throws(() => readConfig({ source: "mock", dryRun: true }), new RegExp(key));
+    }
+    delete process.env[key];
   }
 });
 

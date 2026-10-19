@@ -1,6 +1,6 @@
 ﻿# Nightscout connection guide
 
-Ulanzi Libre Bridge reads an existing Nightscout instance. It does not create a server, install an uploader, authenticate with Abbott/LibreLinkUp, or connect directly to a glucose sensor.
+Ulanzi Glucose Bridge reads an existing Nightscout instance. It does not create a server, install an uploader, authenticate with a CGM manufacturer's cloud, or connect directly to a glucose sensor. The CGM brand is not used to select or reject readings.
 
 ## Before setup
 
@@ -16,7 +16,7 @@ The bridge also supports a Nightscout `API_SECRET`, sent as a hash in the API he
 2. Choose **Nightscout** as the glucose source.
 3. Enter the HTTPS base URL and the selected authentication method.
 4. Enter the token or secret in the protected credential field, then test the source.
-5. Select the correct sensor duration and test the TC001 connection.
+5. Test the TC001 connection. Leave sensor-expiry estimation off unless you want it and have reliable sensor-start events and the correct model-specific duration.
 6. Review language, glucose unit and other preferences before saving.
 
 For a terminal check that reads the source without sending to the clock:
@@ -31,11 +31,15 @@ This can print a glucose reading in your terminal. Do not share its output witho
 
 Remote sources require HTTPS. HTTP is accepted only on the same computer through a loopback address. Source requests do not follow redirects, so configure the final address. Fix certificate problems at the source instead of disabling certificate validation.
 
-Sensor expiry uses the latest Nightscout `Sensor Start` or `Sensor Change` event and the duration you select. If those events are absent, the bridge can show stale data but cannot reliably derive the sensor's expected end date.
+The bridge requests `/api/v1/entries/sgv.json?count=1`. It needs a numeric `sgv` value in mg/dL and a valid reading timestamp; Nightscout's standard `direction` field supplies the trend. It does not require any particular `device` value or manufacturer-specific metadata. The configured display unit can still be mg/dL or mmol/L.
+
+Sensor-expiry estimation is a separate, optional feature. When enabled with `SENSOR_LIFETIME_DAYS` greater than zero, it uses the latest Nightscout `Sensor Start` or `Sensor Change` event and the duration you select. Zero disables the estimate and the event queries. Fractional durations are accepted, up to 365 days; choose the value for your actual sensor and avoid assuming a duration from another model. This is an estimate, not manufacturer-reported sensor status.
+
+Some uploaders do not send treatment events, as the [Nightscout documentation explains](https://nightscout.github.io/nightscout/discover/#add-a-treatment-careportal). Ordinary glucose display only needs access to glucose entries; reading treatments is needed for the optional estimate. Without a suitable event or permission to read it, the bridge cannot derive an expected sensor end date; timestamp and stale-reading checks remain active.
 
 ## Choosing an uploader or hosting service
 
-An uploader and a Nightscout host are separate components with their own support, costs, terms and privacy practices. The bridge does not provide or maintain them. Review the [Nightscout setup documentation](https://nightscout.github.io/nightscout/) for your equipment and region before changing a working setup. Do not replace or disable official sensor alarms as part of configuring this display.
+An uploader and a Nightscout host are separate components with their own support, costs, terms and privacy practices. The bridge does not provide or maintain them. Nightscout receives data through integrations for different CGMs; consult its [uploader guide](https://nightscout.github.io/uploader/setup/) and [setup documentation](https://nightscout.github.io/nightscout/) for your equipment and region before changing a working setup. This bridge supports the resulting API format; compatibility with every physical CGM/uploader combination has not been verified. Do not replace or disable official sensor alarms as part of configuring this display.
 
 ## Troubleshooting
 
@@ -44,6 +48,6 @@ An uploader and a Nightscout host are separate components with their own support
 | Authentication fails | Token permissions, selected authentication type and server access settings. |
 | Redirect rejected | Use the final HTTPS base URL directly. |
 | Connected but NO DATA | Latest source timestamp, uploader operation and maximum reading age. |
-| Sensor-change status unavailable | Presence and date of the sensor-start event and configured duration. |
+| Sensor-change estimate unavailable | Whether estimation is enabled, presence and date of the sensor-start event, and configured duration. Glucose display works without an estimate. |
 
 Never post your site address, access tokens, API secret, `.env` or vault in a public issue. Use the app's sanitized diagnostics and review the export first.

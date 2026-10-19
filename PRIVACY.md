@@ -1,6 +1,6 @@
 ﻿# Privacy
 
-Ulanzi Libre Bridge processes glucose readings locally to display them on an Ulanzi TC001. It has no telemetry, advertising, project account or project-operated server.
+Ulanzi Glucose Bridge processes glucose readings locally to display them on an Ulanzi TC001. It has no telemetry, advertising, project account or project-operated server.
 
 ## Data accessed
 
@@ -8,7 +8,7 @@ The app accesses the reading, trend and timestamp from the configured Nightscout
 
 The bridge communicates with the glucose source and TC001 selected by the user. Those services, the network and the installed firmware have their own behavior and privacy policies.
 
-During device preparation, clicking the corresponding button opens documentation or a flashing page on the official AWTRIX NG domain. The browser and website may record ordinary access information. The bridge does not receive the Wi-Fi password entered in the clock's own portal, does not request Abbott/LibreLinkUp credentials, and does not send such information to this project.
+During device preparation, clicking the corresponding button opens documentation or a flashing page on the official AWTRIX NG domain. The browser and website may record ordinary access information. The bridge does not receive the Wi-Fi password entered in the clock's own portal, does not request CGM manufacturer account credentials, and does not send such information to this project.
 
 ## Local storage
 
@@ -22,7 +22,7 @@ During device preparation, clicking the corresponding button opens documentation
 
 These files are excluded from public source and release packages. Uninstalling normally preserves them. Copying a vault to another Windows account or computer does not make its credentials usable there.
 
-Theme and initial language preferences are stored in `%LOCALAPPDATA%\Ulanzi Libre Bridge\ui-preferences.json`. This file contains no readings, thresholds, addresses or credentials. The saved application configuration can also contain the selected language and glucose unit.
+New theme and initial language preferences are stored in `%LOCALAPPDATA%\Ulanzi Glucose Bridge\ui-preferences.json`. If previous preferences exist only under the old `Ulanzi Libre Bridge` folder, the application reuses them there. Existing installation folders may also retain their old names during upgrades; the rename does not copy credentials to a new account or remove local data. The preference file contains no readings, thresholds, addresses or credentials. The saved application configuration can also contain the selected language and glucose unit.
 
 Valid recovery snapshots can contain a vault still encrypted with DPAPI. When configuration is invalid, quarantine records only file presence, hashes and the error code; it does not copy the problematic `.env` or vault.
 

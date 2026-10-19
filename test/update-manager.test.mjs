@@ -21,11 +21,11 @@ function manifest(bytes = Buffer.from("signed-installer-placeholder")) {
     publishedAt: "2026-08-30T12:00:00.000Z",
     notes: "Melhorias",
     installer: {
-      url: "https://updates.example/UlanziLibre-Setup-0.2.0.exe",
-      fileName: "UlanziLibre-Setup-0.2.0.exe",
+      url: "https://updates.example/UlanziGlucose-Setup-0.2.0.exe",
+      fileName: "UlanziGlucose-Setup-0.2.0.exe",
       sha256: createHash("sha256").update(bytes).digest("hex"),
       requireAuthenticode: true,
-      publisher: "Ulanzi Libre",
+      publisher: "Ulanzi Glucose",
     },
   };
 }
@@ -53,7 +53,7 @@ test("verificacao informa nova versao sem executar o instalador", async () => {
   const checked = await checkForUpdate({
     manifestUrl: "https://updates.example/stable.json",
     currentVersion: "0.1.0",
-    expectedPublisher: "Ulanzi Libre",
+    expectedPublisher: "Ulanzi Glucose",
     fetchImpl: async () => new Response(JSON.stringify(manifest()), {
       status: 200,
       headers: { "content-type": "application/json" },
@@ -68,7 +68,7 @@ test("segue poucos redirects HTTPS, mas nunca troca um canal remoto por loopback
   const checked = await checkForUpdate({
     manifestUrl: "https://updates.example/stable.json",
     currentVersion: "0.1.0",
-    expectedPublisher: "Ulanzi Libre",
+    expectedPublisher: "Ulanzi Glucose",
     fetchImpl: async (url) => {
       seen.push(String(url));
       if (seen.length === 1) {
@@ -86,7 +86,7 @@ test("segue poucos redirects HTTPS, mas nunca troca um canal remoto por loopback
   await assert.rejects(() => checkForUpdate({
     manifestUrl: "https://updates.example/stable.json",
     currentVersion: "0.1.0",
-    expectedPublisher: "Ulanzi Libre",
+    expectedPublisher: "Ulanzi Glucose",
     fetchImpl: async () => new Response(null, {
       status: 302,
       headers: { location: "http://127.0.0.1/private" },
@@ -114,7 +114,7 @@ test("manifesto publico nao pode apontar instalador para rede privada", async ()
     await assert.rejects(() => checkForUpdate({
       manifestUrl: "https://updates.example/stable.json",
       currentVersion: "0.1.0",
-      expectedPublisher: "Ulanzi Libre",
+      expectedPublisher: "Ulanzi Glucose",
       fetchImpl: async () => new Response(JSON.stringify(privateManifest), {
         status: 200,
         headers: { "content-type": "application/json" },
@@ -132,7 +132,7 @@ test("redirect de origem publica para qualquer rede privada e recusado", async (
     await assert.rejects(() => checkForUpdate({
       manifestUrl: "https://updates.example/stable.json",
       currentVersion: "0.1.0",
-      expectedPublisher: "Ulanzi Libre",
+      expectedPublisher: "Ulanzi Glucose",
       fetchImpl: async () => new Response(null, { status: 302, headers: { location } }),
     }), /local ou privado/);
   }
@@ -141,12 +141,12 @@ test("redirect de origem publica para qualquer rede privada e recusado", async (
 test("HTTP loopback so e aceito quando manifesto e instalador sao locais", async () => {
   const bytes = Buffer.from("signed-installer-placeholder");
   const localManifest = manifest(bytes);
-  localManifest.installer.url = "http://localhost:8788/UlanziLibre-Setup-0.2.0.exe";
+  localManifest.installer.url = "http://localhost:8788/UlanziGlucose-Setup-0.2.0.exe";
 
   await assert.rejects(() => checkForUpdate({
     manifestUrl: "https://updates.example/stable.json",
     currentVersion: "0.1.0",
-    expectedPublisher: "Ulanzi Libre",
+    expectedPublisher: "Ulanzi Glucose",
     fetchImpl: async () => new Response(JSON.stringify(localManifest), {
       status: 200,
       headers: { "content-type": "application/json" },
@@ -156,7 +156,7 @@ test("HTTP loopback so e aceito quando manifesto e instalador sao locais", async
   await assert.rejects(() => checkForUpdate({
     manifestUrl: "https://updates.local/stable.json",
     currentVersion: "0.1.0",
-    expectedPublisher: "Ulanzi Libre",
+    expectedPublisher: "Ulanzi Glucose",
     fetchImpl: async () => new Response(JSON.stringify(localManifest), {
       status: 200,
       headers: { "content-type": "application/json" },
@@ -166,7 +166,7 @@ test("HTTP loopback so e aceito quando manifesto e instalador sao locais", async
   const checked = await checkForUpdate({
     manifestUrl: "http://127.0.0.1:8787/stable.json",
     currentVersion: "0.1.0",
-    expectedPublisher: "Ulanzi Libre",
+    expectedPublisher: "Ulanzi Glucose",
     fetchImpl: async () => new Response(JSON.stringify(localManifest), {
       status: 200,
       headers: { "content-type": "application/json" },
@@ -181,7 +181,7 @@ test("HTTP loopback so e aceito quando manifesto e instalador sao locais", async
       manifest: checked.manifest,
       manifestUrl: checked.manifestUrl,
       targetDir: root,
-      expectedPublisher: "Ulanzi Libre",
+      expectedPublisher: "Ulanzi Glucose",
       fetchImpl: async () => new Response(bytes, {
         status: 200,
         headers: { "content-length": String(bytes.length) },
@@ -195,12 +195,12 @@ test("HTTP loopback so e aceito quando manifesto e instalador sao locais", async
 
 test("download revalida a relacao entre manifesto e instalador", async () => {
   const privateManifest = manifest();
-  privateManifest.installer.url = "https://192.168.1.50/UlanziLibre-Setup-0.2.0.exe";
+  privateManifest.installer.url = "https://192.168.1.50/UlanziGlucose-Setup-0.2.0.exe";
   await assert.rejects(() => downloadUpdate({
     manifest: privateManifest,
     manifestUrl: "https://updates.example/stable.json",
     targetDir: join(tmpdir(), "ulanzi-update-should-not-exist"),
-    expectedPublisher: "Ulanzi Libre",
+    expectedPublisher: "Ulanzi Glucose",
     fetchImpl: async () => { throw new Error("nao deveria acessar a rede"); },
   }), /local ou privado/);
 });
@@ -213,7 +213,7 @@ test("download so e publicado depois de confirmar SHA-256", async () => {
       manifest: manifest(bytes),
       manifestUrl: "https://updates.example/stable.json",
       targetDir: root,
-      expectedPublisher: "Ulanzi Libre",
+      expectedPublisher: "Ulanzi Glucose",
       fetchImpl: async () => new Response(bytes, {
         status: 200,
         headers: { "content-length": String(bytes.length) },
@@ -226,7 +226,7 @@ test("download so e publicado depois de confirmar SHA-256", async () => {
       manifest: manifest(bytes),
       manifestUrl: "https://updates.example/stable.json",
       targetDir: root,
-      expectedPublisher: "Ulanzi Libre",
+      expectedPublisher: "Ulanzi Glucose",
       fetchImpl: async () => { throw new Error("nao deveria baixar novamente"); },
     });
     assert.equal(reused.reused, true);

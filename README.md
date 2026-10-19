@@ -1,10 +1,10 @@
-﻿# Ulanzi Libre Bridge
+﻿# Ulanzi Glucose Bridge
 
 **Your glucose reading on an Ulanzi TC001, with a local Windows companion app.**
 
-[Português (Brasil)](README.pt-BR.md) · [Report an issue](https://github.com/Ptraskus/ulanzi-libre-bridge/issues) · [Releases](https://github.com/Ptraskus/ulanzi-libre-bridge/releases)
+[Português (Brasil)](README.pt-BR.md) · [Report an issue](https://github.com/Ptraskus/ulanzi-glucose-bridge/issues) · [Releases](https://github.com/Ptraskus/ulanzi-glucose-bridge/releases)
 
-The bridge reads an authorized Nightscout or JSON source and shows the glucose value, trend and reading status on the TC001. The Windows app includes guided setup, a dashboard, optional alerts, a floating display and troubleshooting tools.
+The bridge reads an authorized Nightscout or JSON source and shows the glucose value, trend and reading status on the TC001. It works with the reading format supplied by the source, independently of the CGM manufacturer. The Windows app includes guided setup, a dashboard, optional alerts, a floating display and troubleshooting tools.
 
 **Windows 10 1809+ / Windows 11 · Node.js 22+ · English by default, Brazilian Portuguese available · mg/dL or mmol/L · [MIT license](LICENSE)**
 
@@ -40,7 +40,7 @@ This simulates **112 mg/dL**, prints the display payload and exits without conta
 
 ### Future installer and portable packages
 
-When a release includes a signed `Ulanzi-Libre-Bridge-Setup-<version>.exe`, verify its publisher and the release checksums, then run it. It installs for the current user, offers English or Portuguese, and can create a desktop shortcut and start with Windows. A package marked `portable-node` includes Node.js and needs no separate runtime installation; extract it completely and open `Start.cmd`.
+When a release includes a signed `Ulanzi-Glucose-Bridge-Setup-<version>.exe`, verify its publisher and the release checksums, then run it. It installs for the current user, offers English or Portuguese, and can create a desktop shortcut and start with Windows. A package marked `portable-node` includes Node.js and needs no separate runtime installation; extract it completely and open `Start.cmd`.
 
 The GitHub **Source code (zip)** download does **not** include Node.js. Do not confuse it with a `portable-node` release asset. See [release and signing instructions](PUBLICACAO.md) for maintainers.
 
@@ -59,7 +59,11 @@ The bundled runtime contains Node.js and its license, without npm. To run the te
 | Data source | An already working Nightscout instance or authorized JSON endpoint. A mock source is available for testing. |
 | Network | Access to the data source and the TC001. The computer and clock must be able to communicate; guest network isolation can prevent this. |
 
-The project does **not** log into LibreLinkUp, request an Abbott password, or read a sensor directly. Installing and maintaining a sensor uploader or Nightscout server is a separate task. See [Nightscout setup](GUIA-NIGHTSCOUT.md).
+### CGM compatibility
+
+The bridge uses Nightscout's standard glucose-reading API; it does not identify or restrict the sensor manufacturer. A CGM can be used when its uploader or integration already provides current, valid glucose readings to your Nightscout instance. The bridge reads the value, timestamp and trend, without depending on manufacturer-specific device metadata. See Nightscout's [uploader documentation](https://nightscout.github.io/uploader/setup/) for the source side of that connection.
+
+This is compatibility through the data source, not a claim that every sensor or uploader has been physically tested with the bridge. The application does not pair with a sensor or sign in to a manufacturer's cloud account. Installing and maintaining a sensor uploader or Nightscout server is a separate task. An authorized JSON endpoint is another supported input. See [Nightscout setup](GUIA-NIGHTSCOUT.md).
 
 If the TC001 needs compatible firmware, setup links to the [official AWTRIX NG flashing tool](https://blueforcer.github.io/awtrix-ng/getting-started/flashing/). Read its instructions and back up the device first: replacing firmware can erase the existing software and settings. The bridge does not silently flash firmware or choose a serial port.
 
@@ -77,7 +81,7 @@ The app validates the reading timestamp, checks its age, determines the display 
 
 ## Setup and everyday settings
 
-Have your TC001 address, the source URL, and any required access token ready. Enter credentials only in the local wizard. Confirm the sensor duration for your model and verify what you see and hear during the clock tests: a successful HTTP request alone cannot confirm the LEDs or buzzer worked.
+Have your TC001 address, the source URL, and any required access token ready. Enter credentials only in the local wizard. Sensor-expiry estimation is optional and starts disabled; enable it only with the duration for your model and a reliable sensor-start event. Verify what you see and hear during the clock tests: a successful HTTP request alone cannot confirm the LEDs or buzzer worked.
 
 | Area | What you can do |
 | --- | --- |
@@ -106,7 +110,7 @@ Choose **mg/dL** or **mmol/L** independently of the language. The display uses w
 | Visual range | 70–180 mg/dL; configurable and independent from alarm thresholds. |
 | Automatic sound alarms | Off. |
 | Windows fallback notifications | Off. |
-| Sensor duration | Explicit choice during setup: 14 days, 15 days or custom. |
+| Sensor-expiry estimate | Off (`SENSOR_LIFETIME_DAYS=0`). An optional model-specific duration supports fractional days, up to 365 days. |
 
 The complete configuration reference is [.env.example](.env.example). For normal use, prefer the wizard, which saves credentials in the Windows-protected vault. Do not copy the example over an existing `.env`.
 
@@ -132,7 +136,7 @@ Example JSON response with fictitious data:
 
 Use the actual reading time; this example's timestamp will be stale if copied unchanged. Accepted trends: `double-up`, `up`, `up-slight`, `flat`, `down-slight`, `down`, `double-down`, `unknown`.
 
-An unavailable or stale reading shows **NO DATA** (**SEM DADO** in Portuguese). With Nightscout, a recorded `Sensor Start` or `Sensor Change` event and the configured duration can produce a **CHANGE** (**TROCAR**) status. Without this event the app cannot infer sensor expiry from time alone. A still-valid low or high reading retains priority until it becomes stale. The sensor-change state does not trigger the no-data sound.
+An unavailable or stale reading shows **NO DATA** (**SEM DADO** in Portuguese). If sensor-expiry estimation is enabled, a recorded Nightscout `Sensor Start` or `Sensor Change` event and your configured duration can produce a **CHANGE** (**TROCAR**) status. This is an estimate, not a sensor-reported end-of-life status. Without the event the app cannot infer expiry; ordinary glucose display still works. When the estimate is disabled, the bridge does not query sensor events. A still-valid low or high reading retains priority until it becomes stale. The sensor-change state does not trigger the no-data sound.
 
 Automatic alerts are optional. Their visual thresholds and audible thresholds are independent. Sound profiles change beep patterns and repetition, not calibrated loudness. Hysteresis and rearming delays reduce repeated alerts near thresholds. The `double-down` arrow is displayed but currently has no dedicated sound rule. Test the clock's actual behavior before relying on notifications.
 
@@ -148,13 +152,19 @@ There is no project telemetry, advertising, app account or project server. Gluco
 | `.config-history/` | Local recovery copies. |
 | `.updates/` | Installers explicitly downloaded for updates. |
 
-UI preferences are stored under `%LOCALAPPDATA%\Ulanzi Libre Bridge`. These paths are excluded from source publication and release packages. A normal uninstall preserves user data. Credentials must be entered again when moving to another Windows account or computer.
+New UI preferences are stored under `%LOCALAPPDATA%\Ulanzi Glucose Bridge`. Upgrades can reuse the previous preference and installation folders to preserve existing data. These paths are excluded from source publication and release packages. A normal uninstall preserves user data. Credentials must be entered again when moving to another Windows account or computer.
 
 Review diagnostic exports before sharing them, even though they remove readings and redact sensitive fields. Never attach `.env`, vault files, logs or screenshots containing private information to a public issue.
 
 The updater stays disabled until a maintainer configures a release channel and expected publisher. When enabled, it checks HTTPS, SHA-256 and Authenticode before allowing installer execution. Publishing source code on GitHub does not activate automatic updates.
 
-See [Privacy](PRIVACY.md), [Security](SECURITY.md), and the [private vulnerability report form](https://github.com/Ptraskus/ulanzi-libre-bridge/security/advisories/new).
+See [Privacy](PRIVACY.md), [Security](SECURITY.md), and the [private vulnerability report form](https://github.com/Ptraskus/ulanzi-glucose-bridge/security/advisories/new).
+
+### Upgrading from the previous name
+
+Version 0.3.0 renames the project from Ulanzi Libre Bridge to **Ulanzi Glucose Bridge**. Existing configuration, encrypted credentials, history and explicit sensor durations remain compatible. The old `LIBRE_SENSOR_LIFETIME_DAYS` setting is accepted as a fallback; `SENSOR_LIFETIME_DAYS` takes precedence when set. New configurations use the generic key and start with expiry estimation disabled. Changed duration settings use the generic key; saving without changes preserves the existing document.
+
+Existing Windows installation and preference folders may retain their old names. Do not delete them to complete the rename. Stable internal Windows identifiers are deliberately retained for upgrade and single-instance compatibility. Exit the running copy before upgrading or opening the app from another folder.
 
 ## Troubleshooting
 
@@ -174,8 +184,8 @@ See [Privacy](PRIVACY.md), [Security](SECURITY.md), and the [private vulnerabili
 
 ```powershell
 # Optional alternative to Download ZIP
-git clone https://github.com/Ptraskus/ulanzi-libre-bridge.git
-cd ulanzi-libre-bridge
+git clone https://github.com/Ptraskus/ulanzi-glucose-bridge.git
+cd ulanzi-glucose-bridge
 
 # Syntax, tests and a no-network demo
 npm.cmd run check
@@ -194,4 +204,4 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\launch-app.ps1
 
 The automated suite includes Windows PowerShell/WinForms checks; run the full suite on Windows. It cannot substitute for physical clock testing or clean-machine installation validation. Maintainer packaging, signing and release checks are in [PUBLICACAO.md](PUBLICACAO.md).
 
-Source is in `src/`, Windows UI and tooling in `scripts/`, translations in `locales/`, installer definitions in `installer/`, and automated checks in `test/`. Keep personal configurations and credentials out of commits and pull requests. This is an independent community project, not affiliated with Abbott, Ulanzi, AWTRIX or Nightscout.
+Source is in `src/`, Windows UI and tooling in `scripts/`, translations in `locales/`, installer definitions in `installer/`, and automated checks in `test/`. Keep personal configurations and credentials out of commits and pull requests. This is an independent community project, not affiliated with CGM manufacturers, Ulanzi, AWTRIX or Nightscout.

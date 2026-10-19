@@ -70,9 +70,9 @@ Use a clean Windows x64 virtual machine and a standard user. Do not run installa
 
 1. Verify artifact hashes and the installer's Authenticode publisher, chain and timestamp.
 2. Install without a global Node.js and confirm the bundled runtime works.
-3. Test first launch, English and Portuguese setup, language persistence, both glucose units, connection tests and cancellation. Check that alarms begin disabled.
+3. Test first launch, English and Portuguese setup, language persistence, both glucose units, connection tests and cancellation. Check that alarms and sensor-expiry estimation begin disabled. Test a standard Nightscout reading without device-specific metadata or treatment events; then separately test an explicitly enabled sensor-duration estimate.
 4. Physically confirm clock display and sound using an appropriate test device; automated tests cannot prove hardware behavior.
-5. Test startup and desktop shortcuts, duplicate launches, repair, upgrade, and uninstall/reinstall with existing settings. Confirm local data and credentials are preserved.
+5. Test startup and desktop shortcuts, duplicate launches, repair, upgrade, and uninstall/reinstall with existing settings. Include upgrades from the previous product name and the legacy `LIBRE_SENSOR_LIFETIME_DAYS` key. Confirm local data, credentials, explicit durations and preferences are preserved. Stable installer and process identifiers intentionally retain their legacy values so a renamed release does not create a separate installation or concurrent bridge.
 6. Test source ZIP extraction and a missing/old Node.js: the launcher must provide an actionable error.
 7. Check signed installer warnings and installation under the supported Windows versions. Inspect the final ZIP for unexpected personal files or metadata.
 
@@ -82,6 +82,6 @@ The advanced `scripts/install-local.ps1` installs only a prepared package contai
 
 Publish only reviewed artifacts from the matching version folder, their `SHA256SUMS.txt` and accurate release notes. Do not upload local configuration, caches, old internal artifacts or unsigned installers described as signed releases. Keep the README honest about which downloadable artifacts actually exist.
 
-The app's update channel remains disabled unless configured. To generate an update feed, add both `-UpdateManifestUrl` and `-UpdateInstallerUrl` using permanent real HTTPS addresses and enable `-RequireSignature`. The installer URL must end in `Ulanzi-Libre-Bridge-Setup-<version>.exe`; the manifest URL must end in `update-manifest.json`. Example domains, temporary query URLs and incomplete pins are rejected.
+The app's update channel remains disabled unless configured. To generate an update feed, add both `-UpdateManifestUrl` and `-UpdateInstallerUrl` using permanent real HTTPS addresses and enable `-RequireSignature`. The installer URL must end in `Ulanzi-Glucose-Bridge-Setup-<version>.exe`; the manifest URL must end in `update-manifest.json`. Example domains, temporary query URLs and incomplete pins are rejected.
 
 The builder pins the channel, feed URL and expected publisher into the packaged defaults, then produces `update-manifest.json`. Existing installations keep their settings and may need an explicit migration. Verify HTTPS, hash, signed publisher and version before announcing the channel. Publishing a GitHub repository alone does not enable updates.

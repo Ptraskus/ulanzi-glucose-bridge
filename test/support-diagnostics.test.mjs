@@ -199,7 +199,7 @@ test("exportacao gera JSON UTF-8 atomico e pode substituir relatorio anterior", 
       config: unsafeConfig(),
       statusPath,
       logPath,
-      application: { name: "ulanzi-libre-bridge", version: "9.9.9" },
+      application: { name: "ulanzi-glucose-bridge", version: "9.9.9" },
       generatedAt: new Date("2026-08-30T13:00:00.000Z"),
     });
     const exportedText = await readFile(destinationPath, "utf8");

@@ -15,7 +15,7 @@ $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName System.Drawing -ErrorAction Stop
 
 if ([string]::IsNullOrWhiteSpace($OutputPath)) {
-    $OutputPath = Join-Path (Split-Path -Parent $PSScriptRoot) "assets\ulanzi-libre.ico"
+    $OutputPath = Join-Path (Split-Path -Parent $PSScriptRoot) "assets\ulanzi-glucose.ico"
 }
 
 function New-UlanziIconPngBytes {

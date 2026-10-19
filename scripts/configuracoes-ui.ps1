@@ -1242,6 +1242,7 @@ function Show-UlanziConfigurationDialog {
     } finally {
         $projectIdentityHash.Dispose()
     }
+    # Keep the historical mutex to coordinate configuration edits across upgrades.
     $mutex = [Threading.Mutex]::new($false, "Local\UlanziLibreConfig-$currentSid-$projectIdentity")
     $ownsMutex = $false
     try {
@@ -1253,7 +1254,7 @@ function Show-UlanziConfigurationDialog {
         if (-not $ownsMutex) {
             [void][Windows.Forms.MessageBox]::Show(
                 (Get-UlanziText -Key 'Outra janela de configuracoes ja esta aberta.'),
-                "Ulanzi Libre",
+                "Ulanzi Glucose",
                 [Windows.Forms.MessageBoxButtons]::OK,
                 [Windows.Forms.MessageBoxIcon]::Information
             )
@@ -1269,7 +1270,7 @@ function Show-UlanziConfigurationDialog {
                 LOW_THRESHOLD_MGDL = (Get-UlanziText -Key 'limite baixo')
                 HIGH_THRESHOLD_MGDL = (Get-UlanziText -Key 'limite alto')
                 STALE_AFTER_MINUTES = (Get-UlanziText -Key 'tempo ate SEM DADO')
-                LIBRE_SENSOR_LIFETIME_DAYS = (Get-UlanziText -Key 'duracao do sensor')
+                SENSOR_LIFETIME_DAYS = (Get-UlanziText -Key 'duracao do sensor')
                 POLL_INTERVAL_SECONDS = (Get-UlanziText -Key 'frequencia de consulta')
                 GLUCOSE_ALARM_ENABLED = (Get-UlanziText -Key 'controle geral dos alarmes')
                 GLUCOSE_ALARM_SOUND_PROFILE = (Get-UlanziText -Key 'padrao dos avisos sonoros')
@@ -1297,7 +1298,7 @@ function Show-UlanziConfigurationDialog {
 
         $form = [Windows.Forms.Form]::new()
         $form.Name = "UlanziSettingsForm"
-        $form.Text = (Get-UlanziText -Key 'Configuracoes - Ulanzi Libre')
+        $form.Text = (Get-UlanziText -Key 'Configuracoes - Ulanzi Glucose')
         $form.ClientSize = [Drawing.Size]::new(780, 680)
         $form.MinimumSize = [Drawing.Size]::new(720, 640)
         $form.StartPosition = if ($null -ne $Owner) {
@@ -1473,7 +1474,7 @@ function Show-UlanziConfigurationDialog {
 
         $rangesTab = [Windows.Forms.TabPage]::new((Get-UlanziText -Key 'Tela e sensor'))
         $rangesTab.Name = "displayTab"
-        $rangesTab.ToolTipText = (Get-UlanziText -Key 'Ajuste as cores, a atualizacao da leitura e o sensor Libre.')
+        $rangesTab.ToolTipText = (Get-UlanziText -Key 'Ajuste as cores, a atualizacao da leitura e o sensor.')
         $rangesTab.BackColor = [Drawing.Color]::White
         $rangesTab.AutoScroll = $false
         $rangesTable = New-UlanziSettingsTable
@@ -1497,8 +1498,9 @@ function Show-UlanziConfigurationDialog {
         $pollMinimum = if ([string]$state.source -eq "nightscout") { 30 } else { 10 }
         $pollControl = Add-UlanziNumberSetting -Table $rangesTable -Title (Get-UlanziText -Key 'Buscar uma nova leitura a cada') -Description (Get-UlanziText -Key 'Intervalos menores atualizam mais rapido, mas fazem mais requisicoes.') -Minimum $pollMinimum -Maximum 3600 -Value ([decimal]$values.POLL_INTERVAL_SECONDS) -Unit "s"
         $staleControl = Add-UlanziNumberSetting -Table $rangesTable -Title (Get-UlanziText -Key 'Mostrar SEM DADO depois de') -Description (Get-UlanziText -Key 'Tempo sem uma leitura nova antes de considerar o valor desatualizado.') -Minimum 2 -Maximum 240 -Value ([decimal]$values.STALE_AFTER_MINUTES) -Unit "min" -DecimalPlaces 1
-        Add-UlanziSection -Table $rangesTable -Text (Get-UlanziText -Key 'Sensor Libre')
-        $sensorControl = Add-UlanziNumberSetting -Table $rangesTable -Title (Get-UlanziText -Key 'Duracao deste modelo de sensor') -Description (Get-UlanziText -Key 'Usada com Sensor Start/Change para mostrar TROCAR no final.') -Minimum 1 -Maximum 30 -Value ([decimal]$values.LIBRE_SENSOR_LIFETIME_DAYS) -Unit (Get-UlanziText -Key 'dias')
+        Add-UlanziSection -Table $rangesTable -Text (Get-UlanziText -Key 'Sensor CGM')
+        $sensorControl = Add-UlanziNumberSetting -Table $rangesTable -Title (Get-UlanziText -Key 'Estimativa de duracao do sensor') -Description (Get-UlanziText -Key 'Zero desativa a estimativa. Requer Sensor Start/Change no Nightscout; confirme a duracao do seu modelo.') -Minimum 0 -Maximum 365 -Value ([decimal]$values.SENSOR_LIFETIME_DAYS) -Unit (Get-UlanziText -Key 'dias') -DecimalPlaces 2
+        $sensorControl.Name = "sensorLifetimeControl"
         $sensorInformation = if ([string]$state.source -eq "nightscout") {
             (Get-UlanziText -Key 'O aviso TROCAR depende de o Nightscout registrar corretamente o inicio ou a troca do sensor.')
         } else {
@@ -1870,7 +1872,7 @@ function Show-UlanziConfigurationDialog {
                 LOW_THRESHOLD_MGDL = [double]$lowControl.Value
                 HIGH_THRESHOLD_MGDL = [double]$highControl.Value
                 STALE_AFTER_MINUTES = [double]$staleControl.Value
-                LIBRE_SENSOR_LIFETIME_DAYS = [int]$sensorControl.Value
+                SENSOR_LIFETIME_DAYS = [decimal]$sensorControl.Value
                 POLL_INTERVAL_SECONDS = [int]$pollControl.Value
                 GLUCOSE_ALARM_ENABLED = [bool]$alarmEnabledControl.Checked
                 GLUCOSE_ALARM_SOUND_PROFILE = [string]$profileKeys[$soundProfileControl.SelectedIndex]

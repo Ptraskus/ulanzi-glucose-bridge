@@ -131,6 +131,41 @@ test("editor preserva fallback sonoro ao alterar apenas o limite visual", () => 
   assert.equal(updatedValues.GLUCOSE_ALARM_LOW_THRESHOLD_MGDL, 70);
 });
 
+test("editor preserves legacy sensor duration on unrelated edits and exposes the generic key", () => {
+  const original = validMockEnv("LIBRE_SENSOR_LIFETIME_DAYS=14 # existing installation");
+  const values = editableValuesFromConfig(validateConfigDocument(original));
+  assert.equal(values.SENSOR_LIFETIME_DAYS, 14);
+  assert.equal(Object.hasOwn(values, "LIBRE_SENSOR_LIFETIME_DAYS"), false);
+  assert.equal(updateEnvText(original, values), original);
+
+  const updated = updateEnvText(original, { LOW_THRESHOLD_MGDL: 75 });
+  assert.equal(validateConfigDocument(updated).sensor.lifetimeDays, 14);
+  assert.match(updated, /LIBRE_SENSOR_LIFETIME_DAYS=14 # existing installation/);
+
+  const fullSave = updateEnvText(original, { ...values, LOW_THRESHOLD_MGDL: 75 });
+  assert.equal(validateConfigDocument(fullSave).sensor.lifetimeDays, 14);
+  assert.match(fullSave, /SENSOR_LIFETIME_DAYS=14/);
+});
+
+test("editor roundtrips generic duration, explicitly disables legacy expiry, and accepts old clients", () => {
+  const original = validMockEnv("LIBRE_SENSOR_LIFETIME_DAYS=15");
+  const disabled = updateEnvText(original, { SENSOR_LIFETIME_DAYS: 0 });
+  assert.equal(validateConfigDocument(disabled).sensor.lifetimeDays, 0);
+  assert.match(disabled, /^SENSOR_LIFETIME_DAYS=0$/m);
+  const fractional = updateEnvText(disabled, { SENSOR_LIFETIME_DAYS: 10.5 });
+  assert.equal(editableValuesFromConfig(validateConfigDocument(fractional)).SENSOR_LIFETIME_DAYS, 10.5);
+
+  const legacyRequest = updateEnvText(fractional, { LIBRE_SENSOR_LIFETIME_DAYS: 14 });
+  assert.equal(validateConfigDocument(legacyRequest).sensor.lifetimeDays, 14);
+  assert.deepEqual(normalizeEditableChanges({
+    SENSOR_LIFETIME_DAYS: 0,
+    LIBRE_SENSOR_LIFETIME_DAYS: 15,
+  }), { SENSOR_LIFETIME_DAYS: 0 });
+  assert.throws(() => validateConfigDocument(updateEnvText(original, {
+    SENSOR_LIFETIME_DAYS: 365.1,
+  })), { code: "INVALID_CONFIG" });
+});
+
 test("validacao usa somente o documento informado e exige configuracao real do AWTRIX", () => {
   const previous = process.env.AWTRIX_HOST;
   process.env.AWTRIX_HOST = "http://valor-externo.test";
@@ -213,6 +248,10 @@ test("variavel externa bloqueia a tela mesmo quando repete o valor atual", () =>
   assert.deepEqual(
     externalEditableOverrides("LOW_THRESHOLD_MGDL=70\n", { low_threshold_mgdl: "70" }),
     ["LOW_THRESHOLD_MGDL"],
+  );
+  assert.deepEqual(
+    externalEditableOverrides("", { libre_sensor_lifetime_days: "14" }),
+    ["SENSOR_LIFETIME_DAYS"],
   );
 });
 

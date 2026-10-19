@@ -148,6 +148,13 @@ export function readConfig(options = {}, environment = process.env) {
   const readColor = (name, fallback) => colorValue(name, fallback, environment);
   const readEnum = (name, fallback, allowedValues) =>
     enumValue(name, fallback, allowedValues, environment);
+  // Keep explicit settings from earlier installations. A canonical value,
+  // including 0 (disabled), always takes precedence over the legacy key.
+  const sensorLifetimeKey = environment.SENSOR_LIFETIME_DAYS !== undefined &&
+    environment.SENSOR_LIFETIME_DAYS !== ""
+    ? "SENSOR_LIFETIME_DAYS"
+    : "LIBRE_SENSOR_LIFETIME_DAYS";
+  const sensorLifetimeDays = readNumber(sensorLifetimeKey, 0, { min: 0, max: 365 });
   const source = (options.source || environment.GLUCOSE_SOURCE || "nightscout").toLowerCase();
   const schemaVersion = readNumber("CONFIG_SCHEMA_VERSION", CONFIG_SCHEMA_VERSION, {
     min: CONFIG_SCHEMA_VERSION,
@@ -254,11 +261,7 @@ export function readConfig(options = {}, environment = process.env) {
     highThresholdMgDl,
     displayUnits,
     sensor: {
-      lifetimeDays: readNumber("LIBRE_SENSOR_LIFETIME_DAYS", 15, {
-        min: 1,
-        max: 30,
-        integer: true,
-      }),
+      lifetimeDays: sensorLifetimeDays,
     },
     alarm: {
       enabled: alarmEnabled,

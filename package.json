@@ -1,9 +1,9 @@
 {
-  "name": "ulanzi-libre-bridge",
-  "version": "0.2.0",
+  "name": "ulanzi-glucose-bridge",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "Local Windows bridge from Nightscout or an authorized glucose source to Ulanzi TC001 with AWTRIX NG/3.",
+  "description": "Local Windows companion that displays CGM readings from Nightscout or an authorized JSON source on Ulanzi TC001 with AWTRIX.",
   "engines": {
     "node": ">=22"
   },

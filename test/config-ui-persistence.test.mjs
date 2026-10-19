@@ -136,6 +136,7 @@ function Find-SettingsForm {
         Form = $candidate
         Profile = $profile
         Units = $units
+        SensorLifetime = $candidate.Controls.Find('sensorLifetimeControl', $true)[0]
         Language = $language
         SaveButton = $saveButton
         SaveProgress = $saveProgress
@@ -199,6 +200,8 @@ function Invoke-FirstOpening {
             if ($located.Units.SelectedIndex -ne 0) { throw 'default unit must be mg/dL' }
             $located.Units.SelectedIndex = 1
             $located.Language.SelectedIndex = 1
+            if ($located.SensorLifetime.Value -ne 14) { throw 'legacy sensor duration was not preserved' }
+            $located.SensorLifetime.Value = 10.5
             $script:selectedProfileText = [string]$profile.SelectedItem
             $saveButton = [Windows.Forms.Button]$located.SaveButton
             $script:saveWithinFooterInitial = Test-ControlFullyInsideParent -Control $saveButton
@@ -295,6 +298,7 @@ function Invoke-SecondOpening {
             $script:reopenedProfileIndex = [int]$profile.SelectedIndex
             $script:reopenedProfileText = [string]$profile.SelectedItem
             $script:reopenedUnitIndex = [int]$located.Units.SelectedIndex
+            if ($located.SensorLifetime.Value -ne 10.5) { throw 'fractional sensor duration did not persist' }
             $script:secondInspected = $true
             $located.Form.Close()
         } catch {
@@ -341,6 +345,7 @@ function Invoke-ThirdOpeningAndDisposeDirtyForm {
             }
             $profile.SelectedIndex = 2
             $located.Units.SelectedIndex = 0
+            $located.SensorLifetime.Value = 0
             $script:thirdSelectedProfileText = [string]$profile.SelectedItem
             $script:thirdDirtyButtonText = [string]$located.SaveButton.Text
             $script:thirdDisposeTriggered = $true
@@ -428,6 +433,7 @@ function fixtureEnv(generation) {
     "HIGH_THRESHOLD_MGDL=180",
     "POLL_INTERVAL_SECONDS=60",
     "STALE_AFTER_MINUTES=15",
+    "LIBRE_SENSOR_LIFETIME_DAYS=14",
     "GLUCOSE_ALARM_ENABLED=true",
     "GLUCOSE_ALARM_SOUND_PROFILE=normal",
     "",
@@ -558,6 +564,7 @@ test("janela salva perfil e unidade, preserva limites e descarta alteracoes nao 
     assert.match(persistedEnv, /^GLUCOSE_ALARM_SOUND_PROFILE=discreet$/m);
     assert.match(persistedEnv, /^DISPLAY_UNITS=mmol$/m);
     assert.match(persistedEnv, /^APP_LANGUAGE=pt-BR$/m);
+    assert.match(persistedEnv, /^SENSOR_LIFETIME_DAYS=10\.5$/m);
     assert.match(persistedEnv, /^LOW_THRESHOLD_MGDL=70$/m);
     assert.match(persistedEnv, /^HIGH_THRESHOLD_MGDL=180$/m);
     assert.match(persistedEnv, /^GLUCOSE_ALARM_LOW_THRESHOLD_MGDL=70$/m);

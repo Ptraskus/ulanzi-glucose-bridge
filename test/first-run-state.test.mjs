@@ -7,7 +7,7 @@ import test from "node:test";
 const projectRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const trayScript = await readFile(join(projectRoot, "scripts", "iniciar-bandeja.ps1"), "utf8");
 const panelScript = await readFile(join(projectRoot, "scripts", "painel-ui.ps1"), "utf8");
-const installerScript = await readFile(join(projectRoot, "installer", "UlanziLibreBridge.iss"), "utf8");
+const installerScript = await readFile(join(projectRoot, "installer", "UlanziGlucoseBridge.iss"), "utf8");
 
 function functionSource(source, name, nextName) {
   const start = source.indexOf(`function ${name} {`);
@@ -108,7 +108,7 @@ test("painel e bandeja oferecem uma unica acao principal quando falta configurac
   assert.match(panelScript, /\[scriptblock\]\$StartSetup/);
   assert.match(panelScript, /Name = "firstRunPanel"/);
   assert.match(panelScript, /Name = "startSetupButton"/);
-  assert.match(panelScript, /Vamos configurar o Ulanzi Libre/);
+  assert.match(panelScript, /Vamos configurar o Ulanzi Glucose/);
   assert.match(panelScript, /Prepare o AWTRIX, conecte a fonte e teste o TC001/);
   assert.match(panelScript, /connectionsReconfigureButton/);
   assert.match(panelScript, /\$startSetupButton\.Enabled = \(\$state\.SetupState -eq "required"/);

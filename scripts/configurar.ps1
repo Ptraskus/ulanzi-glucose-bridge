@@ -11,13 +11,33 @@ $envPath = Join-Path $projectRoot ".env"
 $secretsPath = Join-Path $projectRoot ".secrets"
 $vaultPath = Join-Path $secretsPath "vault.json"
 
-# Only read this non-secret preference; never print or import the environment document.
+# Only read these non-secret preferences; never print or import the environment document.
 $initialDisplayUnits = "mgdl"
+$initialSensorLifetimeDays = [decimal]0
+$sensorLifetimePreferences = @{}
 if (Test-Path -LiteralPath $envPath) {
     foreach ($line in [IO.File]::ReadAllLines($envPath)) {
         if ($line -match '^\s*DISPLAY_UNITS\s*=\s*["'']?(mgdl|mmol)["'']?\s*(?:#.*)?$') {
             $initialDisplayUnits = $Matches[1].ToLowerInvariant()
         }
+        # Read the historical key only as a fallback for an existing installation.
+        if ($line -match '^\s*(SENSOR_LIFETIME_DAYS|LIBRE_SENSOR_LIFETIME_DAYS)\s*=(.*)$') {
+            $preferenceKey = $Matches[1]
+            $rawDuration = $Matches[2].Split('#')[0].Trim().Trim('"').Trim("'")
+            if ([string]::IsNullOrWhiteSpace($rawDuration)) {
+                $sensorLifetimePreferences.Remove($preferenceKey)
+            } else {
+                $parsedDuration = [decimal]0
+                $validDuration = [decimal]::TryParse($rawDuration, [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$parsedDuration)
+                $sensorLifetimePreferences[$preferenceKey] = if ($validDuration -and $parsedDuration -ge 0 -and $parsedDuration -le 365) { $parsedDuration } else { [decimal]0 }
+            }
+        }
+    }
+}
+foreach ($key in @("SENSOR_LIFETIME_DAYS", "LIBRE_SENSOR_LIFETIME_DAYS")) {
+    if ($sensorLifetimePreferences.ContainsKey($key)) {
+        if ($sensorLifetimePreferences[$key] -ge 0 -and $sensorLifetimePreferences[$key] -le 365) { $initialSensorLifetimeDays = $sensorLifetimePreferences[$key] }
+        break
     }
 }
 
@@ -159,6 +179,7 @@ function Release-ConfigWriteFileLock {
 . (Join-Path $PSScriptRoot "ui-language.ps1")
 [void](Initialize-UlanziLanguage -EnvPath $envPath)
 $currentSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+# Keep the historical mutex so old and new versions cannot configure simultaneously.
 $configMutex = [Threading.Mutex]::new($false, "Local\UlanziLibreConfig-$currentSid")
 $ownsConfigMutex = $false
 try {
@@ -188,13 +209,13 @@ if ($useGraphicalWizard) {
             $configMutex.Dispose()
             exit 0
         }
-        $wizardSettings = Show-UlanziFirstRunWizard -HasExistingConfiguration:(Test-Path -LiteralPath $envPath) -InitialDisplayUnits $initialDisplayUnits
+        $wizardSettings = Show-UlanziFirstRunWizard -HasExistingConfiguration:(Test-Path -LiteralPath $envPath) -InitialDisplayUnits $initialDisplayUnits -InitialSensorLifetimeDays $initialSensorLifetimeDays
     } catch {
         try {
             Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
             [void][Windows.Forms.MessageBox]::Show(
                 (Get-UlanziText -Key 'Wizard.OpenFailed'),
-                "Ulanzi Libre",
+                "Ulanzi Glucose",
                 [Windows.Forms.MessageBoxButtons]::OK,
                 [Windows.Forms.MessageBoxIcon]::Error
             )
@@ -252,7 +273,7 @@ if ($useGraphicalWizard) {
     }
 
     Write-Host ""
-    Write-Host (Get-UlanziText -Key 'Configuracao do Ulanzi Libre Bridge')
+    Write-Host (Get-UlanziText -Key 'Configuracao do Ulanzi Glucose Bridge')
     Write-Host (Get-UlanziText -Key 'As senhas serao protegidas pelo DPAPI do Windows e so este usuario podera abri-las.')
     Write-Host ""
 
@@ -306,7 +327,7 @@ if ($useGraphicalWizard) {
     $lowThreshold = Read-WithDefault -Prompt (Get-UlanziText -Key 'Abaixo de qual valor usar a cor de glicemia baixa (mg/dL)') -Default "70"
     $highThreshold = Read-WithDefault -Prompt (Get-UlanziText -Key 'Acima de qual valor usar a cor de glicemia alta (mg/dL)') -Default "180"
     $staleMinutes = Read-WithDefault -Prompt (Get-UlanziText -Key 'Depois de quantos minutos considerar o dado antigo') -Default "15"
-    $sensorLifetimeDays = Read-WithDefault -Prompt (Get-UlanziText -Key 'Duracao nominal do sensor Libre em dias (varia conforme o modelo)') -Default "15"
+    $sensorLifetimeDays = Read-WithDefault -Prompt (Get-UlanziText -Key 'Estimativa de duracao em dias (0 desativa; ponto decimal, ex. 10.5)') -Default ($initialSensorLifetimeDays.ToString([Globalization.CultureInfo]::InvariantCulture))
     $alarmEnabled = Read-YesNoBoolean -Prompt (Get-UlanziText -Key 'Ativar alarmes sonoros (sim/nao)') -Default "nao"
     Write-Host (Get-UlanziText -Key 'As regras sonoras a seguir ficam pre-selecionadas, mas so terao efeito depois de ativar o alarme geral.')
     $upSlightThreshold = Read-WithDefault -Prompt (Get-UlanziText -Key 'Acima de qual valor alertar seta diagonal para cima (mg/dL)') -Default "140"
@@ -336,7 +357,7 @@ $lines = @(
     "DISPLAY_DURATION_SECONDS=10",
     "POLL_INTERVAL_SECONDS=60",
     "STALE_AFTER_MINUTES=$staleMinutes",
-    "LIBRE_SENSOR_LIFETIME_DAYS=$sensorLifetimeDays",
+    "SENSOR_LIFETIME_DAYS=$sensorLifetimeDays",
     "LOW_THRESHOLD_MGDL=$lowThreshold",
     "HIGH_THRESHOLD_MGDL=$highThreshold",
     "DISPLAY_UNITS=$displayUnits",

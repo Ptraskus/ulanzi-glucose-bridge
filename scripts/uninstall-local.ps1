@@ -1,6 +1,6 @@
 ﻿[CmdletBinding()]
 param(
-    [string]$InstallPath = (Join-Path $env:LOCALAPPDATA "Programs\Ulanzi Libre Bridge"),
+    [string]$InstallPath,
     [switch]$NoShellIntegration
 )
 
@@ -8,6 +8,20 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $programsRoot = [IO.Path]::GetFullPath((Join-Path $env:LOCALAPPDATA "Programs"))
+if ([string]::IsNullOrWhiteSpace($InstallPath)) {
+    $scriptInstallPath = Split-Path -Parent $PSScriptRoot
+    $currentInstallPath = Join-Path $programsRoot "Ulanzi Glucose Bridge"
+    $legacyInstallPath = Join-Path $programsRoot "Ulanzi Libre Bridge"
+    # An upgraded installation keeps its original directory and user data.
+    $InstallPath = if ((Test-Path -LiteralPath (Join-Path $scriptInstallPath "checksums.sha256") -PathType Leaf) -and
+        $scriptInstallPath.StartsWith(($programsRoot.TrimEnd('\') + '\'), [StringComparison]::OrdinalIgnoreCase)) {
+        $scriptInstallPath
+    } elseif (Test-Path -LiteralPath (Join-Path $currentInstallPath "checksums.sha256") -PathType Leaf) {
+        $currentInstallPath
+    } elseif (Test-Path -LiteralPath (Join-Path $legacyInstallPath "checksums.sha256") -PathType Leaf) {
+        $legacyInstallPath
+    } else { $currentInstallPath }
+}
 $resolvedInstallPath = [IO.Path]::GetFullPath($InstallPath).TrimEnd([IO.Path]::DirectorySeparatorChar)
 $currentSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
 $mutexes = [Collections.Generic.List[Threading.Mutex]]::new()
@@ -77,6 +91,7 @@ function ConvertTo-SafeInstalledPath {
 }
 
 function Assert-ApplicationStopped {
+    # Preserve the mutex identity shared with releases before the product rename.
     foreach ($name in @("Local\UlanziLibreTray-$currentSid", "Local\UlanziLibreBridge-$currentSid")) {
         $mutex = [Threading.Mutex]::new($false, $name)
         $mutexes.Add($mutex)
@@ -87,7 +102,7 @@ function Assert-ApplicationStopped {
             $ownsMutex = $true
         }
         if (-not $ownsMutex) {
-            throw "Ulanzi Libre Bridge is still running. Select 'Exit' in its tray menu and try again."
+            throw "Ulanzi Glucose Bridge is still running. Select 'Exit' in its tray menu and try again."
         }
         $ownedMutexes.Add($mutex)
     }
@@ -101,6 +116,9 @@ if (-not (Test-Path -LiteralPath $resolvedInstallPath -PathType Container)) {
     exit 0
 }
 Assert-NoReparsePath -Path $resolvedInstallPath -StopAt $programsRoot
+if (@(Get-ChildItem -LiteralPath $resolvedInstallPath -Filter "unins*.exe" -File -Force).Count -gt 0) {
+    throw "This installation is managed by the Windows setup installer. Uninstall it from Windows Settings or its Start menu shortcut. No files were removed."
+}
 
 try {
     Assert-ApplicationStopped
@@ -115,6 +133,7 @@ try {
         }
     }
 
+    # Registry identity remains stable so upgrades never register a second app.
     $uninstallRegistryPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\UlanziLibreBridge"
     if (-not $NoShellIntegration -and (Test-Path -LiteralPath $uninstallRegistryPath)) {
         $registeredLocation = [string](Get-ItemPropertyValue -LiteralPath $uninstallRegistryPath -Name "InstallLocation" -ErrorAction SilentlyContinue)
@@ -150,23 +169,25 @@ try {
     Set-Location -LiteralPath ([IO.Path]::GetTempPath())
 
     if (-not $NoShellIntegration) {
-        $startMenuDirectory = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Ulanzi Libre Bridge"
-        $shortcutPaths = @(
-            (Join-Path $startMenuDirectory "Ulanzi Libre Bridge.lnk"),
-            (Join-Path $startMenuDirectory "Configurar Ulanzi Libre Bridge.lnk"),
-            (Join-Path $startMenuDirectory "Desinstalar Ulanzi Libre Bridge.lnk"),
-            (Join-Path $startMenuDirectory "Uninstall Ulanzi Libre Bridge.lnk"),
-            (Join-Path ([Environment]::GetFolderPath("Startup")) "Ulanzi Libre Bridge.lnk"),
-            (Join-Path ([Environment]::GetFolderPath("Desktop")) "Ulanzi Libre Bridge.lnk")
-        )
-        foreach ($shortcutPath in $shortcutPaths) {
-            if (Test-Path -LiteralPath $shortcutPath -PathType Leaf) {
-                Remove-Item -LiteralPath $shortcutPath -Force
+        foreach ($applicationName in @("Ulanzi Glucose Bridge", "Ulanzi Libre Bridge")) {
+            $startMenuDirectory = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\$applicationName"
+            $shortcutPaths = @(
+                (Join-Path $startMenuDirectory "$applicationName.lnk"),
+                (Join-Path $startMenuDirectory "Configurar $applicationName.lnk"),
+                (Join-Path $startMenuDirectory "Desinstalar $applicationName.lnk"),
+                (Join-Path $startMenuDirectory "Uninstall $applicationName.lnk"),
+                (Join-Path ([Environment]::GetFolderPath("Startup")) "$applicationName.lnk"),
+                (Join-Path ([Environment]::GetFolderPath("Desktop")) "$applicationName.lnk")
+            )
+            foreach ($shortcutPath in $shortcutPaths) {
+                if (Test-Path -LiteralPath $shortcutPath -PathType Leaf) {
+                    Remove-Item -LiteralPath $shortcutPath -Force
+                }
             }
-        }
-        if ((Test-Path -LiteralPath $startMenuDirectory -PathType Container) -and
-            @(Get-ChildItem -LiteralPath $startMenuDirectory -Force).Count -eq 0) {
-            Remove-Item -LiteralPath $startMenuDirectory
+            if ((Test-Path -LiteralPath $startMenuDirectory -PathType Container) -and
+                @(Get-ChildItem -LiteralPath $startMenuDirectory -Force).Count -eq 0) {
+                Remove-Item -LiteralPath $startMenuDirectory
+            }
         }
         if (Test-Path -LiteralPath $uninstallRegistryPath) {
             Remove-Item -LiteralPath $uninstallRegistryPath -Force
@@ -201,9 +222,9 @@ try {
     }
     if (@(Get-ChildItem -LiteralPath $resolvedInstallPath -Force).Count -eq 0) {
         Remove-Item -LiteralPath $resolvedInstallPath
-        Write-Host "Ulanzi Libre Bridge uninstalled."
+        Write-Host "Ulanzi Glucose Bridge uninstalled."
     } else {
-        Write-Host "Ulanzi Libre Bridge uninstalled; configuration or local data was preserved in: $resolvedInstallPath"
+        Write-Host "Ulanzi Glucose Bridge uninstalled; configuration or local data was preserved in: $resolvedInstallPath"
     }
 } finally {
     foreach ($mutex in $ownedMutexes) {

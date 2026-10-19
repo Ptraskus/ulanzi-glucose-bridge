@@ -270,7 +270,7 @@ test("leitura lenta da configuracao mantem o painel responsivo e a barra visivel
               GLUCOSE_ALARM_NO_DATA_ENABLED = $false
               LOW_THRESHOLD_MGDL = 70
               HIGH_THRESHOLD_MGDL = 180
-              LIBRE_SENSOR_LIFETIME_DAYS = 14
+              SENSOR_LIFETIME_DAYS = 14
               STALE_AFTER_MINUTES = 15
               POLL_INTERVAL_SECONDS = 60
             }
@@ -518,8 +518,7 @@ test("modulos do painel e de tema fazem parte da allowlist publica", () => {
 });
 
 test("preferencia visual fica fora do .env e nao reinicia a conexao", () => {
-  assert.match(themeScript, /SpecialFolder\]::LocalApplicationData/);
-  assert.match(themeScript, /"Ulanzi Libre Bridge"/);
+  assert.match(themeScript, /Resolve-UlanziUiPreferenceRoot -PreferenceRoot \$PreferenceRoot/);
   assert.match(themeScript, /"ui-preferences\.json"/);
   assert.doesNotMatch(themeScript, /(?:^|[\\/])\.env\b|\bEnvPath\b/i);
 
@@ -543,7 +542,7 @@ test("painel mostra apenas campos explicitos e nunca imprime configuracao ou seg
     "GLUCOSE_ALARM_DOWN_THRESHOLD_MGDL",
     "LOW_THRESHOLD_MGDL",
     "HIGH_THRESHOLD_MGDL",
-    "LIBRE_SENSOR_LIFETIME_DAYS",
+    "SENSOR_LIFETIME_DAYS",
     "STALE_AFTER_MINUTES",
     "POLL_INTERVAL_SECONDS",
   ]);

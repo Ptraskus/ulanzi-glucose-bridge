@@ -3,7 +3,7 @@ param(
     [string]$PackagePath = (Split-Path -Parent $PSScriptRoot),
     [ValidatePattern('^[0-9A-Fa-f]{64}$')]
     [string]$ExpectedPackageSha256,
-    [string]$InstallPath = (Join-Path $env:LOCALAPPDATA "Programs\Ulanzi Libre Bridge"),
+    [string]$InstallPath,
     [ValidateSet("Keep", "Enable", "Disable")]
     [string]$Startup = "Keep",
     [ValidateSet("Keep", "Enable", "Disable")]
@@ -17,6 +17,8 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 $temporaryExtractionDirectory = $null
+$mutexes = [Collections.Generic.List[Threading.Mutex]]::new()
+$ownedMutexes = [Collections.Generic.List[Threading.Mutex]]::new()
 $forbiddenSegments = @(
     ".git", ".runtime", ".secrets", ".tools", "backups", "firmware",
     "node_modules", "coverage", ".install", ".config-history", ".updates",
@@ -138,7 +140,7 @@ function Get-PackageRoot {
                 throw "The ZIP SHA-256 does not match the expected value. Installation was blocked."
             }
         }
-        $script:temporaryExtractionDirectory = Join-Path ([IO.Path]::GetTempPath()) ("ulanzi-libre-install-" + [Guid]::NewGuid().ToString("N"))
+        $script:temporaryExtractionDirectory = Join-Path ([IO.Path]::GetTempPath()) ("ulanzi-glucose-install-" + [Guid]::NewGuid().ToString("N"))
         [void](New-Item -ItemType Directory -Path $script:temporaryExtractionDirectory)
         Expand-VerifiedStructureZip -ArchivePath $resolved -Destination $script:temporaryExtractionDirectory
         $resolved = $script:temporaryExtractionDirectory
@@ -191,7 +193,7 @@ function Assert-PackageIntegrity {
         "scripts\iniciar-bandeja.ps1",
         "scripts\install-local.ps1",
         "scripts\uninstall-local.ps1",
-        "assets\ulanzi-libre.ico",
+        "assets\ulanzi-glucose.ico",
         "installer\iniciar-instalado.vbs",
         "installer\iniciar-instalado.ps1",
         "installer\configurar-instalado.ps1",
@@ -231,7 +233,7 @@ function New-RollbackSnapshot {
     )
 
     if ($Repair -or $CurrentEntries.Count -eq 0) { return $null }
-    $rollbackRoot = Join-Path $env:LOCALAPPDATA "Ulanzi Libre Bridge\rollback"
+    $rollbackRoot = Join-Path $env:LOCALAPPDATA "Ulanzi Glucose Bridge\rollback"
     $localApplicationDataRoot = [IO.Path]::GetFullPath($env:LOCALAPPDATA)
     $snapshotName = (Get-Date).ToUniversalTime().ToString("yyyyMMdd-HHmmss") + "-" + [Guid]::NewGuid().ToString("N").Substring(0, 8)
     $snapshotPath = Join-Path $rollbackRoot $snapshotName
@@ -271,7 +273,7 @@ function New-ShellShortcut {
         [Parameter(Mandatory = $true)][string]$TargetPath,
         [string]$Arguments = "",
         [string]$WorkingDirectory = "",
-        [string]$Description = "Ulanzi Libre Bridge",
+        [string]$Description = "Ulanzi Glucose Bridge",
         [string]$IconLocation = ""
     )
 
@@ -307,6 +309,28 @@ function Set-OptionalShortcut {
 }
 
 $programsRoot = [IO.Path]::GetFullPath((Join-Path $env:LOCALAPPDATA "Programs"))
+# Keep the original registry identity and install folder on upgrades: credentials,
+# configuration and vault files are deliberately never moved or overwritten.
+$uninstallRegistryPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\UlanziLibreBridge"
+if ([string]::IsNullOrWhiteSpace($InstallPath)) {
+    if (-not $NoShellIntegration -and (Test-Path -LiteralPath $uninstallRegistryPath)) {
+        $registeredLocation = [string](Get-ItemPropertyValue -LiteralPath $uninstallRegistryPath -Name "InstallLocation" -ErrorAction SilentlyContinue)
+        if (-not [string]::IsNullOrWhiteSpace($registeredLocation) -and
+            (Test-PathInside -Candidate $registeredLocation -Parent $programsRoot) -and
+            (Test-Path -LiteralPath (Join-Path $registeredLocation "checksums.sha256") -PathType Leaf)) {
+            $InstallPath = $registeredLocation
+        }
+    }
+    if ([string]::IsNullOrWhiteSpace($InstallPath)) {
+        $legacyInstallPath = Join-Path $programsRoot "Ulanzi Libre Bridge"
+        $currentInstallPath = Join-Path $programsRoot "Ulanzi Glucose Bridge"
+        $InstallPath = if (Test-Path -LiteralPath (Join-Path $currentInstallPath "checksums.sha256") -PathType Leaf) {
+            $currentInstallPath
+        } elseif (Test-Path -LiteralPath (Join-Path $legacyInstallPath "checksums.sha256") -PathType Leaf) {
+            $legacyInstallPath
+        } else { $currentInstallPath }
+    }
+}
 $resolvedInstallPath = [IO.Path]::GetFullPath($InstallPath).TrimEnd([IO.Path]::DirectorySeparatorChar)
 if (-not (Test-PathInside -Candidate $resolvedInstallPath -Parent $programsRoot)) {
     throw "Local installation must be inside '$programsRoot'."
@@ -317,6 +341,26 @@ try {
     $manifestPath = Join-Path $packageRoot "checksums.sha256"
     $entries = Read-ChecksumManifest -ManifestPath $manifestPath
     Assert-PackageIntegrity -Root $packageRoot -Entries $entries
+
+    # An Inno-owned installation must keep one authoritative uninstall manifest.
+    # Switching to the local ZIP installer would leave a second registration.
+    if ((Test-Path -LiteralPath $resolvedInstallPath -PathType Container) -and
+        @(Get-ChildItem -LiteralPath $resolvedInstallPath -Filter "unins*.exe" -File -Force).Count -gt 0) {
+        throw "This installation is managed by the Windows setup installer. Use its setup executable to update or repair it. No application files were changed."
+    }
+
+    # These legacy mutex names are shared by every release to prevent an old and
+    # a renamed application from running while owned files are replaced.
+    $currentSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+    foreach ($name in @("Local\UlanziLibreTray-$currentSid", "Local\UlanziLibreBridge-$currentSid")) {
+        $mutex = [Threading.Mutex]::new($false, $name)
+        $mutexes.Add($mutex)
+        $ownsMutex = $false
+        try { $ownsMutex = $mutex.WaitOne(0, $false) }
+        catch [Threading.AbandonedMutexException] { $ownsMutex = $true }
+        if (-not $ownsMutex) { throw "Ulanzi Glucose Bridge is still running. Select 'Exit' in its tray menu and try again." }
+        $ownedMutexes.Add($mutex)
+    }
 
     $oldEntries = [Collections.Generic.List[object]]::new()
     $oldManifestPath = Join-Path $resolvedInstallPath "checksums.sha256"
@@ -390,32 +434,44 @@ try {
     $windowsScriptHost = Join-Path $env:SystemRoot "System32\wscript.exe"
     $launcherPath = Join-Path $resolvedInstallPath "installer\iniciar-instalado.vbs"
     $uninstallPath = Join-Path $resolvedInstallPath "scripts\uninstall-local.ps1"
-    $appIconPath = Join-Path $resolvedInstallPath "assets\ulanzi-libre.ico"
+    $appIconPath = Join-Path $resolvedInstallPath "assets\ulanzi-glucose.ico"
     $launchArguments = '"' + $launcherPath + '" /OpenPanel'
     $launchInBackgroundArguments = '"' + $launcherPath + '"'
     $uninstallArguments = '-NoProfile -ExecutionPolicy Bypass -File "' + $uninstallPath + '" -InstallPath "' + $resolvedInstallPath + '"'
 
     if (-not $NoShellIntegration) {
-        $startMenuDirectory = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Ulanzi Libre Bridge"
-        $legacyConfigureShortcut = Join-Path $startMenuDirectory "Configurar Ulanzi Libre Bridge.lnk"
-        if (Test-Path -LiteralPath $legacyConfigureShortcut) { Remove-Item -LiteralPath $legacyConfigureShortcut -Force }
-        $legacyUninstallShortcut = Join-Path $startMenuDirectory "Desinstalar Ulanzi Libre Bridge.lnk"
-        if (Test-Path -LiteralPath $legacyUninstallShortcut) { Remove-Item -LiteralPath $legacyUninstallShortcut -Force }
-        New-ShellShortcut -ShortcutPath (Join-Path $startMenuDirectory "Ulanzi Libre Bridge.lnk") -TargetPath $windowsScriptHost -Arguments $launchArguments -WorkingDirectory $resolvedInstallPath -IconLocation $appIconPath
-        New-ShellShortcut -ShortcutPath (Join-Path $startMenuDirectory "Uninstall Ulanzi Libre Bridge.lnk") -TargetPath $windowsPowerShell -Arguments $uninstallArguments -WorkingDirectory $resolvedInstallPath -Description "Uninstall Ulanzi Libre Bridge" -IconLocation $appIconPath
+        $startMenuDirectory = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Ulanzi Glucose Bridge"
+        $legacyMenuDirectory = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\Ulanzi Libre Bridge"
+        # Preserve optional shortcuts selected before the product rename.
+        $legacyStartupPath = Join-Path ([Environment]::GetFolderPath("Startup")) "Ulanzi Libre Bridge.lnk"
+        $legacyDesktopPath = Join-Path ([Environment]::GetFolderPath("Desktop")) "Ulanzi Libre Bridge.lnk"
+        if ($Startup -eq "Keep" -and (Test-Path -LiteralPath $legacyStartupPath -PathType Leaf)) { $Startup = "Enable" }
+        if ($DesktopShortcut -eq "Keep" -and (Test-Path -LiteralPath $legacyDesktopPath -PathType Leaf)) { $DesktopShortcut = "Enable" }
+        $legacyShortcuts = @($legacyStartupPath, $legacyDesktopPath)
+        foreach ($name in @("Ulanzi Libre Bridge.lnk", "Configurar Ulanzi Libre Bridge.lnk", "Desinstalar Ulanzi Libre Bridge.lnk", "Uninstall Ulanzi Libre Bridge.lnk")) {
+            $legacyShortcuts += Join-Path $legacyMenuDirectory $name
+        }
+        foreach ($legacyShortcut in $legacyShortcuts) {
+            if (Test-Path -LiteralPath $legacyShortcut -PathType Leaf) { Remove-Item -LiteralPath $legacyShortcut -Force }
+        }
+        if ((Test-Path -LiteralPath $legacyMenuDirectory -PathType Container) -and
+            @(Get-ChildItem -LiteralPath $legacyMenuDirectory -Force).Count -eq 0) {
+            Remove-Item -LiteralPath $legacyMenuDirectory
+        }
+        New-ShellShortcut -ShortcutPath (Join-Path $startMenuDirectory "Ulanzi Glucose Bridge.lnk") -TargetPath $windowsScriptHost -Arguments $launchArguments -WorkingDirectory $resolvedInstallPath -IconLocation $appIconPath
+        New-ShellShortcut -ShortcutPath (Join-Path $startMenuDirectory "Uninstall Ulanzi Glucose Bridge.lnk") -TargetPath $windowsPowerShell -Arguments $uninstallArguments -WorkingDirectory $resolvedInstallPath -Description "Uninstall Ulanzi Glucose Bridge" -IconLocation $appIconPath
 
-        $startupShortcutPath = Join-Path ([Environment]::GetFolderPath("Startup")) "Ulanzi Libre Bridge.lnk"
-        Set-OptionalShortcut -Mode $Startup -ShortcutPath $startupShortcutPath -TargetPath $windowsScriptHost -Arguments $launchInBackgroundArguments -WorkingDirectory $resolvedInstallPath -Description "Start Ulanzi Libre Bridge with Windows" -IconLocation $appIconPath
-        $desktopShortcutPath = Join-Path ([Environment]::GetFolderPath("Desktop")) "Ulanzi Libre Bridge.lnk"
-        Set-OptionalShortcut -Mode $DesktopShortcut -ShortcutPath $desktopShortcutPath -TargetPath $windowsScriptHost -Arguments $launchArguments -WorkingDirectory $resolvedInstallPath -Description "Ulanzi Libre Bridge" -IconLocation $appIconPath
+        $startupShortcutPath = Join-Path ([Environment]::GetFolderPath("Startup")) "Ulanzi Glucose Bridge.lnk"
+        Set-OptionalShortcut -Mode $Startup -ShortcutPath $startupShortcutPath -TargetPath $windowsScriptHost -Arguments $launchInBackgroundArguments -WorkingDirectory $resolvedInstallPath -Description "Start Ulanzi Glucose Bridge with Windows" -IconLocation $appIconPath
+        $desktopShortcutPath = Join-Path ([Environment]::GetFolderPath("Desktop")) "Ulanzi Glucose Bridge.lnk"
+        Set-OptionalShortcut -Mode $DesktopShortcut -ShortcutPath $desktopShortcutPath -TargetPath $windowsScriptHost -Arguments $launchArguments -WorkingDirectory $resolvedInstallPath -Description "Ulanzi Glucose Bridge" -IconLocation $appIconPath
 
-        $uninstallRegistryPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\UlanziLibreBridge"
         [void](New-Item -Path $uninstallRegistryPath -Force)
         $estimatedSizeKb = [Math]::Ceiling((($entries | ForEach-Object { (Get-Item -LiteralPath (Join-Path $resolvedInstallPath $_.Path)).Length } | Measure-Object -Sum).Sum) / 1KB)
         $registryValues = [ordered]@{
-            DisplayName = "Ulanzi Libre Bridge"
+            DisplayName = "Ulanzi Glucose Bridge"
             DisplayVersion = $displayVersion
-            Publisher = "Ulanzi Libre Bridge contributors"
+            Publisher = "Ulanzi Glucose Bridge contributors"
             InstallLocation = $resolvedInstallPath
             DisplayIcon = "$appIconPath,0"
             UninstallString = '"' + $windowsPowerShell + '" ' + $uninstallArguments
@@ -429,16 +485,20 @@ try {
         }
     }
 
-    Write-Host "Ulanzi Libre Bridge $displayVersion installed in: $resolvedInstallPath"
+    Write-Host "Ulanzi Glucose Bridge $displayVersion installed in: $resolvedInstallPath"
     if ($null -ne $rollbackSnapshot) {
         Write-Host "Rollback copy created in: $rollbackSnapshot"
     }
     Write-Host "To repair, run this script again from the original package with -Repair."
 
     if ($LaunchAfterInstall) {
+        foreach ($mutex in $ownedMutexes) { $mutex.ReleaseMutex() }
+        $ownedMutexes.Clear()
         Start-Process -FilePath $windowsScriptHost -ArgumentList $launchArguments -WorkingDirectory $resolvedInstallPath -WindowStyle Hidden
     }
 } finally {
+    foreach ($mutex in $ownedMutexes) { try { $mutex.ReleaseMutex() } catch { } }
+    foreach ($mutex in $mutexes) { $mutex.Dispose() }
     if ($null -ne $temporaryExtractionDirectory -and (Test-Path -LiteralPath $temporaryExtractionDirectory)) {
         $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
         if (-not (Test-PathInside -Candidate $temporaryExtractionDirectory -Parent $tempRoot)) {

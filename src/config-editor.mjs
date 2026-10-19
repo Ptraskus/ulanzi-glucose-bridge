@@ -10,7 +10,7 @@ export const EDITABLE_CONFIG_FIELDS = Object.freeze({
   LOW_THRESHOLD_MGDL: { type: "number" },
   HIGH_THRESHOLD_MGDL: { type: "number" },
   STALE_AFTER_MINUTES: { type: "number" },
-  LIBRE_SENSOR_LIFETIME_DAYS: { type: "number", integer: true },
+  SENSOR_LIFETIME_DAYS: { type: "number" },
   POLL_INTERVAL_SECONDS: { type: "number", integer: true },
   GLUCOSE_ALARM_ENABLED: { type: "boolean" },
   GLUCOSE_ALARM_SOUND_PROFILE: {
@@ -41,6 +41,8 @@ const SECRET_KEYS = Object.freeze([
   "JSON_SOURCE_TOKEN",
 ]);
 const MANAGED_BLOCK_COMMENT = "# Settings saved by the interface";
+const LEGACY_SENSOR_LIFETIME_KEY = "LIBRE_SENSOR_LIFETIME_DAYS";
+const SENSOR_LIFETIME_KEY = "SENSOR_LIFETIME_DAYS";
 const UUID_PATTERN = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
 function configError(message, code = "INVALID_CONFIG_UPDATE") {
@@ -58,7 +60,11 @@ function plainObject(value) {
 export function normalizeEditableChanges(changes) {
   if (!plainObject(changes)) throw configError(tr("the configuration changes are invalid", "as alteracoes de configuracao sao invalidas"));
   const normalized = {};
-  for (const [key, value] of Object.entries(changes)) {
+  for (const [requestedKey, value] of Object.entries(changes)) {
+    // Older callers may still submit the former name. Write the canonical key
+    // without discarding the original document or its legacy setting.
+    if (requestedKey === LEGACY_SENSOR_LIFETIME_KEY && Object.hasOwn(changes, SENSOR_LIFETIME_KEY)) continue;
+    const key = requestedKey === LEGACY_SENSOR_LIFETIME_KEY ? SENSOR_LIFETIME_KEY : requestedKey;
     const field = EDITABLE_CONFIG_FIELDS[key];
     if (!field) throw configError(tr("option {0} cannot be changed on this screen", "a opcao {0} nao pode ser alterada por esta tela", [key]));
     if (field.type === "boolean") {
@@ -187,7 +193,7 @@ export function editableValuesFromConfig(config) {
     LOW_THRESHOLD_MGDL: config.lowThresholdMgDl,
     HIGH_THRESHOLD_MGDL: config.highThresholdMgDl,
     STALE_AFTER_MINUTES: config.staleAfterMinutes,
-    LIBRE_SENSOR_LIFETIME_DAYS: config.sensor.lifetimeDays,
+    SENSOR_LIFETIME_DAYS: config.sensor.lifetimeDays,
     POLL_INTERVAL_SECONDS: config.pollIntervalSeconds,
     GLUCOSE_ALARM_ENABLED: config.alarm.enabled,
     GLUCOSE_ALARM_SOUND_PROFILE: config.alarm.soundProfile,
@@ -289,5 +295,6 @@ export function validateConfigDocument(envText, vaultText = null) {
 
 export function externalEditableOverrides(envText, externalEnvironment = process.env) {
   const externalKeys = new Set(Object.keys(externalEnvironment).map((key) => key.toUpperCase()));
+  if (externalKeys.has(LEGACY_SENSOR_LIFETIME_KEY)) externalKeys.add(SENSOR_LIFETIME_KEY);
   return EDITABLE_CONFIG_KEYS.filter((key) => externalKeys.has(key));
 }

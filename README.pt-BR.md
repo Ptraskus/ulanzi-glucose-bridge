@@ -1,8 +1,8 @@
-﻿# Ulanzi Libre Bridge
+﻿# Ulanzi Glucose Bridge
 
 **Sua glicemia no Ulanzi TC001, com um aplicativo local para Windows.**
 
-[English — documentação completa](README.md) · [Relatar problema](https://github.com/Ptraskus/ulanzi-libre-bridge/issues) · [Releases](https://github.com/Ptraskus/ulanzi-libre-bridge/releases)
+[English — documentação completa](README.md) · [Relatar problema](https://github.com/Ptraskus/ulanzi-glucose-bridge/issues) · [Releases](https://github.com/Ptraskus/ulanzi-glucose-bridge/releases)
 
 O aplicativo consulta uma fonte Nightscout ou JSON autorizada e mostra valor, tendência e estado da leitura no TC001. Inclui assistente, painel, mostrador flutuante, alertas opcionais, diagnóstico e recuperação de configuração.
 
@@ -20,7 +20,7 @@ Não é necessário usar Git nem executar `npm install`.
 2. No GitHub, escolha **Code > Download ZIP**.
 3. Clique com o botão direito no ZIP e escolha **Extrair Tudo**. Guarde a pasta extraída em um local gravável, como Documentos. Não execute dentro do ZIP nem em `Program Files`.
 4. Abra a pasta que contém **`Start.cmd`** e dê dois cliques nesse arquivo. Ele verifica o Node.js e abre o painel. Na primeira vez, clique em **Set up now**.
-5. No assistente, selecione **Português (Brasil)** e sua unidade de glicemia. Escolha a fonte, preencha a conexão, teste o TC001 e confirme a duração correta do sensor. Revise antes de salvar. **Os alarmes automáticos começam desligados.**
+5. No assistente, selecione **Português (Brasil)** e sua unidade de glicemia. Escolha a fonte, preencha a conexão e teste o TC001. A estimativa de término do sensor é opcional e começa desligada; só ative com a duração correta do modelo e eventos confiáveis de início. Revise antes de salvar. **Os alarmes automáticos começam desligados.**
 
 Para usar novamente, abra `Start.cmd`. Fechar o painel mantém o aplicativo na bandeja do Windows; use **Encerrar** no menu da bandeja para pará-lo. O computador precisa continuar acordado, conectado à fonte e ao TC001, com o aplicativo aberto.
 
@@ -53,7 +53,9 @@ O instalador oferece inglês ou português e atalhos opcionais na área de traba
 - Comunicação entre computador e TC001 na rede local.
 - Nightscout já funcionando ou endpoint JSON autorizado.
 
-A aplicação **não** acessa diretamente o sensor, não faz login no LibreLinkUp e não pede senha Abbott. Preparar Nightscout e seu uploader é uma etapa separada. Consulte o [guia de integração](GUIA-NIGHTSCOUT.md), em inglês.
+A aplicação lê o formato padrão do Nightscout, independentemente da marca do CGM. Outros sensores podem ser usados quando seu uploader ou integração já envia leituras atuais e válidas ao Nightscout. A ponte utiliza valor, horário e tendência; não depende de metadados específicos do fabricante. Consulte a [documentação de uploaders do Nightscout](https://nightscout.github.io/uploader/setup/) para preparar essa conexão.
+
+Essa compatibilidade depende da fonte de dados e não significa que todos os modelos tenham sido testados fisicamente. A aplicação não conecta diretamente ao sensor nem solicita credenciais da nuvem do fabricante. Preparar Nightscout e seu uploader é uma etapa separada; um endpoint JSON autorizado também é aceito. Consulte o [guia de integração](GUIA-NIGHTSCOUT.md), em inglês.
 
 Se precisar trocar o firmware, o assistente abre a [ferramenta oficial do AWTRIX NG](https://blueforcer.github.io/awtrix-ng/getting-started/flashing/). Leia as instruções e faça backup: a troca pode apagar software e configurações do relógio. O aplicativo não grava firmware silenciosamente.
 
@@ -71,13 +73,19 @@ A leitura em mg/dL usa inteiros; mmol/L usa uma casa decimal. **Os limites visua
 | Validade máxima da leitura | 15 minutos. |
 | Limites visuais | 70 e 180 mg/dL, configuráveis. |
 | Alarmes automáticos e avisos de contingência | Desligados. |
-| Duração do sensor | Escolha explícita: 14, 15 dias ou personalizada. |
+| Estimativa de fim do sensor | Desligada (`SENSOR_LIFETIME_DAYS=0`). Duração opcional conforme seu modelo, até 365 dias, aceitando frações de dia. |
 
 O painel reúne Início, Alertas, Tela e sensor, Conexões e Suporte. **Salvar e aplicar** valida e grava as alterações; até três configurações válidas são preservadas para recuperação. Para mudar endereços ou credenciais, refaça a configuração por Conexões.
 
-`SEM DADO` indica leitura indisponível ou vencida. Com Nightscout, `TROCAR` depende de um evento `Sensor Start`/`Sensor Change` e da duração configurada; não dispara o som de falta de dados. Os alarmes são opcionais, e os limites de som são independentes das cores. Confirme fisicamente os LEDs e o buzzer nos testes.
+`SEM DADO` indica leitura indisponível ou vencida. A estimativa opcional `TROCAR` depende de um evento `Sensor Start`/`Sensor Change` no Nightscout e da duração que você configurar. Ela não representa um aviso de término enviado pelo próprio sensor. Sem esse evento, a glicemia continua funcionando, mas não há estimativa de término. Com a opção desligada, a ponte nem consulta esses eventos. Uma leitura baixa ou alta ainda válida tem prioridade sobre `TROCAR`, que não dispara o som de falta de dados. Os alarmes são opcionais, e os limites de som são independentes das cores. Confirme fisicamente os LEDs e o buzzer nos testes.
 
 Veja a referência completa em [.env.example](.env.example) e no [README em inglês](README.md). Para uso normal, prefira o assistente em vez de editar os arquivos.
+
+## Atualização do nome anterior
+
+A versão 0.3.0 passa de Ulanzi Libre Bridge para **Ulanzi Glucose Bridge**. Configurações, credenciais protegidas, histórico e durações explicitamente configuradas continuam compatíveis. A chave antiga `LIBRE_SENSOR_LIFETIME_DAYS` é aceita como alternativa; `SENSOR_LIFETIME_DAYS` tem prioridade quando definida. Alterações na duração são gravadas na chave genérica; salvar sem alterações preserva o documento existente. Novas configurações começam com a estimativa de término desligada.
+
+Instalações e preferências existentes podem manter a pasta anterior para preservar os dados. Não apague essas pastas por causa da mudança de nome. Encerre a cópia em execução antes de atualizar ou abrir de outra pasta.
 
 ## Privacidade e suporte
 
@@ -95,6 +103,6 @@ O TC001 usa HTTP local; mantenha-o em uma rede confiável, sem expor sua API à 
 | Sem som | Controle geral dos alarmes, buzzer e teste físico em Suporte. |
 | Atualizações indisponíveis | O canal assinado ainda precisa ser configurado pelo distribuidor. |
 
-Revise relatórios exportados antes de anexá-los a uma issue. Vulnerabilidades devem ser relatadas pelo [canal privado](https://github.com/Ptraskus/ulanzi-libre-bridge/security/advisories/new), sem publicar dados pessoais.
+Revise relatórios exportados antes de anexá-los a uma issue. Vulnerabilidades devem ser relatadas pelo [canal privado](https://github.com/Ptraskus/ulanzi-glucose-bridge/security/advisories/new), sem publicar dados pessoais.
 
 Para desenvolvimento, execute `npm.cmd run check` e `npm.cmd test` no Windows. Testes automatizados não substituem a validação física no TC001. As instruções de empacotamento e assinatura estão em [PUBLICACAO.md](PUBLICACAO.md), em inglês.

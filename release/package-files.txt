@@ -13,7 +13,7 @@ package.json
 LICENSE
 SECURITY.md
 PRIVACY.md
-assets/ulanzi-libre.ico
+assets/ulanzi-glucose.ico
 src/awtrix-client.mjs
 src/config.mjs
 src/config-editor.mjs

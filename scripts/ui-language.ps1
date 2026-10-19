@@ -10,6 +10,23 @@ $script:UlanziLocaleRoot = Join-Path (Split-Path -Parent $PSScriptRoot) "locales
 
 function Get-UlanziLanguage { return $script:UlanziLanguage }
 
+function Resolve-UlanziUiPreferenceRoot {
+    param([AllowEmptyString()][string]$PreferenceRoot, [AllowEmptyString()][string]$LocalApplicationDataRoot)
+    if (-not [string]::IsNullOrWhiteSpace($PreferenceRoot)) { return [IO.Path]::GetFullPath($PreferenceRoot) }
+    if ([string]::IsNullOrWhiteSpace($LocalApplicationDataRoot)) {
+        $LocalApplicationDataRoot = [Environment]::GetFolderPath("LocalApplicationData")
+    }
+    if ([string]::IsNullOrWhiteSpace($LocalApplicationDataRoot)) { $LocalApplicationDataRoot = $env:LOCALAPPDATA }
+    if ([string]::IsNullOrWhiteSpace($LocalApplicationDataRoot)) { throw 'The local application data folder is unavailable.' }
+    $currentRoot = Join-Path $LocalApplicationDataRoot "Ulanzi Glucose Bridge"
+    # Reuse an existing profile across the rename, without copying or overwriting preferences.
+    $legacyRoot = Join-Path $LocalApplicationDataRoot "Ulanzi Libre Bridge"
+    if (-not [IO.File]::Exists((Join-Path $currentRoot "ui-preferences.json")) -and [IO.File]::Exists((Join-Path $legacyRoot "ui-preferences.json"))) {
+        return $legacyRoot
+    }
+    return $currentRoot
+}
+
 function Set-UlanziLanguage {
     param(
         [Parameter(Mandatory = $true)][ValidateSet("en", "pt-BR")][string]$Language,
@@ -18,9 +35,7 @@ function Set-UlanziLanguage {
     )
     $normalized = if ($Language -ieq "pt-BR") { "pt-BR" } else { "en" }
     if ($Persist) {
-        if ([string]::IsNullOrWhiteSpace($PreferenceRoot)) {
-            $PreferenceRoot = Join-Path ([Environment]::GetFolderPath("LocalApplicationData")) "Ulanzi Libre Bridge"
-        }
+        $PreferenceRoot = Resolve-UlanziUiPreferenceRoot -PreferenceRoot $PreferenceRoot
         [void][IO.Directory]::CreateDirectory($PreferenceRoot)
         $path = Join-Path $PreferenceRoot "ui-preferences.json"
         $payload = [ordered]@{ schemaVersion = 1; theme = "system"; language = $normalized }
@@ -49,9 +64,7 @@ function Initialize-UlanziLanguage {
     param([AllowEmptyString()][string]$EnvPath, [AllowEmptyString()][string]$PreferenceRoot)
 
     $language = "en"
-    if ([string]::IsNullOrWhiteSpace($PreferenceRoot)) {
-        $PreferenceRoot = Join-Path ([Environment]::GetFolderPath("LocalApplicationData")) "Ulanzi Libre Bridge"
-    }
+    $PreferenceRoot = Resolve-UlanziUiPreferenceRoot -PreferenceRoot $PreferenceRoot
     try {
         $preference = [IO.File]::ReadAllText((Join-Path $PreferenceRoot "ui-preferences.json"), [Text.Encoding]::UTF8) | ConvertFrom-Json
         if ($null -ne $preference.PSObject.Properties["language"] -and $preference.language -in @("en", "pt-BR")) {
@@ -108,7 +121,7 @@ function Show-UlanziLanguagePicker {
     Add-Type -AssemblyName System.Drawing
     $form = [Windows.Forms.Form]::new()
     $form.Name = "languagePickerForm"
-    $form.Text = "Ulanzi Libre - Language / Idioma"
+    $form.Text = "Ulanzi Glucose - Language / Idioma"
     $form.ClientSize = [Drawing.Size]::new(430, 160)
     $form.StartPosition = [Windows.Forms.FormStartPosition]::CenterScreen
     $form.FormBorderStyle = [Windows.Forms.FormBorderStyle]::FixedDialog

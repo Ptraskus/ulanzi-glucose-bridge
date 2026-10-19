@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -22,12 +22,75 @@ test("English and Portuguese catalogs cover UI calls and preserve template argum
   assert.deepEqual(Object.keys(en).sort(), Object.keys(pt).sort());
   const args = (value) => [...value.matchAll(/\{\d+\}/g)].map((match) => match[0]).sort();
   for (const key of Object.keys(en)) assert.deepEqual(args(en[key]), args(pt[key]), key);
+  assert.doesNotMatch(JSON.stringify([en, pt]), /Libre|Abbott|LibreLinkUp/i);
   for (const script of ["ui-language", "ui-theme", "painel-ui", "iniciar-bandeja", "iniciar", "configuracoes-ui", "configurar", "primeira-configuracao-ui", "diagnosticos-ui", "manutencao-ui"]) {
     const source = await readFile(join(root, "scripts", `${script}.ps1`), "utf8");
     for (const match of source.matchAll(/Get-UlanziText -Key '((?:[^']|'')*)'/g)) {
       const key = match[1].replaceAll("''", "'");
       assert.ok(Object.hasOwn(en, key), `${script}: missing ${key}`);
     }
+  }
+});
+
+test("renamed preferences use new profiles and preserve an existing legacy profile", { skip: process.platform !== "win32" }, async () => {
+  const temporary = await mkdtemp(join(tmpdir(), "ulanzi-profile-rename-"));
+  try {
+    const legacy = join(temporary, "Ulanzi Libre Bridge");
+    const current = join(temporary, "Ulanzi Glucose Bridge");
+    const resolve = () => run(`. ${quote(join(root, "scripts", "ui-language.ps1"))}; Resolve-UlanziUiPreferenceRoot -LocalApplicationDataRoot ${quote(temporary)} | ConvertTo-Json -Compress`);
+    assert.equal(resolve(), current);
+    await mkdir(legacy);
+    const original = JSON.stringify({ schemaVersion: 1, theme: "dark", language: "pt-BR" });
+    await writeFile(join(legacy, "ui-preferences.json"), original);
+    assert.equal(resolve(), legacy);
+    const inherited = run(`
+      . ${quote(join(root, "scripts", "ui-theme.ps1"))}
+      $preferenceRoot=Resolve-UlanziUiPreferenceRoot -LocalApplicationDataRoot ${quote(temporary)}
+      [pscustomobject]@{ language=Initialize-UlanziLanguage -PreferenceRoot $preferenceRoot; theme=Get-UlanziUiThemePreference -PreferenceRoot $preferenceRoot } | ConvertTo-Json -Compress
+    `);
+    assert.deepEqual(inherited, { language: "pt-BR", theme: "dark" });
+    assert.equal(await readFile(join(legacy, "ui-preferences.json"), "utf8"), original);
+    await mkdir(current);
+    await writeFile(join(current, "ui-preferences.json"), JSON.stringify({ schemaVersion: 1, theme: "light", language: "en" }));
+    assert.equal(resolve(), current);
+  } finally { await rm(temporary, { recursive: true, force: true }); }
+});
+
+test("renamed wizard starts with estimates off and preserves a custom fractional duration", { skip: process.platform !== "win32" }, () => {
+  const result = run(`
+    . ${quote(join(root, "scripts", "primeira-configuracao-ui.ps1"))}
+    [Threading.Thread]::CurrentThread.CurrentCulture=[Globalization.CultureInfo]::GetCultureInfo('pt-BR')
+    [void](Set-UlanziLanguage -Language en)
+    $script:results=[Collections.Generic.List[object]]::new()
+    foreach($initial in @(0, 14, 10.5, 14.5, 365)) {
+      $timer=[Windows.Forms.Timer]::new()
+      $timer.Interval=80
+      $timer.add_Tick({
+        $form=[Windows.Forms.Application]::OpenForms | Select-Object -First 1
+        if ($null -eq $form) { return }
+        $form.Location=[Drawing.Point]::new(-30000,-30000)
+        $choice=$form.Controls.Find('sensorDurationControl',$true)[0]
+        $custom=$form.Controls.Find('sensorCustomDurationControl',$true)[0]
+        $script:results.Add([pscustomobject]@{title=$form.Text; index=$choice.SelectedIndex; label=[string]$choice.SelectedItem; value=$custom.Value; maximum=$custom.Maximum; decimals=$custom.DecimalPlaces})
+        $timer.Stop()
+        $form.Close()
+      })
+      $timer.Start()
+      try { [void](Show-UlanziFirstRunWizard -InitialSensorLifetimeDays $initial) } finally { $timer.Dispose() }
+    }
+    $script:results | ConvertTo-Json -Compress
+  `);
+  assert.deepEqual(result.map(({ index, label, value }) => ({ index, label, value })), [
+    { index: 0, label: "Disabled", value: 1 },
+    { index: 3, label: "14 days", value: 14 },
+    { index: 5, label: "Custom", value: 10.5 },
+    { index: 5, label: "Custom", value: 14.5 },
+    { index: 5, label: "Custom", value: 365 },
+  ]);
+  for (const form of result) {
+    assert.match(form.title, /Ulanzi Glucose/);
+    assert.equal(form.maximum, 365);
+    assert.equal(form.decimals, 2);
   }
 });
 
@@ -39,7 +102,7 @@ test("English defaults, explicit preferences, atomic overwrite and fallback pres
       $prefs = ${quote(temporary)}
       $envPath = Join-Path $prefs '.env'
       $initial = Initialize-UlanziLanguage -EnvPath $envPath -PreferenceRoot $prefs
-      $defaultText = Get-UlanziText -Key 'Painel do Ulanzi Libre'
+      $defaultText = Get-UlanziText -Key 'Painel do Ulanzi Glucose'
       [void](Set-UlanziUiThemePreference -Theme dark -PreferenceRoot $prefs)
       [void](Set-UlanziLanguage -Language pt-BR -Persist -PreferenceRoot $prefs)
       $portuguese = Get-UlanziText -Key 'Fechar'
@@ -54,7 +117,7 @@ test("English defaults, explicit preferences, atomic overwrite and fallback pres
       $legacy = Initialize-UlanziLanguage -EnvPath $envPath -PreferenceRoot $prefs
       [pscustomobject]@{ initial=$initial; defaultText=$defaultText; portuguese=$portuguese; fallback=$fallback; literal=$literal; savedLanguage=$document.language; savedTheme=$document.theme; fromConfig=$fromConfig; legacy=$legacy; temporaryFiles=@([IO.Directory]::GetFiles($prefs,'*.tmp')).Count } | ConvertTo-Json -Compress
     `);
-    assert.deepEqual(result, { initial: "en", defaultText: "Ulanzi Libre dashboard", portuguese: "Fechar", fallback: "Close", literal: "Etapa X{1} de 7 - Y", savedLanguage: "pt-BR", savedTheme: "light", fromConfig: "en", legacy: "en", temporaryFiles: 0 });
+    assert.deepEqual(result, { initial: "en", defaultText: "Ulanzi Glucose dashboard", portuguese: "Fechar", fallback: "Close", literal: "Etapa X{1} de 7 - Y", savedLanguage: "pt-BR", savedTheme: "light", fromConfig: "en", legacy: "en", temporaryFiles: 0 });
   } finally { await rm(temporary, { recursive: true, force: true }); }
 });
 
@@ -114,6 +177,6 @@ test("English dashboard language shortcut opens setup or the display settings wi
         [pscustomobject]@{ title=$title;setupText=$setupText;setupOpened=$script:setupOpened;selectedTab=$script:selectedTab;validOwner=$script:validOwner } | ConvertTo-Json -Compress
       } finally { & $controller.Dispose }
     `);
-    assert.deepEqual(result, { title: "Ulanzi Libre dashboard", setupText: "Set up now", setupOpened: 1, selectedTab: "display", validOwner: true });
+    assert.deepEqual(result, { title: "Ulanzi Glucose dashboard", setupText: "Set up now", setupOpened: 1, selectedTab: "display", validOwner: true });
   } finally { await rm(temporary, { recursive: true, force: true }); }
 });

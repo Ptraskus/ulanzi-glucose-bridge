@@ -6,7 +6,7 @@ Only the latest stable version receives security fixes. Obtain releases from thi
 
 ## Reporting a vulnerability
 
-Use the [private GitHub vulnerability reporting form](https://github.com/Ptraskus/ulanzi-libre-bridge/security/advisories/new). Include the affected version, a reproducible description using fictitious data, impact and a proposed fix if available.
+Use the [private GitHub vulnerability reporting form](https://github.com/Ptraskus/ulanzi-glucose-bridge/security/advisories/new). Include the affected version, a reproducible description using fictitious data, impact and a proposed fix if available.
 
 Never publish tokens, passwords, private addresses, glucose readings or diagnostic files in a public security issue. If private reporting is unavailable, do not replace it with public sensitive details. The project aims to acknowledge reports within five business days; remediation and coordinated disclosure depend on severity and maintainer availability.
 
@@ -19,4 +19,4 @@ Never publish tokens, passwords, private addresses, glucose readings or diagnost
 - Acceptance of packages with invalid hashes or required signatures.
 - Sending readings or telemetry to destinations not configured by the user.
 
-General issues that do not involve security can use the [public issue tracker](https://github.com/Ptraskus/ulanzi-libre-bridge/issues), after removing personal data and secrets. Review the [privacy policy](PRIVACY.md) before sharing diagnostic exports.
+General issues that do not involve security can use the [public issue tracker](https://github.com/Ptraskus/ulanzi-glucose-bridge/issues), after removing personal data and secrets. Review the [privacy policy](PRIVACY.md) before sharing diagnostic exports.

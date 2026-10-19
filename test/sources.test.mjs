@@ -16,6 +16,7 @@ const config = {
     apiSecret: "",
   },
 };
+const sensorEnabledConfig = { ...config, sensor: { lifetimeDays: 15 } };
 
 test("normaliza a leitura Nightscout e envia token somente ao host correto", async () => {
   let requestedUrl;
@@ -38,6 +39,51 @@ test("normaliza a leitura Nightscout e envia token somente ao host correto", asy
   assert.equal(reading.timestamp.toISOString(), "2026-08-20T11:59:00.000Z");
   assert.equal(requestedUrl.hostname, "nightscout.test");
   assert.equal(requestedUrl.searchParams.get("token"), config.nightscout.token);
+});
+
+test("Nightscout glucose is manufacturer-neutral and disabled expiry makes no treatment requests", async () => {
+  const date = Date.parse("2026-08-20T12:00:00Z");
+  for (const device of [undefined, "vendor-a-uploader", "vendor-b-receiver", "vendor-c-app"]) {
+    const requested = [];
+    globalThis.fetch = async (url) => {
+      const parsed = new URL(url);
+      requested.push(parsed.pathname);
+      assert.equal(parsed.pathname, "/api/v1/entries/sgv.json");
+      assert.equal(parsed.searchParams.get("count"), "1");
+      return new Response(JSON.stringify([{
+        sgv: 112, direction: "FortyFiveUp", date, device,
+      }]), { status: 200, headers: { "content-type": "application/json" } });
+    };
+    for (const sensor of [undefined, { lifetimeDays: 0 }]) {
+      const source = new NightscoutSource({ ...config, sensor });
+      const [reading, session] = await Promise.all([
+        source.getReading(new Date(date)),
+        source.getSensorSession(new Date(date)),
+      ]);
+      assert.deepEqual(reading, {
+        valueMgDl: 112,
+        trend: "up-slight",
+        timestamp: new Date(date),
+        isHigh: false,
+        isLow: false,
+        source: "Nightscout",
+      });
+      assert.equal(session, null);
+    }
+    assert.deepEqual(requested, ["/api/v1/entries/sgv.json", "/api/v1/entries/sgv.json"]);
+  }
+});
+
+test("enabled expiry without sensor events leaves the glucose reading available", async () => {
+  globalThis.fetch = async (url) => {
+    const isGlucose = new URL(url).pathname.endsWith("/entries/sgv.json");
+    return new Response(JSON.stringify(isGlucose ? [{
+      sgv: 112, direction: "Flat", date: Date.parse("2026-08-20T12:00:00Z"),
+    }] : []), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  const source = new NightscoutSource(sensorEnabledConfig);
+  assert.equal(await source.getSensorSession(new Date("2026-08-20T12:00:00Z")), null);
+  assert.equal((await source.getReading()).valueMgDl, 112);
 });
 
 test("envia API_SECRET somente como hash no cabeçalho", async () => {
@@ -147,7 +193,7 @@ test("cacheia a sessão do sensor sem repetir consultas a cada leitura", async (
       { eventType, created_at: "2026-08-20T10:00:00.000Z" },
     ]), { status: 200, headers: { "content-type": "application/json" } });
   };
-  const source = new NightscoutSource(config);
+  const source = new NightscoutSource(sensorEnabledConfig);
   const now = new Date("2026-08-20T12:00:00.000Z");
   await source.getSensorSession(now);
   await source.getSensorSession(new Date(now.getTime() + 60_000));
@@ -171,7 +217,7 @@ test("resposta vazia ou regressiva preserva a sessao de sensor conhecida", async
       headers: { "content-type": "application/json" },
     });
   };
-  const source = new NightscoutSource(config);
+  const source = new NightscoutSource(sensorEnabledConfig);
   const now = new Date("2026-08-20T12:00:00.000Z");
   const initial = await source.getSensorSession(now);
   const afterEmpty = await source.getSensorSession(new Date(now.getTime() + 5 * 60_000));
@@ -191,7 +237,7 @@ test("falha ao consultar tratamentos não impede a leitura de glicemia", async (
       { sgv: 112, direction: "Flat", date: Date.parse("2026-08-20T12:00:00Z") },
     ]), { status: 200, headers: { "content-type": "application/json" } });
   };
-  const source = new NightscoutSource(config);
+  const source = new NightscoutSource(sensorEnabledConfig);
   await assert.rejects(() => source.getSensorSession(new Date("2026-08-20T12:00:00Z")), /HTTP 503/);
   assert.equal((await source.getReading()).valueMgDl, 112);
 });

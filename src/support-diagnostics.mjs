@@ -192,11 +192,11 @@ async function loadApplicationIdentity() {
   try {
     const packageData = JSON.parse(await readFile(packageJsonPath, "utf8"));
     return {
-      name: typeof packageData.name === "string" ? packageData.name : "ulanzi-libre-bridge",
+      name: typeof packageData.name === "string" ? packageData.name : "ulanzi-glucose-bridge",
       version: typeof packageData.version === "string" ? packageData.version : "unknown",
     };
   } catch {
-    return { name: "ulanzi-libre-bridge", version: "unknown" };
+    return { name: "ulanzi-glucose-bridge", version: "unknown" };
   }
 }
 
@@ -216,7 +216,7 @@ function safeIsoTimestamp(value) {
 }
 
 export function buildSupportReport({
-  application = { name: "ulanzi-libre-bridge", version: "unknown" },
+  application = { name: "ulanzi-glucose-bridge", version: "unknown" },
   config = {},
   status = null,
   logs = [],
@@ -243,7 +243,7 @@ export function buildSupportReport({
       note: "Credenciais e leituras de glicemia foram removidas automaticamente.",
     },
     application: {
-      name: sanitizeDiagnosticText(application?.name ?? "ulanzi-libre-bridge", { includeGlucose: true }),
+      name: sanitizeDiagnosticText(application?.name ?? "ulanzi-glucose-bridge", { includeGlucose: true }),
       version: sanitizeDiagnosticText(application?.version ?? "unknown", { includeGlucose: true }),
     },
     runtime: {

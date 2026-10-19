@@ -18,12 +18,12 @@ const [
   hiddenConfigurator,
   packageAllowlist,
 ] = await Promise.all([
-  readFile(join(projectRoot, "assets", "ulanzi-libre.ico")),
+  readFile(join(projectRoot, "assets", "ulanzi-glucose.ico")),
   readText("scripts/ui-theme.ps1"),
   readText("scripts/iniciar-bandeja.ps1"),
   readText("scripts/painel-ui.ps1"),
   readText("scripts/install-local.ps1"),
-  readText("installer/UlanziLibreBridge.iss"),
+  readText("installer/UlanziGlucoseBridge.iss"),
   readText("installer/iniciar-instalado.vbs"),
   readText("installer/configurar-instalado.vbs"),
   readText("release/package-files.txt"),
@@ -51,7 +51,7 @@ test("icone do produto e um ICO multirresolucao completo", () => {
   for (const required of ["16x16", "20x20", "24x24", "32x32", "48x48", "64x64", "128x128", "256x256"]) {
     assert.ok(sizes.includes(required), `resolucao ausente: ${required}`);
   }
-  assert.match(packageAllowlist, /^assets\/ulanzi-libre\.ico$/m);
+  assert.match(packageAllowlist, /^assets\/ulanzi-glucose\.ico$/m);
 });
 
 test("painel recebe identidade propria antes de aparecer na barra do Windows", () => {
@@ -75,16 +75,16 @@ test("atalhos usam a marca e oferecem uma unica entrada publica pelo painel", ()
   assert.match(localInstaller, /DisplayIcon = "\$appIconPath,0"/);
   assert.match(localInstaller, /configurar-instalado\.vbs/);
 
-  assert.match(innoInstaller, /^SetupIconFile=.*ulanzi-libre\.ico$/m);
-  assert.match(innoInstaller, /^UninstallDisplayIcon=.*ulanzi-libre\.ico$/m);
-  assert.ok((innoInstaller.match(/IconFilename: "\{app\}\\assets\\ulanzi-libre\.ico"/g) ?? []).length >= 4);
+  assert.match(innoInstaller, /^SetupIconFile=.*ulanzi-glucose\.ico$/m);
+  assert.match(innoInstaller, /^UninstallDisplayIcon=.*ulanzi-glucose\.ico$/m);
+  assert.ok((innoInstaller.match(/IconFilename: "\{app\}\\assets\\ulanzi-glucose\.ico"/g) ?? []).length >= 4);
   assert.ok((innoInstaller.match(/AppUserModelID: "UlanziLibre\.Bridge"/g) ?? []).length >= 3);
   const publicConfigureShortcut = innoInstaller
     .split("\n")
-    .find((line) => line.startsWith("Name:") && line.includes("Configurar Ulanzi Libre Bridge"));
+    .find((line) => line.startsWith("Name:") && line.includes("Configurar Ulanzi Glucose Bridge"));
   assert.equal(publicConfigureShortcut, undefined);
   assert.match(innoInstaller, /\[InstallDelete\][\s\S]*Configurar Ulanzi Libre Bridge\.lnk/);
-  assert.doesNotMatch(localInstaller, /New-ShellShortcut[^\r\n]+Configurar Ulanzi Libre Bridge\.lnk/);
+  assert.doesNotMatch(localInstaller, /New-ShellShortcut[^\r\n]+Configurar Ulanzi Glucose Bridge\.lnk/);
 
   for (const launcher of [hiddenLauncher, hiddenConfigurator]) {
     assert.match(launcher, /-WindowStyle Hidden/i);

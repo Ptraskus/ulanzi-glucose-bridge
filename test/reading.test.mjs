@@ -31,7 +31,7 @@ function reading(valueMgDl, ageMs = 60_000, trend = "flat", extra = {}) {
   );
 }
 
-test("normaliza todas as tendências Nightscout/Libre para ASCII conhecido", () => {
+test("normaliza tendências Nightscout e aliases numericos para ASCII conhecido", () => {
   const cases = new Map([
     ["DoubleUp", "double-up"],
     ["SingleUp", "up"],
@@ -106,6 +106,35 @@ test("TROCAR substitui SEM DADO quando o sensor terminou", () => {
   };
   assert.equal(buildDisplayState(null, config, NOW, session).text, "TROCAR");
   assert.equal(buildDisplayState(reading(112, 20 * 60_000), config, NOW, session).text, "TROCAR");
+});
+
+test("disabled sensor estimation never hides fresh glucose or requests replacement", () => {
+  const disabled = { ...config, sensor: { lifetimeDays: 0 } };
+  const oldSession = { startedAt: new Date("2020-01-01T00:00:00Z") };
+  for (const [value, expectedKind] of [[60, "low"], [112, "in-range"], [200, "high"]]) {
+    const state = buildDisplayState(reading(value, 0), disabled, NOW, oldSession);
+    assert.equal(state.kind, expectedKind);
+    assert.equal(state.sensorEndsAt, null);
+    assert.equal(state.sensorStartedAt, null);
+    assert.equal(state.lifetimeMs, 900_000);
+  }
+  assert.equal(buildDisplayState(null, disabled, NOW, oldSession).kind, "unavailable");
+  assert.equal(buildDisplayState(reading(112, 900_000), disabled, NOW, oldSession).kind, "unavailable");
+});
+
+test("enabled sensor estimation needs a valid session and honors fractional durations", () => {
+  const fractional = { ...config, sensor: { lifetimeDays: 10.5 } };
+  for (const session of [null, {}, { startedAt: null }, { startedAt: "invalid" }]) {
+    const state = buildDisplayState(reading(112, 0), fractional, NOW, session);
+    assert.equal(state.kind, "in-range");
+    assert.equal(state.sensorEndsAt, null);
+  }
+  const session = { startedAt: new Date(NOW.getTime() - 10.5 * 86_400_000) };
+  const state = buildDisplayState(reading(112, 0), fractional, NOW, session);
+  assert.equal(state.kind, "replace-sensor");
+  assert.equal(state.sensorEndsAt.toISOString(), NOW.toISOString());
+  assert.equal(buildDisplayState(reading(60, 0), fractional, NOW, session).kind, "low");
+  assert.equal(buildDisplayState(reading(200, 0), fractional, NOW, session).kind, "high");
 });
 
 test("leitura baixa ou alta ainda valida tem prioridade sobre TROCAR", () => {

@@ -65,7 +65,7 @@ try {
         [Console]::Error.WriteLine($message)
     } else {
         Add-Type -AssemblyName System.Windows.Forms
-        [void][Windows.Forms.MessageBox]::Show($message, "Ulanzi Libre Bridge", [Windows.Forms.MessageBoxButtons]::OK, [Windows.Forms.MessageBoxIcon]::Error)
+        [void][Windows.Forms.MessageBox]::Show($message, "Ulanzi Glucose Bridge", [Windows.Forms.MessageBoxButtons]::OK, [Windows.Forms.MessageBoxIcon]::Error)
     }
     exit 2
 }

@@ -1,5 +1,5 @@
 /*
- * Gera a apresentacao tecnica do Ulanzi Libre Bridge.
+ * Gera a apresentacao tecnica do Ulanzi Glucose Bridge.
  *
  * Uso:
  *   npm install --prefix <pasta-temporaria> pptxgenjs
@@ -14,10 +14,10 @@ const PptxGenJS = require(pptxModule);
 const pptx = new PptxGenJS();
 
 pptx.layout = "LAYOUT_WIDE";
-pptx.author = "Ulanzi Libre Bridge contributors";
-pptx.company = "Ulanzi Libre Bridge";
+pptx.author = "Ulanzi Glucose Bridge contributors";
+pptx.company = "Ulanzi Glucose Bridge";
 pptx.subject = "Apresentacao tecnica da arquitetura e maturidade do software";
-pptx.title = "Ulanzi Libre Bridge — Apresentação técnica";
+pptx.title = "Ulanzi Glucose Bridge — Apresentação técnica";
 pptx.lang = "pt-BR";
 pptx.theme = {
   headFontFace: "Aptos Display",
@@ -28,7 +28,7 @@ pptx.defineLayout({ name: "ULANZI_WIDE", width: 13.333, height: 7.5 });
 pptx.layout = "ULANZI_WIDE";
 
 const S = pptx.ShapeType;
-const OUT = path.resolve(__dirname, "Ulanzi-Libre-Bridge-Apresentacao-Tecnica.pptx");
+const OUT = path.resolve(__dirname, "Ulanzi-Glucose-Bridge-Apresentacao-Tecnica.pptx");
 const SCREENSHOT = path.resolve(__dirname, "..", "release", "install-smoke", "07-revisao.png");
 
 const C = {
@@ -282,7 +282,7 @@ function addFooter(slide, number, label = "VISAO TECNICA") {
     h: 0,
     line: { color: C.border, width: 0.7 },
   });
-  slide.addText(`ULANZI LIBRE BRIDGE  /  ${label}`, {
+  slide.addText(`ULANZI GLUCOSE BRIDGE  /  ${label}`, {
     x: 0.62,
     y: 7.19,
     w: 4.7,
@@ -759,7 +759,7 @@ function addCoverageBar(slide, label, value, y, color) {
     charSpacing: 2,
     margin: 0,
   });
-  slide.addText("Ulanzi\nLibre Bridge", {
+  slide.addText("Ulanzi\nGlucose Bridge", {
     x: 0.66,
     y: 1.0,
     w: 6.1,
@@ -975,7 +975,7 @@ function addCoverageBar(slide, label, value, y, color) {
     line: { color: C.red, width: 1, transparency: 20 },
   });
   addSectionLabel(slide, "fora de escopo", 8.76, 4.46, 2.1, C.red);
-  addBullet(slide, "Nao acessa API interna da Abbott", 8.78, 4.78, 3.48, { accent: C.red, fontSize: 10.3 });
+  addBullet(slide, "Sem login na nuvem do fabricante", 8.78, 4.78, 3.48, { accent: C.red, fontSize: 10.3 });
   addBullet(slide, "Nao e dispositivo medico", 8.78, 5.16, 3.48, { accent: C.red, fontSize: 10.3 });
   addBullet(slide, "Nao substitui app nem glicosimetro", 8.78, 5.54, 3.48, { accent: C.red, fontSize: 10.3 });
   slide.addText("A preferencia e por indisponibilidade explicita, nunca por confianca falsa.", {
@@ -990,7 +990,7 @@ function addCoverageBar(slide, label, value, y, color) {
     align: "center",
     margin: 0,
   });
-  slide.addNotes("Explique a fronteira: o projeto nao guarda senha Abbott e nao tenta contornar uma API inexistente. Nightscout ou JSON autorizado e a entrada; o TC001 e somente exibição ou aviso. O software nao e dispositivo medico. Fontes: README.md:3-9, 22-46; GUIA-NIGHTSCOUT.md.");
+  slide.addNotes("Explique a fronteira: o projeto nao recebe a senha da nuvem do fabricante nem se conecta diretamente ao sensor. Nightscout ou JSON autorizado e a entrada, independentemente da marca do CGM; o TC001 e somente exibicao ou aviso. O software nao e dispositivo medico. Fontes: README.md; GUIA-NIGHTSCOUT.md.");
 }
 
 // Slide 3 — arquitetura
@@ -1414,7 +1414,7 @@ function addCoverageBar(slide, label, value, y, color) {
     margin: 0,
     fit: "shrink",
   });
-  slide.addNotes("Esta e a principal decisao de seguranca temporal. A ultima leitura pode sobreviver a uma falha momentanea, mas so ate o staleAfter. O payload no proprio TC001 expira se o PC morrer. O fim do sensor vira TROCAR, separado de SEM DADO. Leitura baixa ou alta ainda válida tem prioridade sobre TROCAR. Fontes: src/reading.mjs:118-206; src/index.mjs:554-650; README.md:165-180.");
+  slide.addNotes("Esta e a principal decisao de seguranca temporal. A ultima leitura pode sobreviver a uma falha momentanea, mas so ate o staleAfter. O payload no proprio TC001 expira se o PC morrer. A estimativa opcional de fim do sensor pode mostrar TROCAR, separado de SEM DADO; ela comeca desligada e requer duracao e evento de inicio confiaveis. Leitura baixa ou alta ainda valida tem prioridade sobre TROCAR. Fontes: src/reading.mjs; src/index.mjs; README.md.");
 }
 
 // Slide 7 — alarmes
@@ -2085,7 +2085,7 @@ function addCoverageBar(slide, label, value, y, color) {
   addBullet(slide, "Windows-only; sessao aberta e PC ligado", 7.0, 2.55, 5.1, { accent: C.amber, fontSize: 10.4 });
   addBullet(slide, "IPC por filesystem e interfaces JS implicitas", 7.0, 3.02, 5.1, { accent: C.amber, fontSize: 10.4 });
   addBullet(slide, "loop central e UI PowerShell concentram complexidade", 7.0, 3.49, 5.1, { accent: C.amber, fontSize: 10.4 });
-  addBullet(slide, "sem API Abbott oficial; depende de fonte intermediaria", 7.0, 3.96, 5.1, { accent: C.amber, fontSize: 10.4 });
+  addBullet(slide, "fonte intermediaria: Nightscout ou JSON autorizado", 7.0, 3.96, 5.1, { accent: C.amber, fontSize: 10.4 });
   addBullet(slide, "HTTP do TC001 e limite de seguranca da LAN", 7.0, 4.43, 5.1, { accent: C.amber, fontSize: 10.4 });
 
   slide.addShape(S.roundRect, {

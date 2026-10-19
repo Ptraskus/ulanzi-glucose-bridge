@@ -1,6 +1,6 @@
-# Roteiro — apresentação técnica do Ulanzi Libre Bridge
+# Roteiro — apresentação técnica do Ulanzi Glucose Bridge
 
-Deck: `Ulanzi-Libre-Bridge-Apresentacao-Tecnica.pptx`
+Deck: `Ulanzi-Glucose-Bridge-Apresentacao-Tecnica.pptx`
 
 ## Como contar a história
 
@@ -20,7 +20,7 @@ A tese principal é: **o projeto não é apenas um encaminhador de número; ele 
 - Slide 3 — data plane Node.js e control plane WinForms/PowerShell.
 - Slide 4 — contrato normalizado e estados de exibição.
 - Slide 5 — sequência de um ciclo.
-- Slide 6 — expiração da leitura, do payload e do sensor.
+- Slide 6 — expiração da leitura, do payload e estimativa opcional de término do sensor.
 - Slide 7 — episódios de alarme, prioridade, retry e persistência.
 - Slide 8 — diferenças entre AWTRIX NG e AWTRIX 3.
 - Slide 9 — inicialização Windows, IPC e configuração transacional.
@@ -66,4 +66,4 @@ Isso mostra os payloads calculados para AWTRIX NG e AWTRIX 3. Para uma conversa 
 
 ## Aviso de escopo
 
-O software não é dispositivo médico e não substitui LibreLink, LibreLinkUp, alarmes oficiais, glicosímetro ou orientação profissional.
+O software não é dispositivo médico e não substitui o aplicativo oficial do CGM, seus alarmes, glicosímetro ou orientação profissional. A leitura vem do Nightscout ou de JSON autorizado, independentemente da marca do sensor. A estimativa de término do sensor começa desligada; quando habilitada, depende da duração configurada e de eventos de início no Nightscout.

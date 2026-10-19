@@ -11,6 +11,8 @@ coverage/
 .config-history/
 .updates/
 ulanzi-libre-diagnostico-*.json
+ulanzi-glucose-diagnostics-*.json
+ulanzi-glucose-diagnostico-*.json
 *.log
 tc001-*-backup.bin
 firmware/

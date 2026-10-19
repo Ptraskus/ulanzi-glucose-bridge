@@ -42,7 +42,7 @@ $artifactDirectory = Join-Path $artifactsRoot $Version
 $stageDirectory = Join-Path $workRoot ("{0}-{1}-{2}" -f $Version, $PID, [Guid]::NewGuid().ToString("N"))
 $payloadDirectory = Join-Path $stageDirectory "payload"
 $packageAllowlistPath = Join-Path $releaseRoot "package-files.txt"
-$innoSourcePath = Join-Path $repositoryRoot "installer\UlanziLibreBridge.iss"
+$innoSourcePath = Join-Path $repositoryRoot "installer\UlanziGlucoseBridge.iss"
 $forbiddenSegments = @(
     ".git", ".runtime", ".secrets", ".tools", "backups", "firmware",
     "node_modules", "coverage", ".install", ".config-history", ".updates",
@@ -494,7 +494,7 @@ if ($RequireSignature) { $SignArtifacts = $true }
 $validatedUpdateManifestUrl = $null
 $validatedUpdateInstallerUrl = $null
 if (-not [string]::IsNullOrWhiteSpace($UpdateInstallerUrl)) {
-    $expectedInstallerName = "Ulanzi-Libre-Bridge-Setup-$Version.exe"
+    $expectedInstallerName = "Ulanzi-Glucose-Bridge-Setup-$Version.exe"
     $validatedUpdateManifestUrl = Get-ValidatedHttpsReleaseUri `
         -Value $UpdateManifestUrl `
         -ExpectedFileName "update-manifest.json" `
@@ -558,7 +558,7 @@ try {
 
     $buildInformation = [ordered]@{
         formatVersion = 1
-        application = "Ulanzi Libre Bridge"
+        application = "Ulanzi Glucose Bridge"
         version = $Version
         createdAt = (Get-Date).ToUniversalTime().ToString("o")
         portableNode = $nodeMetadata
@@ -579,7 +579,7 @@ try {
 
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $nodeSuffix = if ($IncludePortableNode) { "-portable-node" } else { "" }
-    $zipName = "Ulanzi-Libre-Bridge-$Version-win-x64$nodeSuffix.zip"
+    $zipName = "Ulanzi-Glucose-Bridge-$Version-win-x64$nodeSuffix.zip"
     $zipPath = Join-Path $artifactDirectory $zipName
     [IO.Compression.ZipFile]::CreateFromDirectory(
         $payloadDirectory,
@@ -610,7 +610,7 @@ try {
             )
             & $compiler @innoArguments
             if ($LASTEXITCODE -ne 0) { throw "O Inno Setup encerrou com o código $LASTEXITCODE." }
-            $installerPath = Join-Path $artifactDirectory "Ulanzi-Libre-Bridge-Setup-$Version.exe"
+            $installerPath = Join-Path $artifactDirectory "Ulanzi-Glucose-Bridge-Setup-$Version.exe"
             if (-not (Test-Path -LiteralPath $installerPath -PathType Leaf)) {
                 throw "O Inno Setup não produziu o instalador esperado: $installerPath"
             }
