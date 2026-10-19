@@ -1,190 +1,307 @@
 # Ulanzi Libre Bridge
 
-Ponte local para mostrar uma leitura de glicemia no Ulanzi TC001. O relógio recebe apenas o valor, a tendência e o estado visual; credenciais e lógica ficam no computador.
+**Sua leitura de glicemia no Ulanzi TC001, com um aplicativo local para Windows.**
 
-```text
-fonte autorizada/Nightscout -> bridge Node.js no Windows -> HTTP local -> TC001 / AWTRIX NG
+O Ulanzi Libre Bridge consulta uma fonte Nightscout ou JSON autorizada e mostra o valor, a tendência e o estado da leitura no painel de LEDs do TC001. No computador, oferece assistente de configuração, painel de acompanhamento, alertas opcionais e ferramentas de diagnóstico.
+
+**Versão:** `0.1.0` · **Plataforma:** Windows · **Runtime:** Node.js 22+ · **Licença:** [MIT](LICENSE)
+
+> O projeto está em versão inicial e disponível como código-fonte. Ainda não há um instalador publicado em [Releases](https://github.com/Ptraskus/ulanzi-libre-bridge/releases). Os scripts para gerar instaladores estão incluídos; a distribuição assinada tem requisitos próprios descritos em [PUBLICACAO.md](PUBLICACAO.md).
+
+> **Uso complementar:** este software não é um dispositivo médico e não substitui os aplicativos oficiais, seus alarmes, o glicosímetro ou a orientação profissional. Não use o TC001 como única fonte para decisões de tratamento.
+
+## Neste README
+
+- [O que a aplicação faz](#o-que-a-aplicação-faz)
+- [Como funciona](#como-funciona)
+- [Requisitos](#requisitos)
+- [Começar pelo código-fonte](#começar-pelo-código-fonte)
+- [Configuração e uso diário](#configuração-e-uso-diário)
+- [Fontes de dados](#fontes-de-dados)
+- [Alarmes e validade das leituras](#alarmes-e-validade-das-leituras)
+- [Privacidade e segurança](#privacidade-e-segurança)
+- [Solução de problemas](#solução-de-problemas)
+- [Desenvolvimento e contribuição](#desenvolvimento-e-contribuição)
+- [Documentação e licença](#documentação-e-licença)
+
+## O que a aplicação faz
+
+| Recurso | O que oferece |
+| --- | --- |
+| Visor do TC001 | Valor em mg/dL ou mmol/L, seta de tendência, cores configuráveis e indicação de leitura indisponível ou sensor encerrado. |
+| Assistente inicial | Preparação do relógio, escolha da fonte, testes de conexão, preferências e revisão antes de salvar. |
+| Painel no Windows | Leitura atual, estado da fonte e do relógio, alertas, mostrador flutuante e acesso pela bandeja do sistema. |
+| Temas | Aparência clara, escura ou seguindo a preferência do Windows. |
+| Alertas opcionais | Avisos sonoros por valor, tendência ou falta de dados, com limites, repetição e padrão de som configuráveis. |
+| Diagnóstico | Testes do visor e buzzer, acompanhamento de falhas e exportação de relatório com remoção de dados sensíveis. |
+| Recuperação | Histórico das três configurações válidas mais recentes e restauração pela interface. |
+| Demonstração | Fonte simulada para conhecer o funcionamento sem conectar uma conta ou um relógio. |
+
+O núcleo usa Node.js; a interface para Windows usa PowerShell e WinForms. Não há dependências npm de execução para instalar.
+
+## Como funciona
+
+```mermaid
+flowchart LR
+    A["Nightscout ou endpoint JSON autorizado"] -->|"Consulta da leitura"| B["Bridge no Windows"]
+    M["Fonte simulada — mock"] --> B
+    B -->|"HTTP na rede local"| C["Ulanzi TC001 com AWTRIX NG ou AWTRIX 3"]
+    B --> D["Painel, alertas e diagnóstico no Windows"]
 ```
 
-O projeto não é um dispositivo médico, não substitui o aplicativo FreeStyle LibreLink, o LibreLinkUp, alarmes, glicosímetro ou orientação profissional. Nunca tome decisões de dose usando somente o TC001. Se a leitura não corresponder aos sintomas ou expectativas, siga as instruções do fabricante e da sua equipe de saúde.
+O computador consulta a fonte, verifica a idade da leitura e calcula a apresentação e os alertas. O TC001 recebe os comandos pela rede local. **O computador precisa permanecer ligado, com o aplicativo em execução e acesso à fonte e ao relógio.**
+
+O projeto não faz login no LibreLinkUp, não pede senha Abbott e não lê o sensor diretamente. Para dados reais, a fonte Nightscout ou JSON precisa estar funcionando antes da configuração do bridge. A instalação e a manutenção de um uploader ou de um servidor Nightscout são etapas separadas.
 
 ## Requisitos
 
-- Windows 10 1809 ou mais recente;
-- Ulanzi TC001; o assistente orienta a instalação do [AWTRIX NG](https://github.com/Blueforcer/awtrix-ng), o Wi-Fi e a localização, ou aceita um relógio que já use AWTRIX NG/AWTRIX 3;
-- uma fonte Nightscout própria ou um endpoint JSON local/autorizado;
-- Node.js 22 ou mais recente quando o pacote não incluir o runtime portátil.
+| Item | Requisito |
+| --- | --- |
+| Sistema | Windows 10 versão 1809 ou mais recente; interface baseada em Windows PowerShell 5.1 e WinForms. |
+| Node.js | Versão 22 ou mais recente, disponível no `PATH`, para executar o código-fonte. |
+| Relógio | Ulanzi TC001 com [AWTRIX NG](https://github.com/Blueforcer/awtrix-ng) ou AWTRIX 3. Dispensável para a demonstração no terminal. |
+| Rede | Computador e TC001 com comunicação permitida na rede local; acesso à fonte de dados configurada. |
+| Fonte | Instância Nightscout controlada por você ou endpoint JSON autorizado. Para demonstração, use `mock`. |
+| Git | Necessário apenas para clonar; também é possível baixar o código pelo botão **Code > Download ZIP** do GitHub. |
 
-Na primeira preparação do relógio, use Edge, Chrome ou Opera em um computador e um cabo USB que transmita dados. O USB instala o firmware e depois pode alimentar o TC001; as leituras trafegam pela rede Wi-Fi, e o computador com o bridge precisa permanecer ligado.
+Se o TC001 ainda precisar de firmware, o assistente orienta a preparação e abre a [ferramenta oficial do AWTRIX NG](https://blueforcer.github.io/awtrix-ng/getting-started/flashing/) mediante sua confirmação. A gravação exige um cabo USB de dados e um navegador compatível com a ferramenta. Faça backup antes: a troca de firmware pode apagar o software e as configurações do relógio.
 
-Para novas instalações, prefira o AWTRIX NG. O AWTRIX 3 foi encerrado, embora sua API continue aceita para relógios que já o utilizam. A troca de firmware apaga o software e as configurações atuais do TC001: faça backup, identifique a porta correta e siga exclusivamente a [documentação oficial do AWTRIX NG](https://blueforcer.github.io/awtrix-ng/getting-started/flashing/). O projeto não distribui firmware, ferramentas de gravação nem backups pessoais.
+## Começar pelo código-fonte
 
-## Fonte de glicemia
+Abra o PowerShell e baixe o projeto:
 
-A Abbott não publica uma API para ligar o Libre diretamente ao TC001. Os [Termos de Uso brasileiros do LibreView](https://files.libreview.io/files/documents/pt-BR/pat-TOU_2025-06-17.html) restringem acesso automatizado por scripts, e a geração 5 do LibreLinkUp tornou integrações comunitárias ainda mais instáveis. Por isso este repositório não guarda a senha Abbott nem acessa endpoints internos do LibreLinkUp.
-
-Fontes implementadas:
-
-- `nightscout`: lê a última entrada de uma instância Nightscout já controlada por você; aceita access token ou `API_SECRET`, armazenado com DPAPI;
-- `json`: lê um endpoint local/autorizado;
-- `mock`: simula uma leitura para testar o painel.
-
-Usar um uploader LibreLinkUp comunitário para alimentar o Nightscout continua sendo não oficial e pode contrariar os termos da Abbott. O bridge não esconde essa limitação.
-
-O passo a passo e as alternativas estão em [`GUIA-NIGHTSCOUT.md`](GUIA-NIGHTSCOUT.md).
-
-Formato da fonte JSON:
-
-```json
-{
-  "valueMgDl": 112,
-  "trend": "flat",
-  "timestamp": "2026-08-20T21:00:00Z"
-}
+```powershell
+git clone https://github.com/Ptraskus/ulanzi-libre-bridge.git
+cd ulanzi-libre-bridge
+node --version
 ```
 
-Tendências aceitas: `double-up`, `up`, `up-slight`, `flat`, `down-slight`, `down`, `double-down` e `unknown`. As cores e os alarmes são calculados apenas pelo valor e pelos limites locais; flags remotas não conseguem sobrepô-los.
+Se baixou o ZIP, extraia-o e abra o PowerShell na pasta que contém `package.json`. Os comandos abaixo partem dessa pasta.
 
-## Configuração
+### 1. Experimentar com dados simulados
 
-Na instalação normal, abra **Ulanzi Libre Bridge** e use **Configurar agora**. O atalho abaixo permanece disponível para desenvolvimento e suporte:
+Em um clone novo, execute:
+
+```powershell
+npm.cmd run demo
+```
+
+O comando simula **112 mg/dL com tendência estável**, imprime os dados que seriam enviados ao AWTRIX NG e ao AWTRIX 3 e encerra. Não consulta uma fonte real nem envia comandos ao relógio. Não é necessário criar `.env`, configurar credenciais ou executar `npm install` para essa demonstração.
+
+Se já existir um `.env`, suas opções também serão carregadas; a fonte continua sendo `mock` e o envio permanece desativado. Esse comando demonstra o processamento no terminal, sem abrir o painel gráfico.
+
+### 2. Configurar a aplicação
 
 ```powershell
 .\configurar.cmd
 ```
 
-O configurador abre um assistente gráfico unificado de sete etapas: preparação, AWTRIX NG, fonte, conexão da fonte, TC001, preferências e revisão. Para um relógio novo, ele verifica portas seriais apenas como indício de cabo de dados, explica backup e risco, e abre a [ferramenta oficial de gravação](https://blueforcer.github.io/awtrix-ng/getting-started/flashing/) somente depois de uma confirmação explícita. O navegador continua responsável por pedir a porta e autorizar a gravação; o Ulanzi Libre não baixa firmware, não escolhe uma porta e não apaga o dispositivo automaticamente.
+O assistente conduz sete etapas: preparação, AWTRIX NG, fonte de glicemia, conexão da fonte, TC001, preferências e revisão. Tenha em mãos o endereço do relógio, a URL da fonte e, quando necessário, suas credenciais de acesso.
 
-Depois da gravação, o mesmo assistente orienta a entrar na rede aberta `awtrixng-*`, abrir o portal `192.168.4.1`, cadastrar o Wi-Fi diretamente no TC001 e voltar ao computador. A senha do Wi-Fi nunca passa pelo Ulanzi Libre. A busca usa o broadcast oficial `FIND_AWTRIXNG` nas portas UDP 4210/4211, com fallback para endereços conhecidos e IP manual, sem varrer a sub-rede. Quem já possui AWTRIX e Wi-Fi prontos usa o caminho curto.
+Escolha a duração correspondente ao seu modelo de sensor e confirme os testes de conexão antes de concluir. **Os alarmes automáticos começam desligados.** Credenciais são informadas apenas na interface local; não as coloque em issues, capturas ou arquivos enviados ao GitHub.
 
-Os testes de rede rodam em segundo plano, mostram progresso e podem ser cancelados sem travar a janela. A ajuda ao lado dos campos explica onde encontrar a URL e o acesso do Nightscout e o endereço do TC001. O assistente só permite concluir depois que a fonte e o relógio responderem, exige a escolha da duração do sensor e destaca na revisão que os alarmes começam desligados. O modo de demonstração fica identificado como dados simulados e nunca deve ser confundido com acompanhamento real. Para suporte técnico ou ambientes sem interface gráfica, o modo textual existe somente quando solicitado com `configurar.cmd -Console`; uma falha da interface nunca deixa perguntas aguardando num terminal oculto.
-
-O assistente grava opções não secretas em `.env`. Tokens e senhas ficam criptografados pelo DPAPI do Windows em `.secrets`; somente o mesmo usuário do Windows consegue descriptografá-los. Os dois arquivos usam uma geração comum: uma gravação parcial ou um cofre ausente faz o início falhar fechado, sem reaproveitar credenciais antigas por engano.
-
-Configure diretamente a URL `https://` final de cada fonte. `http://` só é aceito para um serviço no próprio computador (`localhost`/loopback). O bridge não segue redirecionamentos HTTP, evitando que cabeçalhos de autenticação sejam enviados a outro host. Não coloque senhas ou tokens na URL.
-
-Com Nightscout, o bridge consulta o evento mais recente `Sensor Start` ou `Sensor Change`. Quando a vida útil configurada em `LIBRE_SENSOR_LIFETIME_DAYS` termina, o TC001 mostra `TROCAR` em vez de confundir o encerramento previsto do sensor com o estado genérico `SEM DADO`. A duração varia conforme o modelo do Libre e precisa ser escolhida explicitamente no assistente: 14 dias, 15 dias ou um valor personalizado. `TROCAR` é somente visual e não reutiliza o alarme sonoro de `SEM DADO`; uma leitura baixa ou alta ainda válida mantém prioridade até vencer. A consulta de tratamentos é auxiliar: se ela falhar ou não existir, as leituras de glicemia continuam funcionando e o bridge mantém `SEM DADO` como fallback seguro.
-
-### Painel geral
-
-Depois da instalação inicial, dê duplo clique no ícone do Ulanzi Libre perto do relógio do Windows ou escolha **Abrir painel** no menu. Se `.env` e o cofre protegido ainda não formarem uma configuração válida, o bridge permanece parado e não entra em ciclo de retentativas. O painel mostra **Vamos configurar o Ulanzi Libre** com a ação principal **Configurar agora**; cancelar mantém esse estado claro. Somente depois de validar novamente os arquivos salvos o aplicativo inicia a conexão e atualiza o painel. No uso configurado, o painel modeless reúne cinco áreas:
-
-No uso normal, o aplicativo inicia pelo atalho do Windows sem abrir Prompt de Comando ou PowerShell visível. A janela é um painel WinForms próprio, com ícone e identidade do Ulanzi Libre na barra de tarefas; o PowerShell permanece apenas como componente hospedeiro interno nesta versão. Os arquivos `iniciar.cmd` e `configurar.cmd` são mantidos para desenvolvimento, diagnóstico e uso em primeiro plano — por definição, executá-los mostra um terminal.
-
-- **Início:** leitura atual e estado dos alertas em primeiro lugar, seguidos pela fonte, envio ao TC001, aplicativo e som;
-- **Alertas:** limites, comportamento dos alarmes, duração do aviso, liga/desliga e teste do som;
-- **Tela e sensor:** faixa visual, atualização das leituras, duração do modelo do sensor e mostrador flutuante;
-- **Conexões:** fonte, horário da leitura e entrega ao TC001, com acesso ao Nightscout e ao diagnóstico;
-- **Suporte:** diagnóstico, relatório higienizado, atualização, recuperação e reinício.
-
-No topo é possível usar o tema do Windows ou escolher **Claro** ou **Escuro**. A preferência é aplicada imediatamente às janelas e não reinicia o bridge nem altera a configuração clínica. O menu da bandeja fica deliberadamente curto: painel, glicemia e status resumidos, mostrador, Nightscout, reinício e encerramento.
-
-A tela de configurações organiza as opções pela tarefa do usuário: **Alertas e som**, **Comportamento**, **Tela e sensor** e **Conexão e avisos**. Limites visuais e limites que disparam som continuam independentes. Repetições e comportamento ao iniciar ficam juntos; atualização e validade das leituras ficam com a tela; avisos do Windows e tentativas de entrega ficam com as conexões. **Usar valores recomendados** redefine apenas ajustes de funcionamento, preservando limites pessoais, tipos de alerta, duração do sensor, controle geral dos alarmes e a escolha de receber avisos do Windows.
-
-O botão **Salvar e aplicar** valida todos os valores, grava o arquivo ativo, relê cada campo para confirmar a persistência e reinicia somente o bridge. Um asterisco no botão indica alterações pendentes; fechar pelo X ou por **Cancelar** pede confirmação antes de descartá-las. Erros de validação, alterações concorrentes e conflitos com o cofre são detectados antes da troca. A tela preserva comentários e opções futuras, não altera o cofre de credenciais e cria uma cópia local anterior à mudança. As três cópias válidas mais recentes podem ser restauradas em **Suporte**. Mudanças que iniciam um novo acompanhamento dos episódios de alarme exigem uma confirmação explícita.
-
-O painel não exibe segredos. Para trocar a fonte de dados, endereço do TC001, usuário, senha ou token, abra **Conexões > Refazer configuração**. O aplicativo reutiliza o mesmo assistente unificado e só substitui os dados atuais depois da revisão final.
-
-### Opções de alarme
-
-`GLUCOSE_ALARM_ENABLED` é o controle geral. Quando ele está desligado, as demais opções permanecem configuradas, mas nenhum som automático é enviado.
-
-| Variável | Padrão | Efeito |
-| --- | ---: | --- |
-| `GLUCOSE_ALARM_SOUND_PROFILE` | `normal` | Ajusta o padrão, a duração e as pausas: `discreet`, `normal` ou `reinforced`. |
-| `GLUCOSE_ALARM_ENABLED` | `false` | Controle geral; novas instalações exigem que o usuário opte por ativá-lo. |
-| `GLUCOSE_ALARM_LOW_THRESHOLD_MGDL` | `70` | Limite pessoal que dispara o som de glicemia baixa; é separado da faixa visual. |
-| `GLUCOSE_ALARM_HIGH_THRESHOLD_MGDL` | `180` | Limite pessoal que dispara o som de glicemia alta; é separado da faixa visual. |
-| `GLUCOSE_ALARM_UP_SLIGHT_THRESHOLD_MGDL` | `140` | Limite estrito para a seta diagonal: toca somente acima do valor. |
-| `GLUCOSE_ALARM_DOWN_THRESHOLD_MGDL` | `90` | Limite estrito para as setas `down` e `down-slight`: toca somente abaixo do valor. |
-| `GLUCOSE_ALARM_DOUBLE_UP_ENABLED` | `true` | Inclui a seta dupla para cima nos alertas de subida. |
-| `GLUCOSE_ALARM_NO_DATA_ENABLED` | `true` | Alerta uma vez por episódio de `SEM DADO`, inclusive se o bridge iniciar sem uma leitura válida. |
-| `GLUCOSE_ALARM_HYSTERESIS_MGDL` | `5` | Exige afastamento do limite antes de rearmar um alarme por valor. |
-| `GLUCOSE_ALARM_COOLDOWN_MINUTES` | `5` | Impõe intervalo mínimo antes de rearmar o mesmo tipo de alarme. |
-| `GLUCOSE_ALARM_ON_STARTUP_EXTREME` | `true` | Alerta se a primeira leitura válida já estiver baixa ou alta. |
-| `GLUCOSE_ALARM_ON_RECOVERY_EXTREME` | `true` | Alerta se a leitura voltar de `SEM DADO` baixa ou alta. |
-| `GLUCOSE_ALARM_MAX_DELIVERY_ATTEMPTS` | `3` | Limita cada sequência curta de tentativas de entregar um comando de som. |
-| `GLUCOSE_ALARM_DELIVERY_RETRY_SECONDS` | `30` | Define o intervalo entre tentativas de entrega. |
-| `WINDOWS_FALLBACK_ALERT_ENABLED` | `false` | Ativa avisos locais de contingência, sem mostrar o valor da glicemia. |
-| `WINDOWS_STATUS_NOTIFICATION_DELAY_MINUTES` | `2` | Exige que uma falha operacional persista antes do aviso do Windows. |
-
-Os valores em mg/dL continuam nessa unidade mesmo quando `DISPLAY_UNITS=mmol`. A histerese aceita de 0 a 30 mg/dL e, quando os alarmes estão ativos, precisa ser menor que metade da distância entre os limites sonoros baixo e alto; isso impede que os dois episódios se sobreponham. Instalações existentes sem os limites sonoros de baixa e alta usam temporariamente os limites visuais como fallback compatível; sem o novo limite de queda, usam automaticamente 90 mg/dL. O configurador valida os intervalos antes de substituir a configuração ativa; consulte também [.env.example](.env.example) para todos os nomes.
-
-Os perfis sonoros controlam a **intensidade percebida**, não um volume real em dB. O piezo do TC001 pode responder de forma pouco linear aos valores intermediários do firmware e soar praticamente como ligado ou desligado. Os padrões agora duram aproximadamente 0,6 segundo em `discreet`, 1,2 segundo em `normal` e 2,1 segundos em `reinforced`; o último repete a sequência para chamar mais atenção. Essa escolha afeta somente os alarmes enviados por este bridge. O campo em segundos de **Intervalo para reenviar se houver falha** não é a duração do som: ele apenas define quanto o sistema espera antes de uma nova tentativa de entrega.
-
-Antes de usar dados reais, valide toda a renderização:
+### 3. Abrir o painel e manter o bridge na bandeja
 
 ```powershell
-# Gera os payloads sem acessar o relógio
-.\iniciar.cmd --source=mock --once --dry-run
-
-# Envia 112 mg/dL e tendência estável ao TC001
-.\iniciar.cmd --source=mock --once
+wscript.exe .\scripts\iniciar-oculto.vbs /OpenPanel
 ```
 
-Para iniciar o serviço em primeiro plano:
+O painel abre e o aplicativo fica disponível na bandeja do Windows, perto do relógio do sistema. Use **Encerrar** no menu da bandeja para encerrá-lo. Se a configuração estiver incompleta, o painel oferece **Configurar agora** e mantém o bridge parado até a validação.
+
+Para desenvolvimento ou suporte, também é possível executar em primeiro plano:
 
 ```powershell
 .\iniciar.cmd
 ```
 
-## Status, diagnóstico, som e contingência
+Esse comando mantém um terminal visível; use `Ctrl+C` para parar. Ele também é o comportamento de `npm.cmd start`.
 
-O status de execução v2 usa `version: 2` e separa as informações em `bridge`, `source`, `reading`, `clock`, `tc001`, `sound` e `deviceSound`. O painel mostra a situação da fonte, a idade da leitura, a coerência do horário, o último envio aceito pelo TC001, o último comando de som aceito e o estado conhecido do buzzer geral. Assim, processo em execução, fonte saudável, entrega ao relógio e capacidade de produzir áudio deixam de ser tratados como a mesma coisa.
+## Configuração e uso diário
 
-**Executar teste completo** reúne esses dados e conduz testes reais do visor e do buzzer. A pessoa confirma o que viu e ouviu, porque uma resposta HTTP não prova que os LEDs ou o piezo funcionaram fisicamente. O diagnóstico permanece acessível mesmo se o bridge não iniciar. **Exportar diagnóstico** cria um JSON higienizado: segredos e leituras de glicemia são removidos novamente antes da gravação.
+O painel reúne cinco áreas:
 
-**Ligar ou desligar som do TC001** abre uma janela para controlar o buzzer geral e executar um teste auditivo. A aplicação preserva o nível técnico já armazenado pelo firmware, mas não o apresenta como volume gradual: no piezo do TC001, valores entre 1% e 100% podem soar praticamente iguais. Desligar o buzzer é uma ação global e também silencia melodias de outros aplicativos.
+| Área | Ações principais |
+| --- | --- |
+| **Início** | Consultar a leitura e a situação do aplicativo, fonte, TC001 e som. |
+| **Alertas** | Ajustar limites, padrões sonoros, repetições e ativação dos alarmes. |
+| **Tela e sensor** | Configurar apresentação, atualização, duração do sensor e mostrador flutuante. |
+| **Conexões** | Conferir fonte e entrega ao relógio, abrir o Nightscout e refazer a configuração. |
+| **Suporte** | Executar diagnóstico, exportar relatório, recuperar configuração e reiniciar. |
 
-Para mudar a intensidade percebida somente dos alertas deste bridge, use **Configurações > Alertas > Padrão dos avisos**. `discreet` produz bipes muito breves e espaçados, `normal` usa uma sequência curta e `reinforced` repete a sequência. Isso controla tempo e repetição, não a tensão nem um nível em dB.
+**Salvar e aplicar** valida os campos, grava e confirma os valores e reinicia o bridge para aplicá-los. O aplicativo preserva as três configurações válidas mais recentes. Para trocar endereços, tokens ou senhas, use **Conexões > Refazer configuração**.
 
-O controle direto do buzzer está habilitado somente no AWTRIX NG quando o hardware é anunciado pelo firmware. O teste confirma que o endpoint HTTP aceitou o comando; não consegue confirmar que o piezo produziu áudio fisicamente. Por isso a janela pede que a pessoa confirme se ouviu a melodia e bloqueia o teste quando o estado conhecido está desligado ou sem pulsos.
+Os principais padrões estão abaixo. Eles descrevem o comportamento inicial do programa e **não são recomendações clínicas**.
 
-Na aba **Conexão e avisos**, a contingência do Windows pode ser ativada opcionalmente. Depois do atraso configurado, ela avisa uma única vez por falha persistente do aplicativo, da fonte, do TC001 ou do horário. Também produz um aviso local quando o TC001 não confirma um alarme de baixa, alta, subida, queda ou `SEM DADO`. As notificações não exibem o valor da glicemia e ficam desligadas por padrão para evitar duplicidade com outros aplicativos médicos.
+| Opção | Padrão |
+| --- | --- |
+| Consulta da fonte | A cada 60 segundos. |
+| Validade máxima da leitura | 15 minutos; depois disso, o visor mostra `SEM DADO`. |
+| Unidade no visor | mg/dL; também aceita mmol/L. |
+| Faixa visual inicial | Limites de 70 e 180 mg/dL, configuráveis. |
+| Alarmes sonoros automáticos | Desligados. |
+| Avisos de contingência no Windows | Desligados. |
+| Duração do sensor | Escolha explícita no assistente: 14 dias, 15 dias ou valor personalizado. |
 
-Os logs operacionais ficam em `.runtime/logs`, têm rotação automática e são tolerantes a falhas de disco. Por padrão, tanto a saída quanto os arquivos removem credenciais e valores de glicemia. Um relatório exportado aplica uma segunda sanitização; ainda assim, revise-o antes de compartilhar.
+O arquivo [.env.example](.env.example) documenta as opções disponíveis. Para uso normal, prefira o assistente: ele mantém a correspondência entre configuração e cofre de credenciais. Não copie o `.env.example` por cima de uma instalação já configurada.
 
-## Atualizações e recuperação
+## Fontes de dados
 
-**Atualizações e recuperação...** permite verificar manualmente um canal configurado pelo distribuidor, ler as notas, baixar e iniciar o instalador. O programa limita redirecionamentos, exige HTTPS, confere o SHA-256, exige Authenticode válido e compara o publicador do manifesto e do certificado com uma identidade fixada localmente. Qualquer divergência bloqueia a execução. Nenhum instalador é executado silenciosamente.
+| Fonte | Finalidade | Autenticação |
+| --- | --- | --- |
+| `nightscout` | Ler a entrada mais recente de uma instância Nightscout. | Access token ou `API_SECRET`; o `API_SECRET` é enviado como hash no cabeçalho da API. |
+| `json` | Integrar um endpoint autorizado que forneça o formato abaixo. | Token opcional, conforme o serviço. |
+| `mock` | Simular uma leitura para testes e demonstração. | Não exige credenciais. |
 
-O canal fica desativado enquanto `UPDATE_MANIFEST_URL` e `UPDATE_EXPECTED_PUBLISHER` estiverem vazios. Esses valores devem ser definidos por quem publica a distribuição; não aceite valores recebidos por mensagem informal. A mesma janela restaura configurações anteriores, inclusive quando a configuração atual ficou inválida, preservando o estado problemático numa quarentena local para possível suporte.
+Use a URL HTTPS final da fonte, sem credenciais na URL. HTTP é aceito para fontes somente no próprio computador (`localhost`/loopback). As consultas de glicemia não seguem redirecionamentos para evitar o encaminhamento de autenticação a outro destino.
 
-## Instalação e distribuição pública
+O [guia de integração com Nightscout](GUIA-NIGHTSCOUT.md) descreve a preparação da fonte e as limitações de conectores comunitários. O bridge não inclui nem mantém esses conectores.
 
-O instalador Inno Setup funciona por usuário, pode incluir um Node.js portátil previamente verificado, oferece inicialização com o Windows e preserva `.env`, `.secrets`, `.runtime` e o histórico durante reparos ou desinstalação. O menu Iniciar oferece uma única entrada pública, **Ulanzi Libre Bridge**; primeira configuração e reconfiguração ficam dentro do painel, sem abrir terminal. Os scripts de release usam uma allowlist literal e recusam configurações, backups, firmware e credenciais.
+### Contrato do endpoint JSON
 
-As instruções do mantenedor estão em [PUBLICACAO.md](PUBLICACAO.md), e as políticas em [PRIVACY.md](PRIVACY.md) e [SECURITY.md](SECURITY.md). Uma release pública confiável ainda exige do mantenedor um certificado real de assinatura de código, um canal HTTPS definitivo, identidade de publicador fixada e testes numa máquina Windows limpa.
+Exemplo fictício de resposta:
 
-Também é possível executar os testes sem instalar pacotes:
-
-```powershell
-npm.cmd test
+```json
+{
+  "valueMgDl": 112,
+  "trend": "flat",
+  "timestamp": "2026-01-01T12:00:00Z"
+}
 ```
 
-## Comportamento de segurança
+O valor de entrada é em **mg/dL**, mesmo quando o visor está configurado em mmol/L. `timestamp` deve representar o instante real da leitura; a data fictícia acima ficará vencida se for reutilizada.
 
-Quando o controle geral é ativado pelo usuário, o alarme sonoro opcional toca com o perfil escolhido para glicemia baixa ou alta, setas para cima (`up` e `double-up`), seta diagonal para cima (`up-slight`) acima do limite configurado, setas para baixo (`down` e `down-slight`) abaixo do limite configurado e perda de dados. O valor exato dos limites estritos de tendência não dispara som. A seta dupla para baixo (`double-down`) não integra esse alerta. As opções de primeira leitura e recuperação de `SEM DADO` permanecem configuráveis. Alarmes de limite têm prioridade sobre tendência e indisponibilidade.
+Tendências aceitas: `double-up`, `up`, `up-slight`, `flat`, `down-slight`, `down`, `double-down` e `unknown`. As cores e os alarmes são calculados localmente a partir da leitura e das configurações.
 
-Histerese e cooldown evitam que pequenas oscilações rearmem continuamente o mesmo alarme. Se o TC001 não aceitar o comando, o bridge faz a sequência curta configurada e, enquanto a condição continuar válida, mantém o alarme pendente para uma nova sequência após uma pausa maior. As retentativas de áudio são independentes das consultas à fonte de glicemia. Uma resposta HTTP aceita confirma somente a entrega do comando ao firmware, não que o áudio foi fisicamente ouvido. A opção geral de som pertence ao AWTRIX; a janela do buzzer apenas consulta e liga ou desliga esse recurso no próprio relógio.
+## Alarmes e validade das leituras
 
-O estado dos alarmes e das entregas pendentes é salvo em `.runtime/alarm-state.json`, tanto pela bandeja quanto na execução contínua por `iniciar.cmd`. Assim, reiniciar o bridge não transforma automaticamente uma condição já conhecida em um alarme novo, e uma entrega ainda pendente pode continuar depois da reinicialização. Um snapshot antigo demais é descartado; a janela de restauração acompanha o maior prazo relevante entre validade da leitura, cooldown e retentativas.
+Os limites de cor do visor e os limites de alarme são independentes. Quando ativados, os alertas podem acompanhar valores baixos ou altos, tendências de subida ou queda e falta de dados. Histerese e intervalo de rearme reduzem repetições provocadas por pequenas oscilações.
 
-- Valores são coloridos somente para visualização; os limites configurados não são recomendações médicas.
-- A idade é calculada a partir do horário da leitura, não do horário da consulta.
-- Com 15 minutos (configurável), o valor é substituído por `SEM DADO`.
-- Cada atualização recebe uma expiração baseada no tempo restante. Se o bridge parar, o app de glicemia é removido do relógio em vez de deixar um número antigo parecendo atual.
-- Falhas têm retentativa gradual, evitando uma sequência agressiva de acessos.
-- Payloads frequentes ficam em RAM; o bridge nunca usa `save: true` no AWTRIX 3.
-- A API do relógio deve permanecer apenas numa LAN/VLAN confiável e nunca ter porta encaminhada no roteador. O AWTRIX usa HTTP sem TLS: Basic Auth controla acesso, mas Base64 não criptografa a senha nem a glicemia contra alguém capaz de capturar o tráfego da rede.
-- O AP inicial e o fallback de provisionamento são abertos. Antes de informar credenciais permanentes, siga [`GUIA-SEGURANCA-AWTRIX.md`](GUIA-SEGURANCA-AWTRIX.md).
+- **Perfis de som:** `discreet`, `normal` e `reinforced`, com padrões mais breves ou repetidos. Eles mudam a duração e o padrão dos bipes; não representam um volume calibrado em dB.
+- **Tendências:** há regras para `up`, `double-up`, `up-slight`, `down` e `down-slight`. A seta `double-down` é exibida, mas não possui uma regra sonora própria.
+- **SEM DADO:** indica leitura indisponível ou vencida. A idade é calculada pelo horário da leitura, não pelo momento em que o computador a recebeu.
+- **TROCAR:** com Nightscout, usa o evento mais recente `Sensor Start` ou `Sensor Change` e a duração configurada para indicar o fim previsto do sensor. Se essa informação não estiver disponível, o bridge mantém o tratamento de leitura vencida como `SEM DADO`.
+- **Expiração no relógio:** os comandos incluem validade para evitar que uma leitura antiga permaneça no TC001 como se ainda estivesse atual quando o bridge parar.
+- **Retentativas:** falhas de entrega são tratadas separadamente das consultas à fonte. O estado dos alarmes é salvo localmente para reduzir avisos duplicados após reinícios.
 
-## Referências
+`TROCAR` é um aviso visual e não dispara o som de `SEM DADO`. Uma leitura baixa ou alta ainda válida mantém prioridade até vencer.
 
-- [AWTRIX NG: API HTTP](https://blueforcer.github.io/awtrix-ng/reference/http/)
-- [AWTRIX NG: payloads](https://blueforcer.github.io/awtrix-ng/reference/payload/)
-- [AWTRIX NG: sons](https://blueforcer.github.io/awtrix-ng/guides/sounds/)
-- [AWTRIX NG: ajustes do dispositivo](https://blueforcer.github.io/awtrix-ng/reference/settings/)
-- [AWTRIX 3: limitação do volume no buzzer passivo](https://github.com/Blueforcer/awtrix3/issues/724)
-- [Abbott: guia LibreLinkUp Brasil](https://www.freestyle.abbott/content/dam/adc/fds/br-pt/images/products/guias-aprovados/06-Guia-LibreLinkUp.pdf.coredownload.pdf)
-- [Abbott: avisos e limitações](https://www.freestyle.abbott/pt-br/disclaimers.html)
+<details>
+<summary><strong>Referência das principais opções de alarme</strong></summary>
+
+| Variável | Padrão | Função |
+| --- | --- | --- |
+| `GLUCOSE_ALARM_ENABLED` | `false` | Controle geral dos alarmes automáticos. |
+| `GLUCOSE_ALARM_SOUND_PROFILE` | `normal` | Padrão sonoro: `discreet`, `normal` ou `reinforced`. |
+| `GLUCOSE_ALARM_LOW_THRESHOLD_MGDL` | `70` | Limite sonoro de baixa. |
+| `GLUCOSE_ALARM_HIGH_THRESHOLD_MGDL` | `180` | Limite sonoro de alta. |
+| `GLUCOSE_ALARM_UP_SLIGHT_THRESHOLD_MGDL` | `140` | Alerta de `up-slight` somente acima deste valor. |
+| `GLUCOSE_ALARM_DOWN_THRESHOLD_MGDL` | `90` | Alerta de `down` e `down-slight` somente abaixo deste valor. |
+| `GLUCOSE_ALARM_DOUBLE_UP_ENABLED` | `true` | Inclui `double-up` nos alertas de subida. |
+| `GLUCOSE_ALARM_NO_DATA_ENABLED` | `true` | Alerta uma vez por episódio de falta de dados. |
+| `GLUCOSE_ALARM_HYSTERESIS_MGDL` | `5` | Folga para rearmar os alarmes por valor. |
+| `GLUCOSE_ALARM_COOLDOWN_MINUTES` | `5` | Intervalo mínimo antes de rearmar o mesmo alarme. |
+| `GLUCOSE_ALARM_ON_STARTUP_EXTREME` | `true` | Permite alerta se a primeira leitura válida estiver baixa ou alta. |
+| `GLUCOSE_ALARM_ON_RECOVERY_EXTREME` | `true` | Permite alerta se a leitura voltar de `SEM DADO` baixa ou alta. |
+| `GLUCOSE_ALARM_MAX_DELIVERY_ATTEMPTS` | `3` | Tentativas por sequência de entrega de um comando sonoro. |
+| `GLUCOSE_ALARM_DELIVERY_RETRY_SECONDS` | `30` | Intervalo entre tentativas de entrega. |
+| `WINDOWS_FALLBACK_ALERT_ENABLED` | `false` | Avisos locais de contingência, sem mostrar o valor da glicemia. |
+| `WINDOWS_STATUS_NOTIFICATION_DELAY_MINUTES` | `2` | Atraso antes de avisar sobre uma falha operacional persistente. |
+
+As opções individuais só produzem alarmes automáticos quando o controle geral está ligado. Os limites permanecem em mg/dL mesmo com o visor em mmol/L. A histerese é validada para impedir a sobreposição dos limites de baixa e alta.
+
+</details>
+
+O diagnóstico pede confirmação do que você viu e ouviu: uma resposta HTTP confirma o recebimento do comando, mas não prova que os LEDs ou o buzzer funcionaram. O controle direto de ligar/desligar o buzzer depende do AWTRIX NG e do hardware anunciado pelo firmware; desligá-lo também afeta sons de outros aplicativos do relógio.
+
+## Privacidade e segurança
+
+O bridge não possui telemetria, publicidade, conta própria ou servidor do projeto. O processamento é local; a fonte escolhida, o firmware e eventuais serviços de atualização têm seus próprios comportamentos e políticas.
+
+| Arquivo ou pasta local | Conteúdo |
+| --- | --- |
+| `.env` | Endereços e preferências de funcionamento; não deve ser compartilhado. |
+| `.secrets/` | Credenciais protegidas pelo DPAPI, vinculadas ao usuário do Windows. |
+| `.runtime/` | Estado operacional, alarmes e logs rotativos. |
+| `.config-history/` | Cópias locais para recuperação da configuração. |
+| `.updates/` | Arquivos de atualização baixados mediante ação do usuário. |
+
+Esses caminhos ficam fora do Git. Apenas [.env.example](.env.example), com valores de exemplo, é publicado. Logs e relatórios passam por sanitização; revise qualquer exportação antes de compartilhá-la. A desinstalação preserva os dados locais por padrão.
+
+A comunicação com o TC001 usa HTTP na rede local. Autenticação básica não criptografa o tráfego: mantenha o relógio em uma rede confiável e não exponha sua API à internet. Veja o [guia de segurança do AWTRIX](GUIA-SEGURANCA-AWTRIX.md).
+
+O atualizador permanece desativado enquanto o distribuidor não configurar o canal e o publicador esperado. Quando configurado, verifica HTTPS, SHA-256 e assinatura Authenticode antes de permitir a execução do instalador. A publicação do código no GitHub, por si só, não ativa esse canal.
+
+Consulte a [política de privacidade](PRIVACY.md) e a [política de segurança](SECURITY.md). Relate vulnerabilidades pelo [canal privado do GitHub](https://github.com/Ptraskus/ulanzi-libre-bridge/security/advisories/new).
+
+## Solução de problemas
+
+| Situação | O que verificar |
+| --- | --- |
+| `node` não é reconhecido | Instale Node.js 22 ou superior, reabra o terminal e confira `node --version`. |
+| O painel pede configuração | Use **Configurar agora**. Uma configuração incompleta ou um cofre incompatível impede o início do bridge. |
+| O TC001 não responde | Confira se ele usa AWTRIX, o endereço configurado, a rede local e os resultados dos testes do assistente. |
+| O visor mostra `SEM DADO` | Verifique a leitura e seu horário na fonte, a conexão e o prazo de validade configurado. |
+| A leitura aparece, mas não há som | Confira o controle geral dos alarmes, o buzzer do relógio e o teste auditivo em **Suporte**. |
+| Credenciais não funcionam após mudar de usuário ou computador | Refaça a configuração: a proteção DPAPI não permite tratar o cofre como um arquivo portátil de senhas. |
+| Atualizações indisponíveis | O canal fica inativo sem um manifesto e publicador configurados pelo distribuidor. |
+
+Para uma falha persistente, abra **Suporte**, execute o diagnóstico e revise o relatório exportado antes de compartilhá-lo. Não publique `.env`, cofres, dados de glicemia ou capturas com informações pessoais.
+
+## Desenvolvimento e contribuição
+
+### Comandos disponíveis
+
+```powershell
+# Verificação de sintaxe do ponto de entrada
+npm.cmd run check
+
+# Suíte automatizada
+npm.cmd test
+
+# Demonstração com fonte simulada, sem envio ao relógio
+npm.cmd run demo
+```
+
+A suíte inclui testes da lógica Node.js e da interface PowerShell/WinForms; use Windows para validar o conjunto. Testes automatizados não substituem a confirmação física de visor, som e instalação em um TC001 real.
+
+Depois de configurar uma fonte, estes comandos ajudam no diagnóstico:
+
+```powershell
+# Consulta a fonte configurada e imprime o resultado sem enviar ao TC001
+.\iniciar.cmd --once --dry-run
+
+# Consulta a fonte configurada e envia uma leitura ao TC001
+.\iniciar.cmd --once
+
+# Configurador textual, para suporte
+.\configurar.cmd -Console
+```
+
+### Organização do projeto
+
+```text
+src/           Consulta de fontes, validação, visor, alarmes e diagnóstico
+src/sources/   Adaptadores Nightscout, JSON e mock
+scripts/       Interface Windows, configuração, execução e build
+test/          Testes automatizados
+installer/     Definição do instalador e inicializadores
+release/       Lista de arquivos permitidos e contratos de atualização
+assets/        Ícone da aplicação
+presentation/  Roteiro e gerador da apresentação técnica
+```
+
+Para contribuir, abra uma [issue](https://github.com/Ptraskus/ulanzi-libre-bridge/issues) ou um pull request com o problema, a mudança proposta e como ela foi validada. Use dados fictícios nos exemplos e execute os testes relevantes. Vulnerabilidades e segredos devem seguir o canal privado de segurança.
+
+## Documentação e licença
+
+| Documento | Conteúdo |
+| --- | --- |
+| [GUIA-NIGHTSCOUT.md](GUIA-NIGHTSCOUT.md) | Preparação da fonte Nightscout e limitações das integrações. |
+| [GUIA-SEGURANCA-AWTRIX.md](GUIA-SEGURANCA-AWTRIX.md) | Cuidados com firmware, provisionamento e rede do relógio. |
+| [.env.example](.env.example) | Referência das opções de configuração. |
+| [PRIVACY.md](PRIVACY.md) | Dados processados, armazenamento local e controle do usuário. |
+| [SECURITY.md](SECURITY.md) | Escopo de segurança e comunicação de vulnerabilidades. |
+| [PUBLICACAO.md](PUBLICACAO.md) | Build, assinatura, instaladores, atualização e publicação. |
+| [Apresentação técnica](presentation/ROTEIRO-APRESENTACAO.md) | Visão da arquitetura e pontos para discussão técnica. |
+
+O código deste projeto está sob a [licença MIT](LICENSE). AWTRIX, Nightscout, Node.js e outros componentes externos mantêm suas próprias licenças e condições de uso.
