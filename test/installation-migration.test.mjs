@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { access, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, copyFile, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -96,7 +96,8 @@ test("upgrade reuses the historical folder, removes obsolete owned branding and 
     await assert.rejects(access(join(installed, "assets", "ulanzi-libre.ico")), { code: "ENOENT" });
     await assert.rejects(access(join(setup.local, "Programs", "Ulanzi Glucose Bridge")), { code: "ENOENT" });
     const metadata = JSON.parse(await readFile(join(installed, ".install", "installation.json"), "utf8"));
-    assert.equal(metadata.installPath, installed);
+    // Windows may report the same directory through a short (8.3) or long path.
+    assert.equal((await realpath(metadata.installPath)).toLowerCase(), (await realpath(installed)).toLowerCase());
     assert.equal(metadata.shellIntegration, false);
     assert.match(metadata.rollbackSnapshot, /Ulanzi Glucose Bridge[\\/]rollback/);
     await access(join(metadata.rollbackSnapshot, "src", "index.mjs"));
