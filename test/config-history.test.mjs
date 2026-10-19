@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtemp, mkdir, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, readdir, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import test from "node:test";
@@ -69,6 +69,53 @@ test("historico preserva, limita e restaura configuracao valida", async () => {
     });
     assert.match(await readFile(envPath, "utf8"), /LOW_THRESHOLD_MGDL=70/);
     assert.ok((await listConfigSnapshots({ historyDir })).length <= 3);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("Windows short ancestor aliases preserve valid snapshots without accepting junctions", {
+  skip: process.platform !== "win32",
+}, async (context) => {
+  const root = await mkdtemp(join(tmpdir(), "ulanzi-history-short-alias-"));
+  try {
+    const command = [
+      "$ErrorActionPreference = 'Stop'",
+      "$ProgressPreference = 'SilentlyContinue'",
+      "[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)",
+      "$fileSystem = New-Object -ComObject Scripting.FileSystemObject",
+      "$fileSystem.GetFolder($env:ULANZI_TEST_ALIAS_PATH).ShortPath",
+    ].join("\n");
+    const { stdout } = await execFileAsync("powershell.exe", [
+      "-NoProfile", "-NonInteractive", "-EncodedCommand", Buffer.from(command, "utf16le").toString("base64"),
+    ], { windowsHide: true, env: { ...process.env, ULANZI_TEST_ALIAS_PATH: root } });
+    const aliasRoot = stdout.trim();
+    const physicalRoot = await realpath(root);
+    if (resolve(aliasRoot).toLowerCase() === physicalRoot.toLowerCase()) {
+      context.skip("The temporary volume has no Windows 8.3 aliases available");
+      return;
+    }
+    assert.equal((await realpath(aliasRoot)).toLowerCase(), physicalRoot.toLowerCase());
+    const envPath = join(aliasRoot, ".env");
+    const vaultPath = join(aliasRoot, ".secrets", "vault.json");
+    const historyDir = join(aliasRoot, ".config-history");
+    await writeFile(envPath, envText(70));
+    const first = await createConfigSnapshot({ envPath, vaultPath, historyDir });
+    assert.deepEqual((await listConfigSnapshots({ historyDir })).map((item) => item.name), [first.name]);
+    await writeFile(envPath, envText(75));
+    await restoreConfigSnapshot({ envPath, vaultPath, historyDir, snapshotName: first.name });
+    assert.equal(await readFile(envPath, "utf8"), envText(70));
+
+    const external = await createConfigSnapshot({
+      envPath, vaultPath, historyDir: join(root, "external-history"),
+    });
+    await symlink(external.path, join(historyDir, external.name), "junction");
+    assert.equal((await listConfigSnapshots({ historyDir })).some((item) => item.name === external.name), false);
+    await assert.rejects(
+      restoreConfigSnapshot({ envPath, vaultPath, historyDir, snapshotName: external.name }),
+      (error) => error?.code === "INVALID_CONFIG_SNAPSHOT",
+    );
+    assert.equal(await readFile(envPath, "utf8"), envText(70));
   } finally {
     await rm(root, { recursive: true, force: true });
   }

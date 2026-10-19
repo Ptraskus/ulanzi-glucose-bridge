@@ -79,6 +79,7 @@ async function assertPhysicalSnapshotDirectory(historyDir, snapshotPath) {
       retryable: false,
     });
   }
+  return physicalSnapshotPath;
 }
 
 async function readRegularSnapshotFile(snapshotPath, fileName, { optional = false } = {}) {
@@ -107,8 +108,11 @@ async function readRegularSnapshotFile(snapshotPath, fileName, { optional = fals
 }
 
 async function readSnapshot(historyDir, snapshotPath) {
-  await assertPhysicalSnapshotDirectory(historyDir, snapshotPath);
-  const manifest = JSON.parse(await readRegularSnapshotFile(snapshotPath, "manifest.json"));
+  // Use the validated physical directory so harmless ancestor aliases (such as
+  // Windows 8.3 user-profile names) do not look like redirected snapshot files.
+  // Each child still needs lstat and an exact realpath check against this base.
+  const physicalSnapshotPath = await assertPhysicalSnapshotDirectory(historyDir, snapshotPath);
+  const manifest = JSON.parse(await readRegularSnapshotFile(physicalSnapshotPath, "manifest.json"));
   if (
     manifest?.version !== SNAPSHOT_VERSION ||
     manifest?.valid === false ||
@@ -121,8 +125,8 @@ async function readSnapshot(historyDir, snapshotPath) {
       retryable: false,
     });
   }
-  const envText = await readRegularSnapshotFile(snapshotPath, "config.env");
-  const vaultText = await readRegularSnapshotFile(snapshotPath, "vault.json", { optional: true });
+  const envText = await readRegularSnapshotFile(physicalSnapshotPath, "config.env");
+  const vaultText = await readRegularSnapshotFile(physicalSnapshotPath, "vault.json", { optional: true });
   if (
     sha256(envText) !== manifest.envSha256 ||
     (vaultText === null ? null : sha256(vaultText)) !== (manifest.vaultSha256 ?? null)
