@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "channel": "stable",
+  "version": "0.0.0-REPLACE",
+  "publishedAt": "REPLACE_WITH_ISO_8601_DATE",
+  "notes": "Substitua este arquivo pelo update-manifest.json gerado pelo build.",
+  "installer": {
+    "url": null,
+    "fileName": "REPLACE.exe",
+    "sha256": "",
+    "requireAuthenticode": true,
+    "publisher": ""
+  }
+}

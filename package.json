@@ -1,0 +1,16 @@
+{
+  "name": "ulanzi-libre-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Ponte local e segura entre uma fonte de glicemia e um Ulanzi TC001 com AWTRIX NG/3.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/iniciar.ps1",
+    "demo": "node src/index.mjs --source=mock --once --dry-run",
+    "test": "node --test",
+    "check": "node --check src/index.mjs"
+  }
+}

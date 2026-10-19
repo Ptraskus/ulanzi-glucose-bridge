@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ulanzi-libre-bridge:update-manifest:schema:1",
+  "title": "Ulanzi Libre Bridge update manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "channel",
+    "version",
+    "publishedAt",
+    "notes",
+    "installer"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "channel": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,19}$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-((?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*))?$"
+    },
+    "publishedAt": { "type": "string", "format": "date-time" },
+    "notes": { "type": "string", "maxLength": 4000 },
+    "installer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "url",
+        "fileName",
+        "sha256",
+        "requireAuthenticode",
+        "publisher"
+      ],
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://"
+        },
+        "fileName": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,119}\\.exe$"
+        },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "requireAuthenticode": { "const": true },
+        "publisher": { "type": "string", "minLength": 1, "maxLength": 200 }
+      }
+    }
+  }
+}
