@@ -1,4 +1,5 @@
 Set-StrictMode -Version Latest
+. (Join-Path $PSScriptRoot "ui-language.ps1")
 
 Add-Type -AssemblyName System.Drawing -ErrorAction Stop
 Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
@@ -123,7 +124,7 @@ function Get-UlanziUiPreferencePath {
             $localAppData = [Environment]::GetEnvironmentVariable("LOCALAPPDATA")
         }
         if ([string]::IsNullOrWhiteSpace($localAppData)) {
-            throw "Nao foi possivel localizar a pasta de preferencias do usuario."
+            throw (Get-UlanziText -Key 'Nao foi possivel localizar a pasta de preferencias do usuario.')
         }
         $PreferenceRoot = Join-Path $localAppData "Ulanzi Libre Bridge"
     }
@@ -174,6 +175,14 @@ function Set-UlanziUiThemePreference {
         schemaVersion = 1
         theme = $normalizedTheme
     }
+    if ([IO.File]::Exists($preferencePath)) {
+        try {
+            $existing = [IO.File]::ReadAllText($preferencePath, [Text.Encoding]::UTF8) | ConvertFrom-Json
+            foreach ($property in $existing.PSObject.Properties) {
+                if ($property.Name -notin @("schemaVersion", "theme")) { $payload[$property.Name] = $property.Value }
+            }
+        } catch { }
+    }
     $json = $payload | ConvertTo-Json -Depth 3 -Compress
     $utf8 = [Text.UTF8Encoding]::new($false)
     $temporaryPath = Join-Path $directory ("ui-preferences.{0}.tmp" -f [Guid]::NewGuid().ToString("N"))
@@ -193,13 +202,13 @@ function Set-UlanziUiThemePreference {
         $stream = $null
 
         if ([IO.File]::Exists($preferencePath)) {
-            [IO.File]::Replace($temporaryPath, $preferencePath, $null, $true)
+            [IO.File]::Replace($temporaryPath, $preferencePath, [NullString]::Value, $true)
         } else {
             try {
                 [IO.File]::Move($temporaryPath, $preferencePath)
             } catch [IO.IOException] {
                 if (-not [IO.File]::Exists($preferencePath)) { throw }
-                [IO.File]::Replace($temporaryPath, $preferencePath, $null, $true)
+                [IO.File]::Replace($temporaryPath, $preferencePath, [NullString]::Value, $true)
             }
         }
     } finally {
@@ -509,7 +518,7 @@ function Apply-UlanziUiTheme {
     $Palette = Get-UlanziUiPalette -Theme $Theme -PreferenceRoot $PreferenceRoot -HighContrast:$HighContrast
     foreach ($paletteName in $script:UlanziUiPaletteNames) {
         if ($null -eq $Palette.PSObject.Properties[$paletteName]) {
-            throw "A paleta nao contem a cor obrigatoria '$paletteName'."
+            throw (Get-UlanziText -Key 'A paleta nao contem a cor obrigatoria ''{0}''.' -Arguments @(($paletteName)))
         }
     }
 

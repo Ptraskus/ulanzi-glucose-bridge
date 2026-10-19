@@ -55,7 +55,7 @@ AppVersion={#AppVersion}
 AppVerName=Ulanzi Libre Bridge {#AppVersion}
 VersionInfoVersion={#AppVersionNumeric}
 VersionInfoProductName=Ulanzi Libre Bridge
-VersionInfoDescription=Instalador do Ulanzi Libre Bridge
+VersionInfoDescription=Ulanzi Libre Bridge Setup
 VersionInfoCompany=Ulanzi Libre Bridge contributors
 AppPublisher=Ulanzi Libre Bridge contributors
 DefaultDirName={localappdata}\Programs\Ulanzi Libre Bridge
@@ -81,13 +81,32 @@ UninstallDisplayIcon={app}\assets\ulanzi-libre.ico
 LicenseFile={#SourceDir}\LICENSE
 InfoBeforeFile={#SourceDir}\PRIVACY.md
 ChangesEnvironment=no
+ShowLanguageDialog=yes
+LanguageDetectionMethod=none
 
 [Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "brazilianportuguese"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
 
+[CustomMessages]
+english.StartupTask=Start automatically with Windows
+english.StartupGroup=Startup:
+english.DesktopTask=Create a desktop shortcut
+english.ShortcutGroup=Additional shortcuts:
+english.OpenApp=Open Ulanzi Libre Bridge
+english.UninstallApp=Uninstall Ulanzi Libre Bridge
+english.AppLanguage=en
+brazilianportuguese.StartupTask=Iniciar automaticamente com o Windows
+brazilianportuguese.StartupGroup=Inicialização:
+brazilianportuguese.DesktopTask=Criar um atalho na área de trabalho
+brazilianportuguese.ShortcutGroup=Atalhos adicionais:
+brazilianportuguese.OpenApp=Abrir o Ulanzi Libre Bridge
+brazilianportuguese.UninstallApp=Desinstalar Ulanzi Libre Bridge
+brazilianportuguese.AppLanguage=pt-BR
+
 [Tasks]
-Name: "startup"; Description: "Iniciar automaticamente com o Windows"; GroupDescription: "Inicialização:"; Flags: unchecked
-Name: "desktopicon"; Description: "Criar um atalho na área de trabalho"; GroupDescription: "Atalhos adicionais:"; Flags: unchecked
+Name: "startup"; Description: "{cm:StartupTask}"; GroupDescription: "{cm:StartupGroup}"; Flags: unchecked
+Name: "desktopicon"; Description: "{cm:DesktopTask}"; GroupDescription: "{cm:ShortcutGroup}"; Flags: unchecked
 
 [Files]
 ; Não use UninstallDelete recursivo: a pasta pode conter configuração, cofre,
@@ -96,7 +115,7 @@ Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs 
 
 [Icons]
 Name: "{group}\Ulanzi Libre Bridge"; Filename: "{sys}\wscript.exe"; Parameters: """{app}\installer\iniciar-instalado.vbs"" /OpenPanel"; WorkingDir: "{app}"; IconFilename: "{app}\assets\ulanzi-libre.ico"; AppUserModelID: "UlanziLibre.Bridge"
-Name: "{group}\Desinstalar Ulanzi Libre Bridge"; Filename: "{uninstallexe}"; IconFilename: "{app}\assets\ulanzi-libre.ico"
+Name: "{group}\{cm:UninstallApp}"; Filename: "{uninstallexe}"; IconFilename: "{app}\assets\ulanzi-libre.ico"
 Name: "{autodesktop}\Ulanzi Libre Bridge"; Filename: "{sys}\wscript.exe"; Parameters: """{app}\installer\iniciar-instalado.vbs"" /OpenPanel"; WorkingDir: "{app}"; IconFilename: "{app}\assets\ulanzi-libre.ico"; AppUserModelID: "UlanziLibre.Bridge"; Tasks: desktopicon
 Name: "{autostartup}\Ulanzi Libre Bridge"; Filename: "{sys}\wscript.exe"; Parameters: """{app}\installer\iniciar-instalado.vbs"""; WorkingDir: "{app}"; IconFilename: "{app}\assets\ulanzi-libre.ico"; AppUserModelID: "UlanziLibre.Bridge"; Tasks: startup
 
@@ -104,6 +123,9 @@ Name: "{autostartup}\Ulanzi Libre Bridge"; Filename: "{sys}\wscript.exe"; Parame
 ; Versoes anteriores criavam uma segunda entrada publica. A configuracao agora
 ; fica no painel principal, em Conexoes.
 Type: files; Name: "{group}\Configurar Ulanzi Libre Bridge.lnk"
+Type: files; Name: "{group}\Desinstalar Ulanzi Libre Bridge.lnk"
+Type: files; Name: "{group}\Uninstall Ulanzi Libre Bridge.lnk"
 
 [Run]
-Filename: "{sys}\wscript.exe"; Parameters: """{app}\installer\iniciar-instalado.vbs"" /OpenPanel"; WorkingDir: "{app}"; Description: "Abrir o Ulanzi Libre Bridge"; Flags: postinstall nowait skipifsilent
+Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""{app}\installer\set-language.ps1"" -Language {cm:AppLanguage}"; WorkingDir: "{app}"; Flags: runhidden waituntilterminated
+Filename: "{sys}\wscript.exe"; Parameters: """{app}\installer\iniciar-instalado.vbs"" /OpenPanel"; WorkingDir: "{app}"; Description: "{cm:OpenApp}"; Flags: postinstall nowait skipifsilent

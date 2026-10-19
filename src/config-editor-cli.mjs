@@ -1,3 +1,5 @@
+import { getAppLanguage, setAppLanguage, tr } from "./i18n.mjs";
+import { parseEnv } from "./env.mjs";
 import { randomUUID } from "node:crypto";
 import { dirname, join } from "node:path";
 import { open, readFile, rename, unlink, writeFile } from "node:fs/promises";
@@ -46,7 +48,7 @@ async function readState(envPath, vaultPath) {
 async function writeState(envPath, vaultPath, requestPath) {
   const request = JSON.parse(await readFile(requestPath, "utf8"));
   if (!request || typeof request.revision !== "string") {
-    throw new BridgeError("a tela enviou uma revisao de configuracao invalida", {
+    throw new BridgeError(tr("the screen submitted an invalid configuration revision", "a tela enviou uma revisao de configuracao invalida"), {
       code: "INVALID_CONFIG_UPDATE",
       retryable: false,
     });
@@ -57,13 +59,13 @@ async function writeState(envPath, vaultPath, requestPath) {
     const before = await readState(envPath, vaultPath);
     if (before.revision !== request.revision) {
       throw new BridgeError(
-        "a configuracao foi alterada por outro processo; feche e abra a tela novamente",
+        tr("another process changed the configuration; close and reopen this screen", "a configuracao foi alterada por outro processo; feche e abra a tela novamente"),
         { code: "CONFIG_CHANGED", retryable: false },
       );
     }
     if (before.overriddenKeys.length > 0) {
       throw new BridgeError(
-        `estas opcoes sao substituidas por variaveis externas: ${before.overriddenKeys.join(", ")}`,
+        tr("these options are overridden by external environment variables: {0}", "estas opcoes sao substituidas por variaveis externas: {0}", [before.overriddenKeys.join(", ")]),
         { code: "CONFIG_OVERRIDDEN", retryable: false },
       );
     }
@@ -98,7 +100,7 @@ async function writeState(envPath, vaultPath, requestPath) {
         (currentVaultText === null ? null : configRevision(currentVaultText)) !== before.vaultRevision
       ) {
         throw new BridgeError(
-          "a configuracao mudou durante o salvamento; nenhuma alteracao foi aplicada",
+          tr("the configuration changed while saving; no changes were applied", "a configuracao mudou durante o salvamento; nenhuma alteracao foi aplicada"),
           { code: "CONFIG_CHANGED", retryable: false },
         );
       }
@@ -117,18 +119,19 @@ async function main() {
   const [command, envPath, vaultPath, requestOrResultPath, maybeResultPath] = process.argv.slice(2);
   const resultPath = command === "read" ? requestOrResultPath : maybeResultPath;
   if (!command || !envPath || !vaultPath || !resultPath) {
-    throw new BridgeError("argumentos ausentes no editor de configuracao", {
+    throw new BridgeError(tr("missing configuration editor arguments", "argumentos ausentes no editor de configuracao"), {
       code: "INVALID_CONFIG_EDITOR_ARGUMENTS",
       retryable: false,
     });
   }
   try {
+    setAppLanguage(getAppLanguage(parseEnv(await readFile(envPath, "utf8"))));
     const payload = command === "read"
       ? { ok: true, state: await readState(envPath, vaultPath) }
       : command === "write"
         ? { ok: true, ...(await writeState(envPath, vaultPath, requestOrResultPath)) }
         : (() => {
-            throw new BridgeError("comando desconhecido no editor de configuracao", {
+            throw new BridgeError(tr("unknown configuration editor command", "comando desconhecido no editor de configuracao"), {
               code: "INVALID_CONFIG_EDITOR_COMMAND",
               retryable: false,
             });

@@ -6,6 +6,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import test from "node:test";
+import { setAppLanguage } from "../src/i18n.mjs";
+setAppLanguage("pt-BR");
 import {
   configRevision,
   editableValuesFromConfig,
@@ -46,7 +48,7 @@ test("editor preserva BOM, CRLF, comentarios, ordem e opcoes desconhecidas", () 
   assert.match(updated, /LOW_THRESHOLD_MGDL=75 # limite/);
   assert.match(updated, /OPCAO_FUTURA=manter exatamente/);
   assert.match(updated, /CONFIG_GENERATION=11111111-1111-1111-1111-111111111111/);
-  assert.match(updated, /# Ajustes salvos pela interface\r\nGLUCOSE_ALARM_ENABLED=true/);
+  assert.match(updated, /# Settings saved by the interface\r\nGLUCOSE_ALARM_ENABLED=true/);
   assert.ok(updated.endsWith("\r\n"));
 });
 
@@ -178,7 +180,7 @@ test("validacao preserva o vinculo com o cofre sem descriptografar segredos", ()
       generation,
       secrets: { NIGHTSCOUT_TOKEN: "x", NIGHTSCOUT_API_SECRET: "y" },
     })),
-    /TOKEN ou NIGHTSCOUT_API_SECRET/,
+    /TOKEN or NIGHTSCOUT_API_SECRET/,
   );
   assert.throws(
     () => validateConfigDocument(

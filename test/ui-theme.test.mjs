@@ -17,7 +17,7 @@ function runPowerShell(command) {
   const result = spawnSync(
     "powershell.exe",
     ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-STA", "-Command", command],
-    { cwd: projectRoot, encoding: "utf8", windowsHide: true },
+    { cwd: projectRoot, encoding: "utf8", windowsHide: true, env: { ...process.env, ULANZI_UI_LANGUAGE: "pt-BR" } },
   );
   assert.equal(result.status, 0, `PowerShell falhou:\n${result.stderr}\n${result.stdout}`);
   return result.stdout.trim();

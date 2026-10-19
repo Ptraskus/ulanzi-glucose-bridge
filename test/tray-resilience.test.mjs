@@ -10,7 +10,7 @@ const diagnosticsScript = await readFile(join(projectRoot, "scripts", "diagnosti
 const envExample = await readFile(join(projectRoot, ".env.example"), "utf8");
 
 test("diagnostico permanece acessivel com o bridge parado e nao mascara falha do TC001", () => {
-  assert.match(trayScript, /ToolStripMenuItem\]::new\("Verificar tudo\.\.\."\)/);
+  assert.match(trayScript, /ToolStripMenuItem\]::new\(\(Get-UlanziText -Key 'Verificar tudo\.\.\.'\)\)/);
   assert.match(trayScript, /Show-UlanziDiagnosticsDialog/);
 
   const enableBlock = trayScript.match(/\$diagnosticsItem\.Enabled = \(\s*([\s\S]*?)\s*\)\r?\n\s*\$restartItem\.Enabled/)?.[1];
@@ -50,8 +50,8 @@ test("contingencia do Windows e opt-in, espera falha persistente e omite glicemi
   assert.match(fallback, /Falha persistente em:/);
   assert.match(fallback, /Key = "bridge"/);
   assert.match(fallback, /@\("low", "high", "up", "down", "unavailable"\)/);
-  assert.match(fallback, /"down" \{ "Alerta de queda nao confirmado pelo TC001/);
-  assert.match(trayScript, /"down"\s+\{ return "queda" \}/);
+  assert.match(fallback, /"down" \{ \(Get-UlanziText -Key 'Alerta de queda nao confirmado pelo TC001/);
+  assert.match(trayScript, /"down"\s+\{ return \(Get-UlanziText -Key 'queda'\) \}/);
   assert.match(fallback, /\$pendingKind -cne \[string\]\$script:lastFallbackAlarmFingerprint/);
   assert.doesNotMatch(fallback, /\$soundState -ne "error"/);
   assert.doesNotMatch(fallback, /valueMgDl|mg\/dL|glicemia\s*[:=]\s*\$/i);

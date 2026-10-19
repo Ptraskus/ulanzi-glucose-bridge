@@ -1,3 +1,5 @@
+. (Join-Path $PSScriptRoot "ui-language.ps1")
+
 function Show-UlanziOwnedMessageBox {
     [CmdletBinding()]
     [OutputType([Windows.Forms.DialogResult])]
@@ -49,7 +51,7 @@ function ConvertTo-UlanziConfigProcessArgument {
     param([Parameter(Mandatory = $true)][AllowEmptyString()][string]$Value)
 
     if ($Value.IndexOf('"') -ge 0 -or $Value.IndexOf("`r") -ge 0 -or $Value.IndexOf("`n") -ge 0) {
-        throw "Um caminho local contem caracteres que nao podem ser usados com seguranca."
+        throw (Get-UlanziText -Key 'Um caminho local contem caracteres que nao podem ser usados com seguranca.')
     }
     return '"' + $Value + '"'
 }
@@ -74,7 +76,7 @@ function Start-UlanziConfigEditorOperation {
     $process = $null
     try {
         if ($Command -eq "write") {
-            if ($null -eq $Request) { throw "O pedido de salvamento esta vazio." }
+            if ($null -eq $Request) { throw (Get-UlanziText -Key 'O pedido de salvamento esta vazio.') }
             $requestJson = $Request | ConvertTo-Json -Depth 8 -Compress
             [IO.File]::WriteAllText($requestPath, $requestJson, $utf8)
             $arguments = @($editorPath, "write", $EnvPath, $vaultPath, $requestPath, $resultPath)
@@ -116,21 +118,21 @@ function Complete-UlanziConfigEditorOperation {
     $process = [Diagnostics.Process]$Operation.Process
     $utf8 = [Text.UTF8Encoding]::new($false)
     try {
-        if (-not $process.HasExited) { throw "O editor de configuracoes ainda nao terminou." }
+        if (-not $process.HasExited) { throw (Get-UlanziText -Key 'O editor de configuracoes ainda nao terminou.') }
         $process.WaitForExit()
         [void]$Operation.StandardOutputTask.GetAwaiter().GetResult()
         [void]$Operation.StandardErrorTask.GetAwaiter().GetResult()
         $editorExitCode = $process.ExitCode
         if (-not [IO.File]::Exists([string]$Operation.ResultPath)) {
-            throw "O editor de configuracoes nao produziu uma resposta valida."
+            throw (Get-UlanziText -Key 'O editor de configuracoes nao produziu uma resposta valida.')
         }
         $result = [IO.File]::ReadAllText([string]$Operation.ResultPath, $utf8) | ConvertFrom-Json
         if ($result.ok -ne $true) {
             $message = [string]$result.message
-            if ([string]::IsNullOrWhiteSpace($message)) { $message = "Nao foi possivel validar a configuracao." }
+            if ([string]::IsNullOrWhiteSpace($message)) { $message = (Get-UlanziText -Key 'Nao foi possivel validar a configuracao.') }
             throw $message
         }
-        if ($editorExitCode -ne 0) { throw "O editor de configuracoes terminou com erro." }
+        if ($editorExitCode -ne 0) { throw (Get-UlanziText -Key 'O editor de configuracoes terminou com erro.') }
         return $result
     } finally {
         if ([IO.File]::Exists([string]$Operation.RequestPath)) { Remove-Item -LiteralPath ([string]$Operation.RequestPath) -Force -ErrorAction SilentlyContinue }
@@ -168,7 +170,7 @@ function Invoke-UlanziConfigEditor {
         if (-not $operation.Process.WaitForExit($TimeoutSeconds * 1000)) {
             Stop-UlanziConfigEditorOperation -Operation $operation
             $operation = $null
-            throw "O editor de configuracoes excedeu o tempo limite de $TimeoutSeconds segundos."
+            throw (Get-UlanziText -Key 'O editor de configuracoes excedeu o tempo limite de {0} segundos.' -Arguments @(($TimeoutSeconds)))
         }
         $result = Complete-UlanziConfigEditorOperation -Operation $operation
         $operation = $null
@@ -312,7 +314,7 @@ function Add-UlanziChoiceSetting {
     )
 
     if ($Options.Count -eq 0 -or $SelectedIndex -ge $Options.Count) {
-        throw "As opcoes desta configuracao sao invalidas."
+        throw (Get-UlanziText -Key 'As opcoes desta configuracao sao invalidas.')
     }
 
     $row = $Table.RowCount
@@ -495,7 +497,7 @@ function Show-UlanziVolumeDialog {
     }
 
     $form = [Windows.Forms.Form]::new()
-    $form.Text = "Som do TC001"
+    $form.Text = (Get-UlanziText -Key 'Som do TC001')
     $form.ClientSize = [Drawing.Size]::new(530, 310)
     $form.MaximumSize = [Drawing.Size]::new(700, 430)
     $form.StartPosition = if ($null -ne $Owner) {
@@ -527,14 +529,14 @@ function Show-UlanziVolumeDialog {
     $header.Tag = "Header"
 
     $titleLabel = [Windows.Forms.Label]::new()
-    $titleLabel.Text = "Som do TC001"
+    $titleLabel.Text = (Get-UlanziText -Key 'Som do TC001')
     $titleLabel.AutoSize = $true
     $titleLabel.Location = [Drawing.Point]::new(20, 13)
     $titleLabel.Font = [Drawing.Font]::new("Segoe UI", 17, [Drawing.FontStyle]::Bold)
     $titleLabel.ForeColor = [Drawing.Color]::White
 
     $subtitleLabel = [Windows.Forms.Label]::new()
-    $subtitleLabel.Text = "Ative ou silencie os sons do relogio."
+    $subtitleLabel.Text = (Get-UlanziText -Key 'Ative ou silencie os sons do relogio.')
     $subtitleLabel.AutoSize = $true
     $subtitleLabel.Location = [Drawing.Point]::new(22, 48)
     $subtitleLabel.ForeColor = [Drawing.ColorTranslator]::FromHtml("#D4E7EF")
@@ -556,36 +558,36 @@ function Show-UlanziVolumeDialog {
     $stateAccent.Tag = "Success"
 
     $stateTitleLabel = [Windows.Forms.Label]::new()
-    $stateTitleLabel.Text = "Som geral do relogio"
+    $stateTitleLabel.Text = (Get-UlanziText -Key 'Som geral do relogio')
     $stateTitleLabel.AutoSize = $true
     $stateTitleLabel.Location = [Drawing.Point]::new(18, 13)
     $stateTitleLabel.Font = [Drawing.Font]::new("Segoe UI", 10, [Drawing.FontStyle]::Bold)
 
     $scopeLabel = [Windows.Forms.Label]::new()
-    $scopeLabel.Text = "Este ajuste vale para todos os sons do TC001."
+    $scopeLabel.Text = (Get-UlanziText -Key 'Este ajuste vale para todos os sons do TC001.')
     $scopeLabel.AutoSize = $true
     $scopeLabel.Location = [Drawing.Point]::new(18, 36)
     $scopeLabel.ForeColor = [Drawing.ColorTranslator]::FromHtml("#5B6870")
     $scopeLabel.Tag = "Muted"
 
     $soundEnabledControl = [Windows.Forms.CheckBox]::new()
-    $soundEnabledControl.Text = "Ativar som no TC001"
+    $soundEnabledControl.Text = (Get-UlanziText -Key 'Ativar som no TC001')
     $soundEnabledControl.AutoSize = $true
     $soundEnabledControl.Location = [Drawing.Point]::new(21, 68)
     $soundEnabledControl.Font = [Drawing.Font]::new("Segoe UI", 10, [Drawing.FontStyle]::Bold)
     $soundEnabledControl.Enabled = $false
     $soundEnabledControl.TabIndex = 0
-    $soundEnabledControl.AccessibleDescription = "Ativa ou desativa o som geral do TC001."
+    $soundEnabledControl.AccessibleDescription = (Get-UlanziText -Key 'Ativa ou desativa o som geral do TC001.')
 
     $stateValueLabel = [Windows.Forms.Label]::new()
-    $stateValueLabel.Text = "Verificando..."
+    $stateValueLabel.Text = (Get-UlanziText -Key 'Verificando...')
     $stateValueLabel.Location = [Drawing.Point]::new(366, 66)
     $stateValueLabel.Size = [Drawing.Size]::new(105, 24)
     $stateValueLabel.Anchor = [Windows.Forms.AnchorStyles]::Top -bor [Windows.Forms.AnchorStyles]::Right
     $stateValueLabel.TextAlign = [Drawing.ContentAlignment]::MiddleRight
     $stateValueLabel.Font = [Drawing.Font]::new("Segoe UI", 9, [Drawing.FontStyle]::Bold)
     $stateValueLabel.ForeColor = [Drawing.ColorTranslator]::FromHtml("#1D5D7A")
-    $stateValueLabel.AccessibleName = "Estado selecionado do som"
+    $stateValueLabel.AccessibleName = (Get-UlanziText -Key 'Estado selecionado do som')
 
     $volumeControl = [Windows.Forms.TrackBar]::new()
     $volumeControl.Minimum = 0
@@ -604,12 +606,12 @@ function Show-UlanziVolumeDialog {
     $volumeControl.TabStop = $false
 
     $statusLabel = [Windows.Forms.Label]::new()
-    $statusLabel.Text = "Verificando o TC001..."
+    $statusLabel.Text = (Get-UlanziText -Key 'Verificando o TC001...')
     $statusLabel.Location = [Drawing.Point]::new(22, 211)
     $statusLabel.Size = [Drawing.Size]::new(486, 34)
     $statusLabel.Anchor = [Windows.Forms.AnchorStyles]::Top -bor [Windows.Forms.AnchorStyles]::Left -bor [Windows.Forms.AnchorStyles]::Right
     $statusLabel.ForeColor = [Drawing.ColorTranslator]::FromHtml("#1D5D7A")
-    $statusLabel.AccessibleName = "Estado da operacao de som"
+    $statusLabel.AccessibleName = (Get-UlanziText -Key 'Estado da operacao de som')
 
     $footer = [Windows.Forms.Panel]::new()
     $footer.Dock = [Windows.Forms.DockStyle]::Bottom
@@ -627,11 +629,11 @@ function Show-UlanziVolumeDialog {
     $volumeProgress.MarqueeAnimationSpeed = 0
     $volumeProgress.Visible = $false
     $volumeProgress.TabStop = $false
-    $volumeProgress.AccessibleName = "Progresso da operacao de som"
-    $volumeProgress.AccessibleDescription = "Nenhuma operacao de som esta em andamento."
+    $volumeProgress.AccessibleName = (Get-UlanziText -Key 'Progresso da operacao de som')
+    $volumeProgress.AccessibleDescription = (Get-UlanziText -Key 'Nenhuma operacao de som esta em andamento.')
 
     $refreshButton = [Windows.Forms.Button]::new()
-    $refreshButton.Text = "Tentar novamente"
+    $refreshButton.Text = (Get-UlanziText -Key 'Tentar novamente')
     $refreshButton.Size = [Drawing.Size]::new(126, 32)
     $refreshButton.Location = [Drawing.Point]::new(18, 14)
     $refreshButton.Anchor = [Windows.Forms.AnchorStyles]::Left -bor [Windows.Forms.AnchorStyles]::Bottom
@@ -640,7 +642,7 @@ function Show-UlanziVolumeDialog {
     $refreshButton.TabIndex = 1
 
     $applyButton = [Windows.Forms.Button]::new()
-    $applyButton.Text = "Salvar"
+    $applyButton.Text = (Get-UlanziText -Key 'Salvar')
     $applyButton.Size = [Drawing.Size]::new(100, 32)
     $applyButton.Location = [Drawing.Point]::new(174, 14)
     $applyButton.Anchor = [Windows.Forms.AnchorStyles]::Right -bor [Windows.Forms.AnchorStyles]::Bottom
@@ -653,7 +655,7 @@ function Show-UlanziVolumeDialog {
     $applyButton.TabIndex = 2
 
     $testButton = [Windows.Forms.Button]::new()
-    $testButton.Text = "Testar som"
+    $testButton.Text = (Get-UlanziText -Key 'Testar som')
     $testButton.Size = [Drawing.Size]::new(126, 32)
     $testButton.Location = [Drawing.Point]::new(282, 14)
     $testButton.Anchor = [Windows.Forms.AnchorStyles]::Right -bor [Windows.Forms.AnchorStyles]::Bottom
@@ -661,7 +663,7 @@ function Show-UlanziVolumeDialog {
     $testButton.TabIndex = 3
 
     $closeButton = [Windows.Forms.Button]::new()
-    $closeButton.Text = "Fechar"
+    $closeButton.Text = (Get-UlanziText -Key 'Fechar')
     $closeButton.Size = [Drawing.Size]::new(94, 32)
     $closeButton.Location = [Drawing.Point]::new(416, 14)
     $closeButton.Anchor = [Windows.Forms.AnchorStyles]::Right -bor [Windows.Forms.AnchorStyles]::Bottom
@@ -728,10 +730,10 @@ function Show-UlanziVolumeDialog {
 
     $updateSoundSelection = {
         if ($soundEnabledControl.Checked) {
-            $stateValueLabel.Text = "Ligado"
+            $stateValueLabel.Text = (Get-UlanziText -Key 'Ligado')
             $stateValueLabel.ForeColor = [Drawing.ColorTranslator]::FromHtml("#16733D")
         } else {
-            $stateValueLabel.Text = "Desligado"
+            $stateValueLabel.Text = (Get-UlanziText -Key 'Desligado')
             $stateValueLabel.ForeColor = [Drawing.ColorTranslator]::FromHtml("#5B6870")
         }
     }
@@ -766,7 +768,7 @@ function Show-UlanziVolumeDialog {
         )
         $soundEnabledControl.Enabled = $ready
         $applyButton.Enabled = $ready -and $dialogState.Dirty
-        $testButton.Text = if ($dialogState.Dirty) { "Salvar e testar" } else { "Testar som" }
+        $testButton.Text = if ($dialogState.Dirty) { (Get-UlanziText -Key 'Salvar e testar') } else { (Get-UlanziText -Key 'Testar som') }
         $testButton.Enabled = $ready
         $refreshButton.Enabled = $running -and -not $busy
         $refreshButton.Visible = -not $busy -and (-not $dialogState.HasDeviceState -or -not $dialogState.DeviceSupported)
@@ -775,13 +777,13 @@ function Show-UlanziVolumeDialog {
         $volumeProgress.MarqueeAnimationSpeed = if ($busy) { 28 } else { 0 }
         $volumeProgress.AccessibleDescription = if ($busy) {
             switch ([string]$dialogState.PendingCommand) {
-                "read-device-sound" { "Consultando o estado do som no TC001." }
-                "write-device-sound" { "Aplicando o estado do som no TC001." }
-                "test-sound" { "Enviando e confirmando a melodia de teste." }
-                default { "Uma operacao de som esta em andamento." }
+                "read-device-sound" { (Get-UlanziText -Key 'Consultando o estado do som no TC001.') }
+                "write-device-sound" { (Get-UlanziText -Key 'Aplicando o estado do som no TC001.') }
+                "test-sound" { (Get-UlanziText -Key 'Enviando e confirmando a melodia de teste.') }
+                default { (Get-UlanziText -Key 'Uma operacao de som esta em andamento.') }
             }
         } else {
-            "Nenhuma operacao de som esta em andamento."
+            (Get-UlanziText -Key 'Nenhuma operacao de som esta em andamento.')
         }
     }
 
@@ -796,7 +798,7 @@ function Show-UlanziVolumeDialog {
         $dialogState.Dirty = $false
         $dialogState.TestAfterWrite = $false
         & $clearAudibleConfirmation
-        $stateValueLabel.Text = "Indisponivel"
+        $stateValueLabel.Text = (Get-UlanziText -Key 'Indisponivel')
         $stateValueLabel.ForeColor = [Drawing.ColorTranslator]::FromHtml("#8A5A00")
         & $setStatus $Message $Level
         & $updateInteractivity
@@ -812,19 +814,19 @@ function Show-UlanziVolumeDialog {
         if ($state -eq "error") {
             $lastError = [string](& $getProperty $DeviceSound "lastRequestError" "")
             if ([string]::IsNullOrWhiteSpace($lastError)) { $lastError = $reason }
-            if ([string]::IsNullOrWhiteSpace($lastError)) { $lastError = "Nao foi possivel consultar o som do TC001." }
+            if ([string]::IsNullOrWhiteSpace($lastError)) { $lastError = (Get-UlanziText -Key 'Nao foi possivel consultar o som do TC001.') }
             & $setUnavailable $lastError "error"
             return $false
         }
         if ($supportedValue -eq $false -or ($mode -and $mode -ne "ng") -or $state -eq "unsupported") {
             if ([string]::IsNullOrWhiteSpace($reason)) {
-                $reason = "Este TC001 nao permite controlar o som por aqui."
+                $reason = (Get-UlanziText -Key 'Este TC001 nao permite controlar o som por aqui.')
             }
             & $setUnavailable $reason "warning"
             return $false
         }
         if ($supportedValue -ne $true -or $state -in @("unknown", "reading", "writing")) {
-            & $setUnavailable "Ainda nao foi possivel confirmar o som. Tente novamente." "warning"
+            & $setUnavailable (Get-UlanziText -Key 'Ainda nao foi possivel confirmar o som. Tente novamente.') "warning"
             return $false
         }
 
@@ -838,7 +840,7 @@ function Show-UlanziVolumeDialog {
             $volume -lt 0 -or
             $volume -gt 100
         ) {
-            & $setUnavailable "O TC001 respondeu sem um estado de som valido." "error"
+            & $setUnavailable (Get-UlanziText -Key 'O TC001 respondeu sem um estado de som valido.') "error"
             return $false
         }
 
@@ -879,7 +881,7 @@ function Show-UlanziVolumeDialog {
         if ($dialogState.Closing) { return $false }
         if (-not [string]::IsNullOrWhiteSpace([string]$dialogState.PendingRequestId)) { return $false }
         if (-not (& $isBridgeRunning)) {
-            & $setUnavailable "O TC001 esta indisponivel. Aguarde a reconexao e tente novamente." "error"
+            & $setUnavailable (Get-UlanziText -Key 'O TC001 esta indisponivel. Aguarde a reconexao e tente novamente.') "error"
             return $false
         }
 
@@ -887,15 +889,15 @@ function Show-UlanziVolumeDialog {
             $result = & $SendCommand $Command $Payload
             $requestId = [string](& $requestIdFromResult $result)
             if ([string]::IsNullOrWhiteSpace($requestId) -or $requestId.Length -lt 8) {
-                throw "O bridge nao forneceu um identificador valido para o comando."
+                throw (Get-UlanziText -Key 'O bridge nao forneceu um identificador valido para o comando.')
             }
             $dialogState.PendingRequestId = $requestId
             $dialogState.PendingCommand = $Command
             $dialogState.PendingDeadline = [DateTime]::UtcNow.AddSeconds($CommandTimeoutSeconds)
             switch ($Command) {
-                "read-device-sound" { & $setStatus "Verificando o TC001..." "info" }
-                "write-device-sound" { & $setStatus "Salvando a alteracao..." "info" }
-                "test-sound" { & $setStatus "Enviando o som de teste..." "info" }
+                "read-device-sound" { & $setStatus (Get-UlanziText -Key 'Verificando o TC001...') "info" }
+                "write-device-sound" { & $setStatus (Get-UlanziText -Key 'Salvando a alteracao...') "info" }
+                "test-sound" { & $setStatus (Get-UlanziText -Key 'Enviando o som de teste...') "info" }
             }
             if ($Command -in @("write-device-sound", "test-sound")) {
                 & $clearAudibleConfirmation
@@ -903,7 +905,7 @@ function Show-UlanziVolumeDialog {
             & $updateInteractivity
             return $true
         } catch {
-            & $setStatus "Nao foi possivel solicitar a operacao: $($_.Exception.Message)" "error"
+            & $setStatus (Get-UlanziText -Key 'Nao foi possivel solicitar a operacao: {0}' -Arguments @(($($_.Exception.Message)))) "error"
             & $updateInteractivity
             return $false
         }
@@ -944,10 +946,10 @@ function Show-UlanziVolumeDialog {
         )
         $dialogState.Dirty = $soundEnabledControl.Checked -ne $deviceAudible
         if ($dialogState.Dirty) {
-            & $setStatus "Alteracao ainda nao salva." "info"
+            & $setStatus (Get-UlanziText -Key 'Alteracao ainda nao salva.') "info"
         } else {
-            $storedState = if ($deviceAudible) { "ligado" } else { "desligado" }
-            & $setStatus "Som $storedState no TC001." "info"
+            $storedState = if ($deviceAudible) { (Get-UlanziText -Key 'ligado') } else { (Get-UlanziText -Key 'desligado') }
+            & $setStatus (Get-UlanziText -Key 'Som {0} no TC001.' -Arguments @(($storedState))) "info"
         }
         & $updateInteractivity
     }
@@ -966,7 +968,7 @@ function Show-UlanziVolumeDialog {
         if ($dialogState.Closing -or $form.IsDisposed -or $form.Disposing) { return $false }
         $answer = Show-UlanziOwnedMessageBox `
             -Owner $form `
-            -Text "Voce ouviu o som?" `
+            -Text (Get-UlanziText -Key 'Voce ouviu o som?') `
             -Caption "Teste de som" `
             -Buttons ([Windows.Forms.MessageBoxButtons]::YesNo) `
             -Icon ([Windows.Forms.MessageBoxIcon]::Question)
@@ -997,7 +999,7 @@ function Show-UlanziVolumeDialog {
         if (-not $dialogState.HasDeviceState -or -not $dialogState.DeviceSupported) { return }
         if ($dialogState.Dirty) {
             if (-not [bool]$soundEnabledControl.Checked) {
-                & $setStatus "Ative o som antes de testar. Voce ainda pode salvar o modo silencioso." "warning"
+                & $setStatus (Get-UlanziText -Key 'Ative o som antes de testar. Voce ainda pode salvar o modo silencioso.') "warning"
                 return
             }
             $targetVolume = if ([int]$dialogState.DeviceBuzzerVolume -le 0) { 100 } else { [int]$dialogState.DeviceBuzzerVolume }
@@ -1012,11 +1014,11 @@ function Show-UlanziVolumeDialog {
             return
         }
         if (-not [bool]$dialogState.DeviceSoundEnabled) {
-            & $setStatus "Ative e salve o som antes de testar." "warning"
+            & $setStatus (Get-UlanziText -Key 'Ative e salve o som antes de testar.') "warning"
             return
         }
         if ([int]$dialogState.DeviceBuzzerVolume -le 0) {
-            & $setStatus "Ative e salve o som antes de testar." "warning"
+            & $setStatus (Get-UlanziText -Key 'Ative e salve o som antes de testar.') "warning"
             return
         }
         [void](& $startCommand "test-sound" ([ordered]@{}))
@@ -1035,7 +1037,7 @@ function Show-UlanziVolumeDialog {
                 $dialogState.TestAfterWrite = $false
             }
             if ($dialogState.LastBridgeRunning -or $dialogState.HasDeviceState) {
-                & $setUnavailable "O TC001 esta indisponivel. Aguarde a reconexao e tente novamente." "error"
+                & $setUnavailable (Get-UlanziText -Key 'O TC001 esta indisponivel. Aguarde a reconexao e tente novamente.') "error"
             }
             $dialogState.LastBridgeRunning = $false
             & $updateInteractivity
@@ -1055,7 +1057,7 @@ function Show-UlanziVolumeDialog {
             $status = & $ReadStatus
         } catch {
             & $clearAudibleConfirmation
-            & $setStatus "Nao foi possivel atualizar o estado do TC001." "error"
+            & $setStatus (Get-UlanziText -Key 'Nao foi possivel atualizar o estado do TC001.') "error"
         }
 
         if (-not [string]::IsNullOrWhiteSpace([string]$dialogState.PendingRequestId) -and $null -ne $status) {
@@ -1080,8 +1082,8 @@ function Show-UlanziVolumeDialog {
                         "read-device-sound" {
                             $confirmedVolume = [int](& $getProperty $deviceSound "buzzerVolume" 0)
                             $confirmedEnabled = (& $getProperty $deviceSound "soundEnabled" $false) -eq $true
-                            $confirmedState = if ($confirmedEnabled -and $confirmedVolume -gt 0) { "ligado" } else { "desligado" }
-                            & $completePending $true "Som $confirmedState no TC001." $deviceSound
+                            $confirmedState = if ($confirmedEnabled -and $confirmedVolume -gt 0) { (Get-UlanziText -Key 'ligado') } else { (Get-UlanziText -Key 'desligado') }
+                            & $completePending $true (Get-UlanziText -Key 'Som {0} no TC001.' -Arguments @(($confirmedState))) $deviceSound
                         }
                         "write-device-sound" {
                             $testAfterWrite = [bool]$dialogState.TestAfterWrite
@@ -1089,11 +1091,11 @@ function Show-UlanziVolumeDialog {
                             $confirmedVolume = [int](& $getProperty $deviceSound "buzzerVolume" 0)
                             $confirmedEnabled = (& $getProperty $deviceSound "soundEnabled" $false) -eq $true
                             $storedMessage = if (-not $confirmedEnabled) {
-                                "Som desligado no TC001."
+                                (Get-UlanziText -Key 'Som desligado no TC001.')
                             } elseif ($confirmedVolume -le 0) {
-                                "O TC001 confirmou a alteracao, mas o som continua indisponivel."
+                                (Get-UlanziText -Key 'O TC001 confirmou a alteracao, mas o som continua indisponivel.')
                             } else {
-                                "Som ligado no TC001."
+                                (Get-UlanziText -Key 'Som ligado no TC001.')
                             }
                             & $completePending $true $storedMessage $deviceSound
                             if (
@@ -1104,13 +1106,13 @@ function Show-UlanziVolumeDialog {
                                 [int]$dialogState.DeviceBuzzerVolume -gt 0
                             ) {
                                 if (& $startCommand "test-sound" ([ordered]@{})) {
-                                    & $setStatus "Som ligado. Enviando o teste..." "info"
+                                    & $setStatus (Get-UlanziText -Key 'Som ligado. Enviando o teste...') "info"
                                 }
                             }
                         }
                         "test-sound" {
                             $volume = [int]$dialogState.DeviceBuzzerVolume
-                            & $completePending $true "Teste enviado ao TC001."
+                            & $completePending $true (Get-UlanziText -Key 'Teste enviado ao TC001.')
                             $heard = & $confirmAudible $volume
                             if ($dialogState.Closing -or $form.IsDisposed -or $form.Disposing) { return }
                             $dialogState.AudibleConfirmation = [pscustomobject]@{
@@ -1119,9 +1121,9 @@ function Show-UlanziVolumeDialog {
                                 Confirmed = [bool]$heard
                             }
                             if ($heard) {
-                                & $setStatus "Som ligado e teste confirmado." "success"
+                                & $setStatus (Get-UlanziText -Key 'Som ligado e teste confirmado.') "success"
                             } else {
-                                & $setStatus "O teste foi enviado, mas voce nao ouviu o som. Verifique o relogio." "warning"
+                                & $setStatus (Get-UlanziText -Key 'O teste foi enviado, mas voce nao ouviu o som. Verifique o relogio.') "warning"
                             }
                         }
                     }
@@ -1132,9 +1134,9 @@ function Show-UlanziVolumeDialog {
                     $dialogState.TestAfterWrite = $false
                     if ([string]::IsNullOrWhiteSpace($requestError)) {
                         $requestError = if ($requestState -eq "unsupported") {
-                            "Este TC001 nao permite controlar o som por aqui."
+                            (Get-UlanziText -Key 'Este TC001 nao permite controlar o som por aqui.')
                         } else {
-                            "O TC001 nao confirmou a operacao."
+                            (Get-UlanziText -Key 'O TC001 nao confirmou a operacao.')
                         }
                     }
                     & $completePending $false $requestError
@@ -1152,12 +1154,12 @@ function Show-UlanziVolumeDialog {
         ) {
             $timedOutCommand = [string]$dialogState.PendingCommand
             $dialogState.TestAfterWrite = $false
-            & $completePending $false "O TC001 demorou para responder. Tente novamente."
+            & $completePending $false (Get-UlanziText -Key 'O TC001 demorou para responder. Tente novamente.')
             if ($timedOutCommand -ne "test-sound") {
                 $dialogState.HasDeviceState = $false
                 $dialogState.DeviceSupported = $false
                 $dialogState.Dirty = $false
-                $stateValueLabel.Text = "Indisponivel"
+                $stateValueLabel.Text = (Get-UlanziText -Key 'Indisponivel')
             }
             & $updateInteractivity
             return
@@ -1185,7 +1187,7 @@ function Show-UlanziVolumeDialog {
         if ($dialogState.LastBridgeRunning) {
             [void](& $startCommand "read-device-sound" ([ordered]@{}))
         } else {
-            & $setUnavailable "O TC001 esta indisponivel. Aguarde a reconexao e tente novamente." "error"
+            & $setUnavailable (Get-UlanziText -Key 'O TC001 esta indisponivel. Aguarde a reconexao e tente novamente.') "error"
         }
         $timer.Start()
     })
@@ -1197,7 +1199,7 @@ function Show-UlanziVolumeDialog {
             -not [string]::IsNullOrWhiteSpace([string]$dialogState.PendingRequestId)
         ) {
             $eventArgs.Cancel = $true
-            & $setStatus "Aguarde o TC001 confirmar a operacao antes de fechar esta janela." "warning"
+            & $setStatus (Get-UlanziText -Key 'Aguarde o TC001 confirmar a operacao antes de fechar esta janela.') "warning"
             return
         }
         $dialogState.Closing = $true
@@ -1250,7 +1252,7 @@ function Show-UlanziConfigurationDialog {
         }
         if (-not $ownsMutex) {
             [void][Windows.Forms.MessageBox]::Show(
-                "Outra janela de configuracoes ja esta aberta.",
+                (Get-UlanziText -Key 'Outra janela de configuracoes ja esta aberta.'),
                 "Ulanzi Libre",
                 [Windows.Forms.MessageBoxButtons]::OK,
                 [Windows.Forms.MessageBoxIcon]::Information
@@ -1262,38 +1264,40 @@ function Show-UlanziConfigurationDialog {
         $state = $readResult.state
         if (@($state.overriddenKeys).Count -gt 0) {
             $externalLabels = @{
-                LOW_THRESHOLD_MGDL = "limite baixo"
-                HIGH_THRESHOLD_MGDL = "limite alto"
-                STALE_AFTER_MINUTES = "tempo ate SEM DADO"
-                LIBRE_SENSOR_LIFETIME_DAYS = "duracao do sensor"
-                POLL_INTERVAL_SECONDS = "frequencia de consulta"
-                GLUCOSE_ALARM_ENABLED = "controle geral dos alarmes"
-                GLUCOSE_ALARM_SOUND_PROFILE = "padrao dos avisos sonoros"
-                GLUCOSE_ALARM_LOW_THRESHOLD_MGDL = "limite baixo para o som"
-                GLUCOSE_ALARM_HIGH_THRESHOLD_MGDL = "limite alto para o som"
-                GLUCOSE_ALARM_UP_SLIGHT_THRESHOLD_MGDL = "limite da seta diagonal"
-                GLUCOSE_ALARM_DOWN_THRESHOLD_MGDL = "limite das setas para baixo"
-                GLUCOSE_ALARM_DOUBLE_UP_ENABLED = "seta dupla para cima"
-                GLUCOSE_ALARM_NO_DATA_ENABLED = "som de SEM DADO"
-                GLUCOSE_ALARM_HYSTERESIS_MGDL = "distancia para rearmar"
-                GLUCOSE_ALARM_COOLDOWN_MINUTES = "tempo minimo entre alarmes"
-                GLUCOSE_ALARM_ON_STARTUP_EXTREME = "alarme na primeira leitura"
-                GLUCOSE_ALARM_ON_RECOVERY_EXTREME = "alarme ao recuperar dados"
-                GLUCOSE_ALARM_MAX_DELIVERY_ATTEMPTS = "tentativas por rodada"
-                GLUCOSE_ALARM_DELIVERY_RETRY_SECONDS = "intervalo entre tentativas"
-                WINDOWS_FALLBACK_ALERT_ENABLED = "aviso de contingencia do Windows"
-                WINDOWS_STATUS_NOTIFICATION_DELAY_MINUTES = "espera do aviso de conexao"
+                DISPLAY_UNITS = (Get-UlanziText -Key 'unidade das leituras')
+                APP_LANGUAGE = (Get-UlanziText -Key 'idioma da interface')
+                LOW_THRESHOLD_MGDL = (Get-UlanziText -Key 'limite baixo')
+                HIGH_THRESHOLD_MGDL = (Get-UlanziText -Key 'limite alto')
+                STALE_AFTER_MINUTES = (Get-UlanziText -Key 'tempo ate SEM DADO')
+                LIBRE_SENSOR_LIFETIME_DAYS = (Get-UlanziText -Key 'duracao do sensor')
+                POLL_INTERVAL_SECONDS = (Get-UlanziText -Key 'frequencia de consulta')
+                GLUCOSE_ALARM_ENABLED = (Get-UlanziText -Key 'controle geral dos alarmes')
+                GLUCOSE_ALARM_SOUND_PROFILE = (Get-UlanziText -Key 'padrao dos avisos sonoros')
+                GLUCOSE_ALARM_LOW_THRESHOLD_MGDL = (Get-UlanziText -Key 'limite baixo para o som')
+                GLUCOSE_ALARM_HIGH_THRESHOLD_MGDL = (Get-UlanziText -Key 'limite alto para o som')
+                GLUCOSE_ALARM_UP_SLIGHT_THRESHOLD_MGDL = (Get-UlanziText -Key 'limite da seta diagonal')
+                GLUCOSE_ALARM_DOWN_THRESHOLD_MGDL = (Get-UlanziText -Key 'limite das setas para baixo')
+                GLUCOSE_ALARM_DOUBLE_UP_ENABLED = (Get-UlanziText -Key 'seta dupla para cima')
+                GLUCOSE_ALARM_NO_DATA_ENABLED = (Get-UlanziText -Key 'som de SEM DADO')
+                GLUCOSE_ALARM_HYSTERESIS_MGDL = (Get-UlanziText -Key 'distancia para rearmar')
+                GLUCOSE_ALARM_COOLDOWN_MINUTES = (Get-UlanziText -Key 'tempo minimo entre alarmes')
+                GLUCOSE_ALARM_ON_STARTUP_EXTREME = (Get-UlanziText -Key 'alarme na primeira leitura')
+                GLUCOSE_ALARM_ON_RECOVERY_EXTREME = (Get-UlanziText -Key 'alarme ao recuperar dados')
+                GLUCOSE_ALARM_MAX_DELIVERY_ATTEMPTS = (Get-UlanziText -Key 'tentativas por rodada')
+                GLUCOSE_ALARM_DELIVERY_RETRY_SECONDS = (Get-UlanziText -Key 'intervalo entre tentativas')
+                WINDOWS_FALLBACK_ALERT_ENABLED = (Get-UlanziText -Key 'aviso de contingencia do Windows')
+                WINDOWS_STATUS_NOTIFICATION_DELAY_MINUTES = (Get-UlanziText -Key 'espera do aviso de conexao')
             }
             $controlledLabels = @($state.overriddenKeys | ForEach-Object {
                 if ($externalLabels.ContainsKey([string]$_)) { $externalLabels[[string]$_] } else { [string]$_ }
             })
-            throw "Alguns ajustes sao controlados externamente pelo Windows e nao podem ser salvos nesta tela: $($controlledLabels -join ', '). Remova essas variaveis externas e abra a tela novamente."
+            throw (Get-UlanziText -Key 'Alguns ajustes sao controlados externamente pelo Windows e nao podem ser salvos nesta tela: {0}. Remova essas variaveis externas e abra a tela novamente.' -Arguments @(($($controlledLabels -join ', '))))
         }
         $values = $state.values
 
         $form = [Windows.Forms.Form]::new()
         $form.Name = "UlanziSettingsForm"
-        $form.Text = "Configuracoes - Ulanzi Libre"
+        $form.Text = (Get-UlanziText -Key 'Configuracoes - Ulanzi Libre')
         $form.ClientSize = [Drawing.Size]::new(780, 680)
         $form.MinimumSize = [Drawing.Size]::new(720, 640)
         $form.StartPosition = if ($null -ne $Owner) {
@@ -1331,13 +1335,13 @@ function Show-UlanziConfigurationDialog {
         $header.BackColor = [Drawing.ColorTranslator]::FromHtml("#173A4D")
         $header.Tag = "Header"
         $title = [Windows.Forms.Label]::new()
-        $title.Text = "Configuracoes"
+        $title.Text = (Get-UlanziText -Key 'Configuracoes')
         $title.AutoSize = $true
         $title.Location = [Drawing.Point]::new(20, 13)
         $title.Font = [Drawing.Font]::new("Segoe UI", 17, [Drawing.FontStyle]::Bold)
         $title.ForeColor = [Drawing.Color]::White
         $subtitle = [Windows.Forms.Label]::new()
-        $subtitle.Text = "Alertas, tela, sensor e conexoes organizados por assunto."
+        $subtitle.Text = (Get-UlanziText -Key 'Alertas, tela, sensor e conexoes organizados por assunto.')
         $subtitle.AutoSize = $true
         $subtitle.Location = [Drawing.Point]::new(22, 48)
         $subtitle.ForeColor = [Drawing.ColorTranslator]::FromHtml("#D4E7EF")
@@ -1354,17 +1358,17 @@ function Show-UlanziConfigurationDialog {
         $footer.BackColor = [Drawing.Color]::White
 
         $safetyLabel = [Windows.Forms.Label]::new()
-        $safetyLabel.Text = "Estas opcoes controlam apenas o visor e os alertas; nao sao recomendacoes de tratamento."
+        $safetyLabel.Text = (Get-UlanziText -Key 'Estas opcoes controlam apenas o visor e os alertas; nao sao recomendacoes de tratamento.')
         $safetyLabel.AutoSize = $true
         $safetyLabel.Location = [Drawing.Point]::new(18, 11)
         $safetyLabel.ForeColor = [Drawing.Color]::DimGray
 
         $statusLabel = [Windows.Forms.Label]::new()
-        $statusLabel.Text = "Altere os valores e use Salvar e aplicar para confirmar."
+        $statusLabel.Text = (Get-UlanziText -Key 'Altere os valores e use Salvar e aplicar para confirmar.')
         $statusLabel.AutoSize = $true
         $statusLabel.Location = [Drawing.Point]::new(18, 37)
         $statusLabel.ForeColor = [Drawing.ColorTranslator]::FromHtml("#1D5D7A")
-        $statusLabel.AccessibleName = "Estado do salvamento"
+        $statusLabel.AccessibleName = (Get-UlanziText -Key 'Estado do salvamento')
 
         $saveProgress = [Windows.Forms.ProgressBar]::new()
         $saveProgress.Location = [Drawing.Point]::new(18, 56)
@@ -1374,12 +1378,12 @@ function Show-UlanziConfigurationDialog {
         $saveProgress.MarqueeAnimationSpeed = 0
         $saveProgress.Visible = $false
         $saveProgress.TabStop = $false
-        $saveProgress.AccessibleName = "Progresso do salvamento da configuracao"
-        $saveProgress.AccessibleDescription = "Nenhum salvamento esta em andamento."
+        $saveProgress.AccessibleName = (Get-UlanziText -Key 'Progresso do salvamento da configuracao')
+        $saveProgress.AccessibleDescription = (Get-UlanziText -Key 'Nenhum salvamento esta em andamento.')
 
         $saveButton = [Windows.Forms.Button]::new()
         $saveButton.Name = "saveSettingsButton"
-        $saveButton.Text = "Salvar e aplicar"
+        $saveButton.Text = (Get-UlanziText -Key 'Salvar e aplicar')
         $saveButton.Size = [Drawing.Size]::new(150, 32)
         $saveButton.Anchor = [Windows.Forms.AnchorStyles]::Right -bor [Windows.Forms.AnchorStyles]::Bottom
         $saveButton.Location = [Drawing.Point]::new(610, 64)
@@ -1391,7 +1395,7 @@ function Show-UlanziConfigurationDialog {
 
         $cancelButton = [Windows.Forms.Button]::new()
         $cancelButton.Name = "cancelSettingsButton"
-        $cancelButton.Text = "Cancelar"
+        $cancelButton.Text = (Get-UlanziText -Key 'Cancelar')
         $cancelButton.Size = [Drawing.Size]::new(92, 32)
         $cancelButton.Anchor = [Windows.Forms.AnchorStyles]::Right -bor [Windows.Forms.AnchorStyles]::Bottom
         $cancelButton.Location = [Drawing.Point]::new(508, 64)
@@ -1399,11 +1403,11 @@ function Show-UlanziConfigurationDialog {
 
         $defaultsButton = [Windows.Forms.Button]::new()
         $defaultsButton.Name = "restoreRecommendedButton"
-        $defaultsButton.Text = "Usar valores recomendados"
+        $defaultsButton.Text = (Get-UlanziText -Key 'Usar valores recomendados')
         $defaultsButton.Size = [Drawing.Size]::new(206, 32)
         $defaultsButton.Anchor = [Windows.Forms.AnchorStyles]::Left -bor [Windows.Forms.AnchorStyles]::Bottom
         $defaultsButton.Location = [Drawing.Point]::new(18, 64)
-        $defaultsButton.AccessibleDescription = "Restaura somente ajustes de funcionamento, preservando limites e escolhas pessoais."
+        $defaultsButton.AccessibleDescription = (Get-UlanziText -Key 'Restaura somente ajustes de funcionamento, preservando limites e escolhas pessoais.')
 
         $footer.Controls.Add($safetyLabel)
         $footer.Controls.Add($statusLabel)
@@ -1419,94 +1423,105 @@ function Show-UlanziConfigurationDialog {
         $tabs.Font = [Drawing.Font]::new("Segoe UI", 9)
         $tabs.ShowToolTips = $true
 
-        $alarmsTab = [Windows.Forms.TabPage]::new("Alertas e som")
+        $alarmsTab = [Windows.Forms.TabPage]::new((Get-UlanziText -Key 'Alertas e som'))
         $alarmsTab.Name = "alertsTab"
-        $alarmsTab.ToolTipText = "Escolha quando os alertas tocam e quanto tempo duram."
+        $alarmsTab.ToolTipText = (Get-UlanziText -Key 'Escolha quando os alertas tocam e quanto tempo duram.')
         $alarmsTab.BackColor = [Drawing.Color]::White
         $alarmsTab.AutoScroll = $false
         $alarmsTable = New-UlanziSettingsTable
         $alarmsTab.Controls.Add($alarmsTable)
-        Add-UlanziSection -Table $alarmsTable -Text "Geral"
-        $alarmEnabledControl = Add-UlanziBooleanSetting -Table $alarmsTable -Title "Ativar alertas sonoros de glicemia" -Description "Liga os alertas desta aplicacao; o som geral do TC001 e controlado separadamente no painel." -Checked ([bool]$values.GLUCOSE_ALARM_ENABLED)
-        Add-UlanziSection -Table $alarmsTable -Text "Valores de glicemia que disparam som (sempre em mg/dL)"
-        $alarmLowControl = Add-UlanziNumberSetting -Table $alarmsTable -Title "Tocar quando estiver abaixo de" -Description "Limite pessoal para o alerta sonoro de glicemia baixa." -Minimum 20 -Maximum 300 -Value ([decimal]$values.GLUCOSE_ALARM_LOW_THRESHOLD_MGDL) -Unit "mg/dL" -DecimalPlaces 1
-        $alarmHighControl = Add-UlanziNumberSetting -Table $alarmsTable -Title "Tocar quando estiver acima de" -Description "Limite pessoal para o alerta sonoro de glicemia alta." -Minimum 40 -Maximum 600 -Value ([decimal]$values.GLUCOSE_ALARM_HIGH_THRESHOLD_MGDL) -Unit "mg/dL" -DecimalPlaces 1
-        [void](Add-UlanziInformation -Table $alarmsTable -Height 54 -Text "Esses limites controlam o som. As cores do TC001 sao ajustadas separadamente em 'Tela e sensor'.")
-        Add-UlanziSection -Table $alarmsTable -Text "Tendencia e falta de dados"
-        $upSlightControl = Add-UlanziNumberSetting -Table $alarmsTable -Title "Seta diagonal para cima: tocar acima de" -Description "O limite e estrito: no valor exato o som nao toca." -Minimum 20 -Maximum 600 -Value ([decimal]$values.GLUCOSE_ALARM_UP_SLIGHT_THRESHOLD_MGDL) -Unit "mg/dL" -DecimalPlaces 1
-        $downControl = Add-UlanziNumberSetting -Table $alarmsTable -Title "Setas para baixo: tocar abaixo de" -Description "Inclui seta para baixo e diagonal para baixo; no valor exato o som nao toca." -Minimum 20 -Maximum 600 -Value ([decimal]$values.GLUCOSE_ALARM_DOWN_THRESHOLD_MGDL) -Unit "mg/dL" -DecimalPlaces 1
-        $doubleUpControl = Add-UlanziBooleanSetting -Table $alarmsTable -Title "Tocar para seta dupla para cima" -Description "Avisa tambem quando a leitura indica uma subida muito rapida." -Checked ([bool]$values.GLUCOSE_ALARM_DOUBLE_UP_ENABLED)
-        $noDataControl = Add-UlanziBooleanSetting -Table $alarmsTable -Title "Tocar uma vez ao entrar em SEM DADO" -Description "TROCAR e um aviso visual separado e nao usa este som." -Checked ([bool]$values.GLUCOSE_ALARM_NO_DATA_ENABLED)
-        Add-UlanziSection -Table $alarmsTable -Text "Duracao do aviso"
+        Add-UlanziSection -Table $alarmsTable -Text (Get-UlanziText -Key 'Geral')
+        $alarmEnabledControl = Add-UlanziBooleanSetting -Table $alarmsTable -Title (Get-UlanziText -Key 'Ativar alertas sonoros de glicemia') -Description (Get-UlanziText -Key 'Liga os alertas desta aplicacao; o som geral do TC001 e controlado separadamente no painel.') -Checked ([bool]$values.GLUCOSE_ALARM_ENABLED)
+        Add-UlanziSection -Table $alarmsTable -Text (Get-UlanziText -Key 'Valores de glicemia que disparam som (sempre em mg/dL)')
+        $alarmLowControl = Add-UlanziNumberSetting -Table $alarmsTable -Title (Get-UlanziText -Key 'Tocar quando estiver abaixo de') -Description (Get-UlanziText -Key 'Limite pessoal para o alerta sonoro de glicemia baixa.') -Minimum 20 -Maximum 300 -Value ([decimal]$values.GLUCOSE_ALARM_LOW_THRESHOLD_MGDL) -Unit "mg/dL" -DecimalPlaces 1
+        $alarmHighControl = Add-UlanziNumberSetting -Table $alarmsTable -Title (Get-UlanziText -Key 'Tocar quando estiver acima de') -Description (Get-UlanziText -Key 'Limite pessoal para o alerta sonoro de glicemia alta.') -Minimum 40 -Maximum 600 -Value ([decimal]$values.GLUCOSE_ALARM_HIGH_THRESHOLD_MGDL) -Unit "mg/dL" -DecimalPlaces 1
+        [void](Add-UlanziInformation -Table $alarmsTable -Height 54 -Text (Get-UlanziText -Key 'Esses limites controlam o som. As cores do TC001 sao ajustadas separadamente em ''Tela e sensor''.'))
+        Add-UlanziSection -Table $alarmsTable -Text (Get-UlanziText -Key 'Tendencia e falta de dados')
+        $upSlightControl = Add-UlanziNumberSetting -Table $alarmsTable -Title (Get-UlanziText -Key 'Seta diagonal para cima: tocar acima de') -Description (Get-UlanziText -Key 'O limite e estrito: no valor exato o som nao toca.') -Minimum 20 -Maximum 600 -Value ([decimal]$values.GLUCOSE_ALARM_UP_SLIGHT_THRESHOLD_MGDL) -Unit "mg/dL" -DecimalPlaces 1
+        $downControl = Add-UlanziNumberSetting -Table $alarmsTable -Title (Get-UlanziText -Key 'Setas para baixo: tocar abaixo de') -Description (Get-UlanziText -Key 'Inclui seta para baixo e diagonal para baixo; no valor exato o som nao toca.') -Minimum 20 -Maximum 600 -Value ([decimal]$values.GLUCOSE_ALARM_DOWN_THRESHOLD_MGDL) -Unit "mg/dL" -DecimalPlaces 1
+        $doubleUpControl = Add-UlanziBooleanSetting -Table $alarmsTable -Title (Get-UlanziText -Key 'Tocar para seta dupla para cima') -Description (Get-UlanziText -Key 'Avisa tambem quando a leitura indica uma subida muito rapida.') -Checked ([bool]$values.GLUCOSE_ALARM_DOUBLE_UP_ENABLED)
+        $noDataControl = Add-UlanziBooleanSetting -Table $alarmsTable -Title (Get-UlanziText -Key 'Tocar uma vez ao entrar em SEM DADO') -Description (Get-UlanziText -Key 'TROCAR e um aviso visual separado e nao usa este som.') -Checked ([bool]$values.GLUCOSE_ALARM_NO_DATA_ENABLED)
+        Add-UlanziSection -Table $alarmsTable -Text (Get-UlanziText -Key 'Duracao do aviso')
         $profileKeys = @("discreet", "normal", "reinforced")
-        $profileLabels = @("Discreto (~0,6 s)", "Normal (~1,2 s)", "Reforcado (~2,1 s)")
+        $profileLabels = @((Get-UlanziText -Key 'Discreto (~0,6 s)'), (Get-UlanziText -Key 'Normal (~1,2 s)'), (Get-UlanziText -Key 'Reforcado (~2,1 s)'))
         $profileValue = [string]$values.GLUCOSE_ALARM_SOUND_PROFILE
         $profileIndex = [Array]::IndexOf($profileKeys, $profileValue)
         if ($profileIndex -lt 0) { $profileIndex = 1 }
-        $soundProfileControl = Add-UlanziChoiceSetting -Table $alarmsTable -Title "Duracao do toque" -Description "Escolha um aviso curto, normal ou reforcado." -Options $profileLabels -SelectedIndex $profileIndex
+        $soundProfileControl = Add-UlanziChoiceSetting -Table $alarmsTable -Title (Get-UlanziText -Key 'Duracao do toque') -Description (Get-UlanziText -Key 'Escolha um aviso curto, normal ou reforcado.') -Options $profileLabels -SelectedIndex $profileIndex
         $soundProfileControl.Name = "soundProfileControl"
-        [void](Add-UlanziInformation -Table $alarmsTable -Height 52 -Text "O som geral do relogio pode ser ligado ou desligado em Alertas > Configurar som no painel.")
+        [void](Add-UlanziInformation -Table $alarmsTable -Height 52 -Text (Get-UlanziText -Key 'O som geral do relogio pode ser ligado ou desligado em Alertas > Configurar som no painel.'))
         Complete-UlanziSettingsTable -Table $alarmsTable
         Connect-UlanziSettingsScrolling -Tab $alarmsTab -Table $alarmsTable
 
-        $behaviorTab = [Windows.Forms.TabPage]::new("Comportamento")
+        $behaviorTab = [Windows.Forms.TabPage]::new((Get-UlanziText -Key 'Comportamento'))
         $behaviorTab.Name = "behaviorTab"
-        $behaviorTab.ToolTipText = "Evite repeticoes e escolha o que acontece ao iniciar ou recuperar dados."
+        $behaviorTab.ToolTipText = (Get-UlanziText -Key 'Evite repeticoes e escolha o que acontece ao iniciar ou recuperar dados.')
         $behaviorTab.BackColor = [Drawing.Color]::White
         $behaviorTab.AutoScroll = $false
         $behaviorTable = New-UlanziSettingsTable
         $behaviorTab.Controls.Add($behaviorTable)
-        Add-UlanziSection -Table $behaviorTable -Text "Evitar sons repetidos"
-        $hysteresisControl = Add-UlanziNumberSetting -Table $behaviorTable -Title "Folga para liberar um novo alerta" -Description "Exige afastar-se um pouco do limite antes de permitir outro som." -Minimum 0 -Maximum 30 -Value ([decimal]$values.GLUCOSE_ALARM_HYSTERESIS_MGDL) -Unit "mg/dL" -DecimalPlaces 1
-        $cooldownControl = Add-UlanziNumberSetting -Table $behaviorTable -Title "Pausa antes de repetir o mesmo alerta" -Description "Nao muda a duracao do toque; evita repetir o aviso logo depois." -Minimum 0 -Maximum 1440 -Value ([decimal]$values.GLUCOSE_ALARM_COOLDOWN_MINUTES) -Unit "min" -DecimalPlaces 1
+        Add-UlanziSection -Table $behaviorTable -Text (Get-UlanziText -Key 'Evitar sons repetidos')
+        $hysteresisControl = Add-UlanziNumberSetting -Table $behaviorTable -Title (Get-UlanziText -Key 'Folga para liberar um novo alerta') -Description (Get-UlanziText -Key 'Exige afastar-se um pouco do limite antes de permitir outro som.') -Minimum 0 -Maximum 30 -Value ([decimal]$values.GLUCOSE_ALARM_HYSTERESIS_MGDL) -Unit "mg/dL" -DecimalPlaces 1
+        $cooldownControl = Add-UlanziNumberSetting -Table $behaviorTable -Title (Get-UlanziText -Key 'Pausa antes de repetir o mesmo alerta') -Description (Get-UlanziText -Key 'Nao muda a duracao do toque; evita repetir o aviso logo depois.') -Minimum 0 -Maximum 1440 -Value ([decimal]$values.GLUCOSE_ALARM_COOLDOWN_MINUTES) -Unit "min" -DecimalPlaces 1
         $rearmLabel = Add-UlanziInformation -Table $behaviorTable -Text "" -Height 58
-        Add-UlanziSection -Table $behaviorTable -Text "Ao abrir ou recuperar dados"
-        $startupControl = Add-UlanziBooleanSetting -Table $behaviorTable -Title "Ao iniciar, tocar se a primeira leitura ja estiver baixa ou alta" -Description "Vale quando nao existe um historico de alarmes recente para restaurar." -Checked ([bool]$values.GLUCOSE_ALARM_ON_STARTUP_EXTREME)
-        $recoveryControl = Add-UlanziBooleanSetting -Table $behaviorTable -Title "Ao recuperar de SEM DADO, tocar se voltar baixa ou alta" -Description "A recuperacao e tratada separadamente de uma leitura normal." -Checked ([bool]$values.GLUCOSE_ALARM_ON_RECOVERY_EXTREME)
-        [void](Add-UlanziInformation -Table $behaviorTable -Height 50 -Text "O aplicativo preserva alertas ja confirmados para evitar repeticoes depois de reiniciar.")
+        Add-UlanziSection -Table $behaviorTable -Text (Get-UlanziText -Key 'Ao abrir ou recuperar dados')
+        $startupControl = Add-UlanziBooleanSetting -Table $behaviorTable -Title (Get-UlanziText -Key 'Ao iniciar, tocar se a primeira leitura ja estiver baixa ou alta') -Description (Get-UlanziText -Key 'Vale quando nao existe um historico de alarmes recente para restaurar.') -Checked ([bool]$values.GLUCOSE_ALARM_ON_STARTUP_EXTREME)
+        $recoveryControl = Add-UlanziBooleanSetting -Table $behaviorTable -Title (Get-UlanziText -Key 'Ao recuperar de SEM DADO, tocar se voltar baixa ou alta') -Description (Get-UlanziText -Key 'A recuperacao e tratada separadamente de uma leitura normal.') -Checked ([bool]$values.GLUCOSE_ALARM_ON_RECOVERY_EXTREME)
+        [void](Add-UlanziInformation -Table $behaviorTable -Height 50 -Text (Get-UlanziText -Key 'O aplicativo preserva alertas ja confirmados para evitar repeticoes depois de reiniciar.'))
         Complete-UlanziSettingsTable -Table $behaviorTable
         Connect-UlanziSettingsScrolling -Tab $behaviorTab -Table $behaviorTable
 
-        $rangesTab = [Windows.Forms.TabPage]::new("Tela e sensor")
+        $rangesTab = [Windows.Forms.TabPage]::new((Get-UlanziText -Key 'Tela e sensor'))
         $rangesTab.Name = "displayTab"
-        $rangesTab.ToolTipText = "Ajuste as cores, a atualizacao da leitura e o sensor Libre."
+        $rangesTab.ToolTipText = (Get-UlanziText -Key 'Ajuste as cores, a atualizacao da leitura e o sensor Libre.')
         $rangesTab.BackColor = [Drawing.Color]::White
         $rangesTab.AutoScroll = $false
         $rangesTable = New-UlanziSettingsTable
         $rangesTab.Controls.Add($rangesTable)
-        Add-UlanziSection -Table $rangesTable -Text "Cores e faixa visual no TC001 (sempre em mg/dL)"
-        [void](Add-UlanziInformation -Table $rangesTable -Height 54 -Text "Estes valores mudam as cores exibidas; nao definem quando um alerta sonoro toca.")
-        $lowControl = Add-UlanziNumberSetting -Table $rangesTable -Title "Mostrar como baixa abaixo de" -Description "Define apenas a faixa visual e a cor de glicemia baixa." -Minimum 20 -Maximum 300 -Value ([decimal]$values.LOW_THRESHOLD_MGDL) -Unit "mg/dL" -DecimalPlaces 1
-        $highControl = Add-UlanziNumberSetting -Table $rangesTable -Title "Mostrar como alta acima de" -Description "Define apenas a faixa visual e a cor de glicemia alta." -Minimum 40 -Maximum 600 -Value ([decimal]$values.HIGH_THRESHOLD_MGDL) -Unit "mg/dL" -DecimalPlaces 1
-        Add-UlanziSection -Table $rangesTable -Text "Atualizacao da leitura"
+        Add-UlanziSection -Table $rangesTable -Text "Language / Idioma"
+        $languageKeys = @("en", "pt-BR")
+        $languageIndex = if ([string]$values.APP_LANGUAGE -eq "pt-BR") { 1 } else { 0 }
+        $languageControl = Add-UlanziChoiceSetting -Table $rangesTable -Title "Language / Idioma" -Description (Get-UlanziText -Key 'O idioma sera aplicado ao salvar.') -Options @("English", (Get-UlanziText -Key 'Language.Portuguese')) -SelectedIndex $languageIndex
+        $languageControl.Name = "languageControl"
+        Add-UlanziSection -Table $rangesTable -Text (Get-UlanziText -Key 'Unidade das leituras')
+        $displayUnitKeys = @("mgdl", "mmol")
+        $displayUnitsIndex = if ([string]$values.DISPLAY_UNITS -eq "mmol") { 1 } else { 0 }
+        $displayUnitsControl = Add-UlanziChoiceSetting -Table $rangesTable -Title (Get-UlanziText -Key 'Mostrar glicemia em') -Description (Get-UlanziText -Key 'Altera as leituras no visor, painel e avisos.') -Options @("mg/dL", "mmol/L") -SelectedIndex $displayUnitsIndex
+        $displayUnitsControl.Name = "displayUnitsControl"
+        [void](Add-UlanziInformation -Table $rangesTable -Height 54 -Text (Get-UlanziText -Key 'Os limites abaixo e nas outras abas continuam em mg/dL. Trocar a unidade das leituras nao altera seus limites nem as regras dos alarmes.'))
+        Add-UlanziSection -Table $rangesTable -Text (Get-UlanziText -Key 'Cores e faixa visual no TC001 (sempre em mg/dL)')
+        [void](Add-UlanziInformation -Table $rangesTable -Height 54 -Text (Get-UlanziText -Key 'Estes valores mudam as cores exibidas; nao definem quando um alerta sonoro toca.'))
+        $lowControl = Add-UlanziNumberSetting -Table $rangesTable -Title (Get-UlanziText -Key 'Mostrar como baixa abaixo de') -Description (Get-UlanziText -Key 'Define apenas a faixa visual e a cor de glicemia baixa.') -Minimum 20 -Maximum 300 -Value ([decimal]$values.LOW_THRESHOLD_MGDL) -Unit "mg/dL" -DecimalPlaces 1
+        $highControl = Add-UlanziNumberSetting -Table $rangesTable -Title (Get-UlanziText -Key 'Mostrar como alta acima de') -Description (Get-UlanziText -Key 'Define apenas a faixa visual e a cor de glicemia alta.') -Minimum 40 -Maximum 600 -Value ([decimal]$values.HIGH_THRESHOLD_MGDL) -Unit "mg/dL" -DecimalPlaces 1
+        Add-UlanziSection -Table $rangesTable -Text (Get-UlanziText -Key 'Atualizacao da leitura')
         $pollMinimum = if ([string]$state.source -eq "nightscout") { 30 } else { 10 }
-        $pollControl = Add-UlanziNumberSetting -Table $rangesTable -Title "Buscar uma nova leitura a cada" -Description "Intervalos menores atualizam mais rapido, mas fazem mais requisicoes." -Minimum $pollMinimum -Maximum 3600 -Value ([decimal]$values.POLL_INTERVAL_SECONDS) -Unit "s"
-        $staleControl = Add-UlanziNumberSetting -Table $rangesTable -Title "Mostrar SEM DADO depois de" -Description "Tempo sem uma leitura nova antes de considerar o valor desatualizado." -Minimum 2 -Maximum 240 -Value ([decimal]$values.STALE_AFTER_MINUTES) -Unit "min" -DecimalPlaces 1
-        Add-UlanziSection -Table $rangesTable -Text "Sensor Libre"
-        $sensorControl = Add-UlanziNumberSetting -Table $rangesTable -Title "Duracao deste modelo de sensor" -Description "Usada com Sensor Start/Change para mostrar TROCAR no final." -Minimum 1 -Maximum 30 -Value ([decimal]$values.LIBRE_SENSOR_LIFETIME_DAYS) -Unit "dias"
+        $pollControl = Add-UlanziNumberSetting -Table $rangesTable -Title (Get-UlanziText -Key 'Buscar uma nova leitura a cada') -Description (Get-UlanziText -Key 'Intervalos menores atualizam mais rapido, mas fazem mais requisicoes.') -Minimum $pollMinimum -Maximum 3600 -Value ([decimal]$values.POLL_INTERVAL_SECONDS) -Unit "s"
+        $staleControl = Add-UlanziNumberSetting -Table $rangesTable -Title (Get-UlanziText -Key 'Mostrar SEM DADO depois de') -Description (Get-UlanziText -Key 'Tempo sem uma leitura nova antes de considerar o valor desatualizado.') -Minimum 2 -Maximum 240 -Value ([decimal]$values.STALE_AFTER_MINUTES) -Unit "min" -DecimalPlaces 1
+        Add-UlanziSection -Table $rangesTable -Text (Get-UlanziText -Key 'Sensor Libre')
+        $sensorControl = Add-UlanziNumberSetting -Table $rangesTable -Title (Get-UlanziText -Key 'Duracao deste modelo de sensor') -Description (Get-UlanziText -Key 'Usada com Sensor Start/Change para mostrar TROCAR no final.') -Minimum 1 -Maximum 30 -Value ([decimal]$values.LIBRE_SENSOR_LIFETIME_DAYS) -Unit (Get-UlanziText -Key 'dias')
         $sensorInformation = if ([string]$state.source -eq "nightscout") {
-            "O aviso TROCAR depende de o Nightscout registrar corretamente o inicio ou a troca do sensor."
+            (Get-UlanziText -Key 'O aviso TROCAR depende de o Nightscout registrar corretamente o inicio ou a troca do sensor.')
         } else {
-            "Disponivel somente quando a fonte configurada e Nightscout."
+            (Get-UlanziText -Key 'Disponivel somente quando a fonte configurada e Nightscout.')
         }
         [void](Add-UlanziInformation -Table $rangesTable -Height 62 -Text $sensorInformation)
         if ([string]$state.source -ne "nightscout") { $sensorControl.Enabled = $false }
         Complete-UlanziSettingsTable -Table $rangesTable
         Connect-UlanziSettingsScrolling -Tab $rangesTab -Table $rangesTable
 
-        $connectionTab = [Windows.Forms.TabPage]::new("Conexao e avisos")
+        $connectionTab = [Windows.Forms.TabPage]::new((Get-UlanziText -Key 'Conexao e avisos'))
         $connectionTab.Name = "connectionsTab"
-        $connectionTab.ToolTipText = "Defina avisos no computador e a entrega dos alertas ao TC001."
+        $connectionTab.ToolTipText = (Get-UlanziText -Key 'Defina avisos no computador e a entrega dos alertas ao TC001.')
         $connectionTab.BackColor = [Drawing.Color]::White
         $connectionTab.AutoScroll = $false
         $connectionTable = New-UlanziSettingsTable
         $connectionTab.Controls.Add($connectionTable)
-        Add-UlanziSection -Table $connectionTable -Text "Avisos no computador"
-        $windowsFallbackControl = Add-UlanziBooleanSetting -Table $connectionTable -Title "Avisar pelo Windows quando houver falha" -Description "Usa uma notificacao e som local se um alerta critico nao chegar ao TC001 ou uma conexao ficar indisponivel." -Checked ([bool]$values.WINDOWS_FALLBACK_ALERT_ENABLED)
-        $windowsDelayControl = Add-UlanziNumberSetting -Table $connectionTable -Title "Esperar antes de avisar uma falha de conexao" -Description "Evita notificacoes causadas por interrupcoes muito curtas." -Minimum 1 -Maximum 60 -Value ([decimal]$values.WINDOWS_STATUS_NOTIFICATION_DELAY_MINUTES) -Unit "min"
-        Add-UlanziSection -Table $connectionTable -Text "Entrega dos alertas ao TC001"
-        $attemptsControl = Add-UlanziNumberSetting -Table $connectionTable -Title "Quantidade de tentativas seguidas" -Description "Se todas falharem, o alerta continua pendente e tenta outra rodada depois." -Minimum 1 -Maximum 5 -Value ([decimal]$values.GLUCOSE_ALARM_MAX_DELIVERY_ATTEMPTS) -Unit "vezes"
-        $retryControl = Add-UlanziNumberSetting -Table $connectionTable -Title "Intervalo para tentar novamente" -Description "Espera antes de uma nova tentativa; nao muda a duracao do toque." -Minimum 5 -Maximum 300 -Value ([decimal]$values.GLUCOSE_ALARM_DELIVERY_RETRY_SECONDS) -Unit "s"
+        Add-UlanziSection -Table $connectionTable -Text (Get-UlanziText -Key 'Avisos no computador')
+        $windowsFallbackControl = Add-UlanziBooleanSetting -Table $connectionTable -Title (Get-UlanziText -Key 'Avisar pelo Windows quando houver falha') -Description (Get-UlanziText -Key 'Usa uma notificacao e som local se um alerta critico nao chegar ao TC001 ou uma conexao ficar indisponivel.') -Checked ([bool]$values.WINDOWS_FALLBACK_ALERT_ENABLED)
+        $windowsDelayControl = Add-UlanziNumberSetting -Table $connectionTable -Title (Get-UlanziText -Key 'Esperar antes de avisar uma falha de conexao') -Description (Get-UlanziText -Key 'Evita notificacoes causadas por interrupcoes muito curtas.') -Minimum 1 -Maximum 60 -Value ([decimal]$values.WINDOWS_STATUS_NOTIFICATION_DELAY_MINUTES) -Unit "min"
+        Add-UlanziSection -Table $connectionTable -Text (Get-UlanziText -Key 'Entrega dos alertas ao TC001')
+        $attemptsControl = Add-UlanziNumberSetting -Table $connectionTable -Title (Get-UlanziText -Key 'Quantidade de tentativas seguidas') -Description (Get-UlanziText -Key 'Se todas falharem, o alerta continua pendente e tenta outra rodada depois.') -Minimum 1 -Maximum 5 -Value ([decimal]$values.GLUCOSE_ALARM_MAX_DELIVERY_ATTEMPTS) -Unit (Get-UlanziText -Key 'vezes')
+        $retryControl = Add-UlanziNumberSetting -Table $connectionTable -Title (Get-UlanziText -Key 'Intervalo para tentar novamente') -Description (Get-UlanziText -Key 'Espera antes de uma nova tentativa; nao muda a duracao do toque.') -Minimum 5 -Maximum 300 -Value ([decimal]$values.GLUCOSE_ALARM_DELIVERY_RETRY_SECONDS) -Unit "s"
         $retryControl.Name = "deliveryRetrySecondsControl"
         Complete-UlanziSettingsTable -Table $connectionTable
         Connect-UlanziSettingsScrolling -Tab $connectionTab -Table $connectionTable
@@ -1556,9 +1571,9 @@ function Show-UlanziConfigurationDialog {
         $updateRearmSummary = {
             $margin = [decimal]$hysteresisControl.Value
             $rearmLabel.Text = if ($margin -le 0) {
-                "Sem folga adicional: um novo alerta pode ser liberado assim que a leitura voltar ao limite."
+                (Get-UlanziText -Key 'Sem folga adicional: um novo alerta pode ser liberado assim que a leitura voltar ao limite.')
             } else {
-                "Com a folga de $margin mg/dL, um novo alerta so e liberado depois que a leitura se afasta do limite. Isso evita sons repetidos perto do mesmo valor."
+                (Get-UlanziText -Key 'Com a folga de {0} mg/dL, um novo alerta so e liberado depois que a leitura se afasta do limite. Isso evita sons repetidos perto do mesmo valor.' -Arguments @(($margin)))
             }
         }
         $alarmEnabledControl.add_CheckedChanged($updateAlarmControls)
@@ -1575,8 +1590,8 @@ function Show-UlanziConfigurationDialog {
         $markConfigurationDirty = ({
             if ($settingsState.Saving -or $settingsState.Dirty) { return }
             $settingsState.Dirty = $true
-            $saveButton.Text = "Salvar e aplicar *"
-            $statusLabel.Text = "Ha alteracoes nao salvas. Clique em Salvar e aplicar."
+            $saveButton.Text = (Get-UlanziText -Key 'Salvar e aplicar *')
+            $statusLabel.Text = (Get-UlanziText -Key 'Ha alteracoes nao salvas. Clique em Salvar e aplicar.')
             $statusLabel.ForeColor = [Drawing.ColorTranslator]::FromHtml("#1D5D7A")
         }).GetNewClosure()
         $numberControls = @(
@@ -1609,6 +1624,8 @@ function Show-UlanziConfigurationDialog {
             $control.add_CheckedChanged($markConfigurationDirty)
         }
         $soundProfileControl.add_SelectedIndexChanged($markConfigurationDirty)
+        $displayUnitsControl.add_SelectedIndexChanged($markConfigurationDirty)
+        $languageControl.add_SelectedIndexChanged($markConfigurationDirty)
         $retryControl.add_ValueChanged($markConfigurationDirty)
         $retryControl.add_TextChanged($markConfigurationDirty)
 
@@ -1627,9 +1644,9 @@ function Show-UlanziConfigurationDialog {
             $saveProgress.Visible = $Busy
             $saveProgress.MarqueeAnimationSpeed = if ($Busy) { 26 } else { 0 }
             $saveProgress.AccessibleDescription = if ($Busy) {
-                if ([string]::IsNullOrWhiteSpace($Message)) { "A configuracao esta sendo salva e conferida." } else { $Message }
+                if ([string]::IsNullOrWhiteSpace($Message)) { (Get-UlanziText -Key 'A configuracao esta sendo salva e conferida.') } else { $Message }
             } else {
-                "Nenhum salvamento esta em andamento."
+                (Get-UlanziText -Key 'Nenhum salvamento esta em andamento.')
             }
             if (-not [string]::IsNullOrWhiteSpace($Message)) {
                 $statusLabel.Text = $Message
@@ -1653,14 +1670,14 @@ function Show-UlanziConfigurationDialog {
             $settingsState.PendingValues = $null
             $settingsState.PendingWriteResult = $null
             & $setSavingUi $false
-            $statusLabel.Text = "Nao foi possivel concluir o salvamento. Revise a mensagem e tente novamente."
+            $statusLabel.Text = (Get-UlanziText -Key 'Nao foi possivel concluir o salvamento. Revise a mensagem e tente novamente.')
             $statusLabel.AccessibleDescription = $statusLabel.Text
             $statusLabel.ForeColor = [Drawing.Color]::Firebrick
             if (-not $form.IsDisposed -and -not $form.Disposing -and $form.IsHandleCreated) {
                 [void](Show-UlanziOwnedMessageBox `
                     -Owner $form `
                     -Text $Message `
-                    -Caption "Erro ao salvar configuracoes" `
+                    -Caption (Get-UlanziText -Key 'Erro ao salvar configuracoes') `
                     -Buttons ([Windows.Forms.MessageBoxButtons]::OK) `
                     -Icon ([Windows.Forms.MessageBoxIcon]::Error))
             }
@@ -1675,8 +1692,8 @@ function Show-UlanziConfigurationDialog {
             try {
                 if (-not $operation.Process.HasExited) {
                     if ([DateTime]::UtcNow -ge $settingsState.PendingDeadline) {
-                        $stageLabel = if ($settingsState.PendingStage -eq "write") { "gravacao" } else { "conferencia" }
-                        & $failSaving "A etapa de $stageLabel excedeu o tempo limite de $EditorTimeoutSeconds segundos. Nenhuma nova tentativa foi iniciada."
+                        $stageLabel = if ($settingsState.PendingStage -eq "write") { (Get-UlanziText -Key 'gravacao') } else { (Get-UlanziText -Key 'conferencia') }
+                        & $failSaving (Get-UlanziText -Key 'A etapa de {0} excedeu o tempo limite de {1} segundos. Nenhuma nova tentativa foi iniciada.' -Arguments @(($stageLabel), ($EditorTimeoutSeconds)))
                     }
                     return
                 }
@@ -1690,7 +1707,7 @@ function Show-UlanziConfigurationDialog {
                 if ($completedStage -eq "write") {
                     $settingsState.PendingWriteResult = $response
                     $settingsState.Revision = [string]$response.state.revision
-                    $verificationMessage = "Etapa 2 de 2: relendo o arquivo e confirmando cada valor..."
+                    $verificationMessage = (Get-UlanziText -Key 'Etapa 2 de 2: relendo o arquivo e confirmando cada valor...')
                     $settingsState.PendingEditor = Start-UlanziConfigEditorOperation -Command "read" -ProjectRoot $ProjectRoot -EnvPath $EnvPath
                     $settingsState.PendingStage = "verify"
                     $settingsState.PendingDeadline = [DateTime]::UtcNow.AddSeconds($EditorTimeoutSeconds)
@@ -1709,7 +1726,7 @@ function Show-UlanziConfigurationDialog {
                     }
                 }
                 if ($unconfirmedKeys.Count -gt 0) {
-                    throw "O arquivo foi gravado, mas estes valores nao puderam ser confirmados pela releitura: $($unconfirmedKeys -join ', '). Abra a tela novamente antes de tentar outra alteracao."
+                    throw (Get-UlanziText -Key 'O arquivo foi gravado, mas estes valores nao puderam ser confirmados pela releitura: {0}. Abra a tela novamente antes de tentar outra alteracao.' -Arguments @(($($unconfirmedKeys -join ', '))))
                 }
 
                 $writeResult = $settingsState.PendingWriteResult
@@ -1718,7 +1735,7 @@ function Show-UlanziConfigurationDialog {
                 $settingsState.Dirty = $false
                 $settingsState.AllowClose = $true
                 & $setSavingUi $false
-                $statusLabel.Text = "Salvamento confirmado. Fechando a janela..."
+                $statusLabel.Text = (Get-UlanziText -Key 'Salvamento confirmado. Fechando a janela...')
                 $statusLabel.AccessibleDescription = $statusLabel.Text
                 $form.Tag = [pscustomobject]@{
                     Saved = $true
@@ -1745,7 +1762,7 @@ function Show-UlanziConfigurationDialog {
                     $form.IsHandleCreated
                 ) {
                     $eventArgs.Cancel = $true
-                    $statusLabel.Text = "Aguarde o salvamento e a conferencia terminarem antes de fechar."
+                    $statusLabel.Text = (Get-UlanziText -Key 'Aguarde o salvamento e a conferencia terminarem antes de fechar.')
                     $statusLabel.AccessibleDescription = $statusLabel.Text
                     $statusLabel.ForeColor = [Drawing.ColorTranslator]::FromHtml("#1D5D7A")
                 } else {
@@ -1765,8 +1782,8 @@ function Show-UlanziConfigurationDialog {
             }
             $answer = Show-UlanziOwnedMessageBox `
                 -Owner $form `
-                -Text "Existem alteracoes que ainda nao foram salvas. Deseja descarta-las?" `
-                -Caption "Alteracoes nao salvas" `
+                -Text (Get-UlanziText -Key 'Existem alteracoes que ainda nao foram salvas. Deseja descarta-las?') `
+                -Caption (Get-UlanziText -Key 'Alteracoes nao salvas') `
                 -Buttons ([Windows.Forms.MessageBoxButtons]::YesNo) `
                 -Icon ([Windows.Forms.MessageBoxIcon]::Warning)
             if ($answer -ne [Windows.Forms.DialogResult]::Yes) {
@@ -1777,8 +1794,8 @@ function Show-UlanziConfigurationDialog {
         $defaultsButton.add_Click({
             $answer = Show-UlanziOwnedMessageBox `
                 -Owner $form `
-                -Text "Usar os valores recomendados para os ajustes de funcionamento? Isso redefine atualizacao da leitura, controle de repeticao, tentativas de entrega e tempo de espera dos avisos do Windows. Limites pessoais, tipos de alerta, som geral, duracao do sensor e a escolha de ativar avisos do Windows serao preservados. Nada sera salvo ate voce clicar em Salvar e aplicar." `
-                -Caption "Usar valores recomendados" `
+                -Text (Get-UlanziText -Key 'Usar os valores recomendados para os ajustes de funcionamento? Isso redefine atualizacao da leitura, controle de repeticao, tentativas de entrega e tempo de espera dos avisos do Windows. Limites pessoais, tipos de alerta, som geral, duracao do sensor e a escolha de ativar avisos do Windows serao preservados. Nada sera salvo ate voce clicar em Salvar e aplicar.') `
+                -Caption (Get-UlanziText -Key 'Usar valores recomendados') `
                 -Buttons ([Windows.Forms.MessageBoxButtons]::YesNo) `
                 -Icon ([Windows.Forms.MessageBoxIcon]::Question)
             if ($answer -ne [Windows.Forms.DialogResult]::Yes) { return }
@@ -1789,7 +1806,7 @@ function Show-UlanziConfigurationDialog {
             $attemptsControl.Value = 3
             $retryControl.Value = 30
             $windowsDelayControl.Value = 2
-            $statusLabel.Text = "Valores recomendados carregados, mas ainda nao salvos. Revise e clique em Salvar e aplicar."
+            $statusLabel.Text = (Get-UlanziText -Key 'Valores recomendados carregados, mas ainda nao salvos. Revise e clique em Salvar e aplicar.')
             $statusLabel.ForeColor = [Drawing.ColorTranslator]::FromHtml("#1D5D7A")
         })
 
@@ -1800,7 +1817,7 @@ function Show-UlanziConfigurationDialog {
             $invalidTab = $null
             $invalidControl = $null
             if ($highControl.Value -le $lowControl.Value) {
-                $message = "Na faixa visual, o limite alto deve ser maior que o limite baixo."
+                $message = (Get-UlanziText -Key 'Na faixa visual, o limite alto deve ser maior que o limite baixo.')
                 $errorProvider.SetError($highControl, $message)
                 $errorProvider.SetError($lowControl, $message)
                 $valid = $false
@@ -1808,7 +1825,7 @@ function Show-UlanziConfigurationDialog {
                 $invalidControl = $highControl
             }
             if ($alarmHighControl.Value -le $alarmLowControl.Value) {
-                $message = "Nos alertas sonoros, o limite alto deve ser maior que o limite baixo."
+                $message = (Get-UlanziText -Key 'Nos alertas sonoros, o limite alto deve ser maior que o limite baixo.')
                 $errorProvider.SetError($alarmHighControl, $message)
                 $errorProvider.SetError($alarmLowControl, $message)
                 $valid = $false
@@ -1818,7 +1835,7 @@ function Show-UlanziConfigurationDialog {
                 }
             }
             if ([decimal]$pollControl.Value -ge ([decimal]$staleControl.Value * 60)) {
-                $message = "A busca de novas leituras precisa ocorrer antes do tempo definido para mostrar SEM DADO."
+                $message = (Get-UlanziText -Key 'A busca de novas leituras precisa ocorrer antes do tempo definido para mostrar SEM DADO.')
                 $errorProvider.SetError($pollControl, $message)
                 $errorProvider.SetError($staleControl, $message)
                 $valid = $false
@@ -1831,7 +1848,7 @@ function Show-UlanziConfigurationDialog {
                 $alarmEnabledControl.Checked -and
                 ([decimal]$hysteresisControl.Value * 2) -ge ([decimal]$alarmHighControl.Value - [decimal]$alarmLowControl.Value)
             ) {
-                $message = "A folga deve ser menor que metade da distancia entre os limites sonoros."
+                $message = (Get-UlanziText -Key 'A folga deve ser menor que metade da distancia entre os limites sonoros.')
                 $errorProvider.SetError($hysteresisControl, $message)
                 $valid = $false
                 if ($null -eq $invalidTab) {
@@ -1840,7 +1857,7 @@ function Show-UlanziConfigurationDialog {
                 }
             }
             if (-not $valid) {
-                $statusLabel.Text = "Revise os campos marcados antes de salvar."
+                $statusLabel.Text = (Get-UlanziText -Key 'Revise os campos marcados antes de salvar.')
                 $statusLabel.ForeColor = [Drawing.Color]::Firebrick
                 $tabs.SelectedTab = $invalidTab
                 [void]$invalidControl.Focus()
@@ -1848,6 +1865,8 @@ function Show-UlanziConfigurationDialog {
             }
 
             $newValues = [ordered]@{
+                APP_LANGUAGE = [string]$languageKeys[$languageControl.SelectedIndex]
+                DISPLAY_UNITS = [string]$displayUnitKeys[$displayUnitsControl.SelectedIndex]
                 LOW_THRESHOLD_MGDL = [double]$lowControl.Value
                 HIGH_THRESHOLD_MGDL = [double]$highControl.Value
                 STALE_AFTER_MINUTES = [double]$staleControl.Value
@@ -1893,15 +1912,15 @@ function Show-UlanziConfigurationDialog {
             if ($episodeChanged) {
                 $answer = Show-UlanziOwnedMessageBox `
                     -Owner $form `
-                    -Text "Estas mudancas iniciam um novo acompanhamento dos episodios de alarme. Se a primeira leitura estiver baixa ou alta, ela podera tocar conforme a opcao da aba Comportamento. Deseja continuar?" `
-                    -Caption "Reiniciar acompanhamento dos alarmes" `
+                    -Text (Get-UlanziText -Key 'Estas mudancas iniciam um novo acompanhamento dos episodios de alarme. Se a primeira leitura estiver baixa ou alta, ela podera tocar conforme a opcao da aba Comportamento. Deseja continuar?') `
+                    -Caption (Get-UlanziText -Key 'Reiniciar acompanhamento dos alarmes') `
                     -Buttons ([Windows.Forms.MessageBoxButtons]::YesNo) `
                     -Icon ([Windows.Forms.MessageBoxIcon]::Warning)
                 if ($answer -ne [Windows.Forms.DialogResult]::Yes) { return }
             }
 
             if ($settingsState.Saving) { return }
-            $savingMessage = "Etapa 1 de 2: validando, criando a copia de seguranca e salvando..."
+            $savingMessage = (Get-UlanziText -Key 'Etapa 1 de 2: validando, criando a copia de seguranca e salvando...')
             try {
                 $settingsState.PendingValues = $newValues
                 $settingsState.PendingWriteResult = $null

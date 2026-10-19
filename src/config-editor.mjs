@@ -1,9 +1,12 @@
+import { tr } from "./i18n.mjs";
 import { createHash } from "node:crypto";
 import { BridgeError } from "./errors.mjs";
 import { parseEnv } from "./env.mjs";
 import { readConfig } from "./config.mjs";
 
 export const EDITABLE_CONFIG_FIELDS = Object.freeze({
+  APP_LANGUAGE: { type: "string", values: Object.freeze(["en", "pt-BR"]) },
+  DISPLAY_UNITS: { type: "string", values: Object.freeze(["mgdl", "mmol"]) },
   LOW_THRESHOLD_MGDL: { type: "number" },
   HIGH_THRESHOLD_MGDL: { type: "number" },
   STALE_AFTER_MINUTES: { type: "number" },
@@ -37,7 +40,7 @@ const SECRET_KEYS = Object.freeze([
   "NIGHTSCOUT_API_SECRET",
   "JSON_SOURCE_TOKEN",
 ]);
-const MANAGED_BLOCK_COMMENT = "# Ajustes salvos pela interface";
+const MANAGED_BLOCK_COMMENT = "# Settings saved by the interface";
 const UUID_PATTERN = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
 function configError(message, code = "INVALID_CONFIG_UPDATE") {
@@ -53,19 +56,19 @@ function plainObject(value) {
 }
 
 export function normalizeEditableChanges(changes) {
-  if (!plainObject(changes)) throw configError("as alteracoes de configuracao sao invalidas");
+  if (!plainObject(changes)) throw configError(tr("the configuration changes are invalid", "as alteracoes de configuracao sao invalidas"));
   const normalized = {};
   for (const [key, value] of Object.entries(changes)) {
     const field = EDITABLE_CONFIG_FIELDS[key];
-    if (!field) throw configError(`a opcao ${key} nao pode ser alterada por esta tela`);
+    if (!field) throw configError(tr("option {0} cannot be changed on this screen", "a opcao {0} nao pode ser alterada por esta tela", [key]));
     if (field.type === "boolean") {
-      if (typeof value !== "boolean") throw configError(`${key} deve ser verdadeiro ou falso`);
+      if (typeof value !== "boolean") throw configError(tr("{0} must be true or false", "{0} deve ser verdadeiro ou falso", [key]));
       normalized[key] = value;
       continue;
     }
     if (field.type === "string") {
       if (typeof value !== "string" || !field.values?.includes(value)) {
-        throw configError(`${key} deve ser ${field.values.join(", ")}`);
+        throw configError(tr("{0} must be one of: {1}", "{0} deve ser {1}", [key, field.values.join(", ")]));
       }
       normalized[key] = value;
       continue;
@@ -75,7 +78,9 @@ export function normalizeEditableChanges(changes) {
       !Number.isFinite(value) ||
       (field.integer && !Number.isInteger(value))
     ) {
-      throw configError(`${key} deve ser um numero${field.integer ? " inteiro" : ""}`);
+      throw configError(field.integer
+        ? tr("{0} must be an integer", "{0} deve ser um numero inteiro", [key])
+        : tr("{0} must be a number", "{0} deve ser um numero", [key]));
     }
     normalized[key] = Object.is(value, -0) ? 0 : value;
   }
@@ -124,7 +129,7 @@ export function updateEnvText(text, changes) {
     const count = (assignmentCounts.get(key) ?? 0) + 1;
     assignmentCounts.set(key, count);
     if (count > 1) {
-      throw configError(`a opcao ${key} aparece mais de uma vez no arquivo .env`);
+      throw configError(tr("option {0} appears more than once in .env", "a opcao {0} aparece mais de uma vez no arquivo .env", [key]));
     }
   }
 
@@ -177,6 +182,8 @@ export function updateEnvText(text, changes) {
 
 export function editableValuesFromConfig(config) {
   return {
+    APP_LANGUAGE: config.language ?? "en",
+    DISPLAY_UNITS: config.displayUnits,
     LOW_THRESHOLD_MGDL: config.lowThresholdMgDl,
     HIGH_THRESHOLD_MGDL: config.highThresholdMgDl,
     STALE_AFTER_MINUTES: config.staleAfterMinutes,
@@ -207,17 +214,17 @@ function parseVault(vaultText) {
   try {
     vault = JSON.parse(vaultText);
   } catch {
-    throw configError("o cofre de credenciais esta corrompido", "INVALID_VAULT");
+    throw configError(tr("the credential vault is corrupted", "o cofre de credenciais esta corrompido"), "INVALID_VAULT");
   }
   if (!plainObject(vault) || !plainObject(vault.secrets)) {
-    throw configError("o cofre de credenciais tem formato invalido", "INVALID_VAULT");
+    throw configError(tr("the credential vault has an invalid format", "o cofre de credenciais tem formato invalido"), "INVALID_VAULT");
   }
   for (const [key, value] of Object.entries(vault.secrets)) {
     if (!SECRET_KEYS.includes(key)) {
-      throw configError("o cofre contem uma credencial nao permitida", "INVALID_VAULT");
+      throw configError(tr("the vault contains an unsupported credential", "o cofre contem uma credencial nao permitida"), "INVALID_VAULT");
     }
     if (typeof value !== "string" || value.length === 0) {
-      throw configError(`a credencial ${key} no cofre e invalida`, "INVALID_VAULT");
+      throw configError(tr("credential {0} in the vault is invalid", "a credencial {0} no cofre e invalida", [key]), "INVALID_VAULT");
     }
   }
   return vault;
@@ -247,7 +254,7 @@ export function validateConfigDocument(envText, vaultText = null) {
   const plaintextSecretKeys = SECRET_KEYS.filter((key) => Object.hasOwn(environment, key));
   if (plaintextSecretKeys.length > 0) {
     throw configError(
-      "o arquivo .env contem credenciais em texto simples; execute configurar.cmd para protege-las antes de usar esta tela",
+      tr("the .env file contains plaintext credentials; run configurar.cmd to protect them before using this screen", "o arquivo .env contem credenciais em texto simples; execute configurar.cmd para protege-las antes de usar esta tela"),
       "PLAINTEXT_SECRETS",
     );
   }
@@ -264,7 +271,7 @@ export function validateConfigDocument(envText, vaultText = null) {
       vault.generation !== generation
     ) {
       throw configError(
-        "a configuracao e o cofre de credenciais nao pertencem a mesma instalacao",
+        tr("the configuration and credential vault do not belong to the same installation", "a configuracao e o cofre de credenciais nao pertencem a mesma instalacao"),
         "CONFIG_VAULT_MISMATCH",
       );
     }
@@ -273,7 +280,7 @@ export function validateConfigDocument(envText, vaultText = null) {
     }
   } else if (generationAssignments.length > 0) {
     throw configError(
-      "a configuracao exige um cofre de credenciais que nao foi encontrado",
+      tr("the configuration requires a credential vault that was not found", "a configuracao exige um cofre de credenciais que nao foi encontrado"),
       "CONFIG_VAULT_MISMATCH",
     );
   }

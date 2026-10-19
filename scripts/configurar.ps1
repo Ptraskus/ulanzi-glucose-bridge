@@ -11,6 +11,16 @@ $envPath = Join-Path $projectRoot ".env"
 $secretsPath = Join-Path $projectRoot ".secrets"
 $vaultPath = Join-Path $secretsPath "vault.json"
 
+# Only read this non-secret preference; never print or import the environment document.
+$initialDisplayUnits = "mgdl"
+if (Test-Path -LiteralPath $envPath) {
+    foreach ($line in [IO.File]::ReadAllLines($envPath)) {
+        if ($line -match '^\s*DISPLAY_UNITS\s*=\s*["'']?(mgdl|mmol)["'']?\s*(?:#.*)?$') {
+            $initialDisplayUnits = $Matches[1].ToLowerInvariant()
+        }
+    }
+}
+
 function Read-WithDefault {
     param(
         [Parameter(Mandatory = $true)][string]$Prompt,
@@ -26,9 +36,10 @@ function Read-YesNoBoolean {
         [Parameter(Mandatory = $true)][string]$Prompt,
         [Parameter(Mandatory = $true)][string]$Default
     )
-    $answer = (Read-WithDefault -Prompt $Prompt -Default $Default).ToLowerInvariant()
-    if ($answer -notin @("sim", "nao")) { throw "Resposta invalida. Use sim ou nao." }
-    if ($answer -eq "sim") { return "true" }
+    $displayDefault = if ((Get-UlanziLanguage) -eq "en") { if ($Default -eq "sim") { "yes" } else { "no" } } else { $Default }
+    $answer = (Read-WithDefault -Prompt $Prompt -Default $displayDefault).ToLowerInvariant()
+    if ($answer -notin @("sim", "nao", "yes", "no")) { throw (Get-UlanziText -Key 'Resposta invalida. Use sim ou nao.') }
+    if ($answer -in @("sim", "yes")) { return "true" }
     return "false"
 }
 
@@ -116,17 +127,17 @@ function Acquire-ConfigWriteFileLock {
                 $lockItem = Get-Item -LiteralPath $Path -Force
                 $stale = ([DateTime]::UtcNow - $lockItem.LastWriteTimeUtc).TotalSeconds -gt $StaleAfterSeconds
             } catch {
-                throw "Nao foi possivel verificar a trava compartilhada da configuracao."
+                throw (Get-UlanziText -Key 'Nao foi possivel verificar a trava compartilhada da configuracao.')
             }
             if ($attempt -eq 0 -and $stale) {
                 Remove-Item -LiteralPath $Path -Force
                 continue
             }
-            throw "Outro salvamento ou restauracao de configuracao esta em andamento; tente novamente em alguns segundos."
+            throw (Get-UlanziText -Key 'Outro salvamento ou restauracao de configuracao esta em andamento; tente novamente em alguns segundos.')
         }
     }
 
-    throw "Nao foi possivel reservar o arquivo de configuracao."
+    throw (Get-UlanziText -Key 'Nao foi possivel reservar o arquivo de configuracao.')
 }
 
 function Release-ConfigWriteFileLock {
@@ -141,10 +152,12 @@ function Release-ConfigWriteFileLock {
             Remove-Item -LiteralPath $lockPath -Force
         }
     } catch {
-        Write-Warning "A trava temporaria da configuracao sera removida automaticamente se ficar obsoleta."
+        Write-Warning (Get-UlanziText -Key 'A trava temporaria da configuracao sera removida automaticamente se ficar obsoleta.')
     }
 }
 
+. (Join-Path $PSScriptRoot "ui-language.ps1")
+[void](Initialize-UlanziLanguage -EnvPath $envPath)
 $currentSid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
 $configMutex = [Threading.Mutex]::new($false, "Local\UlanziLibreConfig-$currentSid")
 $ownsConfigMutex = $false
@@ -154,7 +167,7 @@ try {
     $ownsConfigMutex = $true
 }
 if (-not $ownsConfigMutex) {
-    throw "Outra janela ou assistente de configuracao ja esta em uso."
+    throw (Get-UlanziText -Key 'Outra janela ou assistente de configuracao ja esta em uso.')
 }
 
 $useGraphicalWizard = -not $Console
@@ -163,19 +176,24 @@ if ($useGraphicalWizard) {
     if (-not [Environment]::UserInteractive) {
         if ($ownsConfigMutex) { $configMutex.ReleaseMutex() }
         $configMutex.Dispose()
-        throw "O assistente visual precisa de uma sessao interativa do Windows. Use -Console somente se quiser configurar pelo terminal."
+        throw (Get-UlanziText -Key 'O assistente visual precisa de uma sessao interativa do Windows. Use -Console somente se quiser configurar pelo terminal.')
     }
 
     try {
         . (Join-Path $PSScriptRoot "ui-theme.ps1")
         [void](Initialize-UlanziWindowsIdentity -ApplicationId "UlanziLibre.Bridge")
         . (Join-Path $PSScriptRoot "primeira-configuracao-ui.ps1")
-        $wizardSettings = Show-UlanziFirstRunWizard -HasExistingConfiguration:(Test-Path -LiteralPath $envPath)
+        if (-not (Show-UlanziLanguagePicker)) {
+            if ($ownsConfigMutex) { $configMutex.ReleaseMutex() }
+            $configMutex.Dispose()
+            exit 0
+        }
+        $wizardSettings = Show-UlanziFirstRunWizard -HasExistingConfiguration:(Test-Path -LiteralPath $envPath) -InitialDisplayUnits $initialDisplayUnits
     } catch {
         try {
             Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
             [void][Windows.Forms.MessageBox]::Show(
-                "Nao foi possivel abrir o assistente de configuracao.`r`n`r`nFeche e abra o Ulanzi Libre novamente. Se o problema continuar, use Ajuda e manutencao no painel.",
+                (Get-UlanziText -Key 'Wizard.OpenFailed'),
                 "Ulanzi Libre",
                 [Windows.Forms.MessageBoxButtons]::OK,
                 [Windows.Forms.MessageBoxIcon]::Error
@@ -186,13 +204,13 @@ if ($useGraphicalWizard) {
         }
         if ($ownsConfigMutex) { $configMutex.ReleaseMutex() }
         $configMutex.Dispose()
-        throw "Nao foi possivel abrir o assistente visual de configuracao."
+        throw (Get-UlanziText -Key 'Nao foi possivel abrir o assistente visual de configuracao.')
     }
 }
 
 if ($useGraphicalWizard) {
     if ($null -eq $wizardSettings) {
-        Write-Host "Configuracao preservada; nenhuma alteracao foi feita."
+        Write-Host (Get-UlanziText -Key 'Configuracao preservada; nenhuma alteracao foi feita.')
         if ($ownsConfigMutex) { $configMutex.ReleaseMutex() }
         $configMutex.Dispose()
         exit 0
@@ -208,6 +226,7 @@ if ($useGraphicalWizard) {
     $jsonToken = $wizardSettings.JsonToken
     $lowThreshold = $wizardSettings.LowThreshold
     $highThreshold = $wizardSettings.HighThreshold
+    $displayUnits = $wizardSettings.DisplayUnits
     $staleMinutes = $wizardSettings.StaleMinutes
     $sensorLifetimeDays = $wizardSettings.SensorLifetimeDays
     $alarmEnabled = $wizardSettings.AlarmEnabled
@@ -222,34 +241,36 @@ if ($useGraphicalWizard) {
     $alarmMaxDeliveryAttempts = $wizardSettings.AlarmMaxDeliveryAttempts
     $alarmDeliveryRetrySeconds = $wizardSettings.AlarmDeliveryRetrySeconds
 } else {
+    $selectedLanguage = Read-WithDefault -Prompt "Language / Idioma (en, pt-BR)" -Default (Get-UlanziLanguage)
+    [void](Set-UlanziLanguage -Language $selectedLanguage)
     if (Test-Path -LiteralPath $envPath) {
-        $replace = Read-Host "Ja existe um arquivo .env. Substituir? (digite SIM para confirmar)"
-        if ($replace -cne "SIM") {
-            Write-Host "Configuracao preservada; nenhuma alteracao foi feita."
+        $replace = Read-Host (Get-UlanziText -Key 'Ja existe um arquivo .env. Substituir? (digite SIM para confirmar)')
+        if ($replace -cne $(if ((Get-UlanziLanguage) -eq "pt-BR") { "SIM" } else { "YES" })) {
+            Write-Host (Get-UlanziText -Key 'Configuracao preservada; nenhuma alteracao foi feita.')
             exit 0
         }
     }
 
     Write-Host ""
-    Write-Host "Configuracao do Ulanzi Libre Bridge"
-    Write-Host "As senhas serao protegidas pelo DPAPI do Windows e so este usuario podera abri-las."
+    Write-Host (Get-UlanziText -Key 'Configuracao do Ulanzi Libre Bridge')
+    Write-Host (Get-UlanziText -Key 'As senhas serao protegidas pelo DPAPI do Windows e so este usuario podera abri-las.')
     Write-Host ""
 
-    $awtrixHost = Read-WithDefault -Prompt "IP ou hostname do TC001 com AWTRIX" -Default "http://awtrix-ng.local"
-    $awtrixUser = Read-Host "Usuario HTTP do AWTRIX (Enter se a autenticacao estiver desativada)"
+    $awtrixHost = Read-WithDefault -Prompt (Get-UlanziText -Key 'IP ou hostname do TC001 com AWTRIX') -Default "http://awtrix-ng.local"
+    $awtrixUser = Read-Host (Get-UlanziText -Key 'Usuario HTTP do AWTRIX (Enter se a autenticacao estiver desativada)')
     $awtrixPassword = $null
     if (-not [string]::IsNullOrWhiteSpace($awtrixUser)) {
-        $awtrixPassword = Read-Host "Senha HTTP do AWTRIX" -AsSecureString
+        $awtrixPassword = Read-Host (Get-UlanziText -Key 'Senha HTTP do AWTRIX') -AsSecureString
     }
 
     Write-Host ""
-    Write-Host "Fontes disponiveis:"
-    Write-Host "  nightscout - uma instancia Nightscout que voce ja controla"
-    Write-Host "  json        - um endpoint local/autorizado no formato documentado"
-    Write-Host "  mock        - leitura simulada para testar o display"
-    $source = (Read-WithDefault -Prompt "Fonte" -Default "nightscout").ToLowerInvariant()
+    Write-Host (Get-UlanziText -Key 'Fontes disponiveis:')
+    Write-Host (Get-UlanziText -Key '  nightscout - uma instancia Nightscout que voce ja controla')
+    Write-Host (Get-UlanziText -Key '  json        - um endpoint local/autorizado no formato documentado')
+    Write-Host (Get-UlanziText -Key '  mock        - leitura simulada para testar o display')
+    $source = (Read-WithDefault -Prompt (Get-UlanziText -Key 'Fonte') -Default "nightscout").ToLowerInvariant()
     if ($source -notin @("nightscout", "json", "mock")) {
-        throw "Fonte invalida. Use nightscout, json ou mock."
+        throw (Get-UlanziText -Key 'Fonte invalida. Use nightscout, json ou mock.')
     }
 
     $nightscoutUrl = ""
@@ -258,49 +279,53 @@ if ($useGraphicalWizard) {
     $nightscoutApiSecret = $null
     $jsonToken = $null
     if ($source -eq "nightscout") {
-        $nightscoutUrl = Read-Host "URL HTTPS final do Nightscout (ex.: https://meu-nightscout.example)"
-        if ([string]::IsNullOrWhiteSpace($nightscoutUrl)) { throw "A URL do Nightscout e obrigatoria." }
-        $nightscoutAuth = (Read-WithDefault -Prompt "Autenticacao Nightscout (token, api-secret ou public)" -Default "token").ToLowerInvariant()
+        $nightscoutUrl = Read-Host (Get-UlanziText -Key 'URL HTTPS final do Nightscout (ex.: https://meu-nightscout.example)')
+        if ([string]::IsNullOrWhiteSpace($nightscoutUrl)) { throw (Get-UlanziText -Key 'A URL do Nightscout e obrigatoria.') }
+        $nightscoutAuth = (Read-WithDefault -Prompt (Get-UlanziText -Key 'Autenticacao Nightscout (token, api-secret ou public)') -Default "token").ToLowerInvariant()
         if ($nightscoutAuth -eq "token") {
-            $nightscoutToken = Read-Host "Access token criado no Nightscout Admin Tools" -AsSecureString
-            if ($nightscoutToken.Length -eq 0) { throw "O access token e obrigatorio para este modo." }
+            $nightscoutToken = Read-Host (Get-UlanziText -Key 'Access token criado no Nightscout Admin Tools') -AsSecureString
+            if ($nightscoutToken.Length -eq 0) { throw (Get-UlanziText -Key 'O access token e obrigatorio para este modo.') }
         } elseif ($nightscoutAuth -eq "api-secret") {
-            $nightscoutApiSecret = Read-Host "API_SECRET do Nightscout" -AsSecureString
-            if ($nightscoutApiSecret.Length -eq 0) { throw "O API_SECRET e obrigatorio para este modo." }
+            $nightscoutApiSecret = Read-Host (Get-UlanziText -Key 'API_SECRET do Nightscout') -AsSecureString
+            if ($nightscoutApiSecret.Length -eq 0) { throw (Get-UlanziText -Key 'O API_SECRET e obrigatorio para este modo.') }
         } elseif ($nightscoutAuth -ne "public") {
-            throw "Autenticacao invalida. Use token, api-secret ou public."
+            throw (Get-UlanziText -Key 'Autenticacao invalida. Use token, api-secret ou public.')
         }
     } elseif ($source -eq "json") {
-        $jsonSourceUrl = Read-Host "URL HTTPS final do endpoint JSON autorizado (http somente em localhost)"
-        if ([string]::IsNullOrWhiteSpace($jsonSourceUrl)) { throw "A URL JSON e obrigatoria." }
-        $jsonToken = Read-Host "Bearer token do endpoint JSON (Enter se nao houver)" -AsSecureString
+        $jsonSourceUrl = Read-Host (Get-UlanziText -Key 'URL HTTPS final do endpoint JSON autorizado (http somente em localhost)')
+        if ([string]::IsNullOrWhiteSpace($jsonSourceUrl)) { throw (Get-UlanziText -Key 'A URL JSON e obrigatoria.') }
+        $jsonToken = Read-Host (Get-UlanziText -Key 'Bearer token do endpoint JSON (Enter se nao houver)') -AsSecureString
     }
 
     Write-Host ""
-    Write-Host "Os proximos limites controlam as cores do visor; nao sao recomendacoes de tratamento."
-    Write-Host "Os limites sonoros comecam iguais e poderao ser ajustados separadamente depois."
-    $lowThreshold = Read-WithDefault -Prompt "Abaixo de qual valor usar a cor de glicemia baixa (mg/dL)" -Default "70"
-    $highThreshold = Read-WithDefault -Prompt "Acima de qual valor usar a cor de glicemia alta (mg/dL)" -Default "180"
-    $staleMinutes = Read-WithDefault -Prompt "Depois de quantos minutos considerar o dado antigo" -Default "15"
-    $sensorLifetimeDays = Read-WithDefault -Prompt "Duracao nominal do sensor Libre em dias (varia conforme o modelo)" -Default "15"
-    $alarmEnabled = Read-YesNoBoolean -Prompt "Ativar alarmes sonoros (sim/nao)" -Default "nao"
-    Write-Host "As regras sonoras a seguir ficam pre-selecionadas, mas so terao efeito depois de ativar o alarme geral."
-    $upSlightThreshold = Read-WithDefault -Prompt "Acima de qual valor alertar seta diagonal para cima (mg/dL)" -Default "140"
-    $downThreshold = Read-WithDefault -Prompt "Abaixo de qual valor alertar seta para baixo ou diagonal para baixo (mg/dL)" -Default "90"
-    $doubleUpEnabled = Read-YesNoBoolean -Prompt "Alertar seta dupla para cima (sim/nao)" -Default "sim"
-    $noDataEnabled = Read-YesNoBoolean -Prompt "Alertar quando a leitura ficar SEM DADO (sim/nao)" -Default "sim"
-    $alarmHysteresis = Read-WithDefault -Prompt "Histerese para rearmar alarmes por valor (mg/dL)" -Default "5"
-    $alarmCooldown = Read-WithDefault -Prompt "Intervalo minimo para rearmar o mesmo alarme (minutos)" -Default "5"
-    $alarmOnStartupExtreme = Read-YesNoBoolean -Prompt "Alertar baixa ou alta ja na primeira leitura (sim/nao)" -Default "sim"
-    $alarmOnRecoveryExtreme = Read-YesNoBoolean -Prompt "Alertar baixa ou alta ao recuperar de SEM DADO (sim/nao)" -Default "sim"
-    $alarmMaxDeliveryAttempts = Read-WithDefault -Prompt "Maximo de tentativas para entregar cada alarme" -Default "3"
-    $alarmDeliveryRetrySeconds = Read-WithDefault -Prompt "Segundos entre tentativas de entrega do alarme" -Default "30"
+    Write-Host (Get-UlanziText -Key 'Os proximos limites controlam as cores do visor; nao sao recomendacoes de tratamento.')
+    Write-Host (Get-UlanziText -Key 'Os limites sonoros comecam iguais e poderao ser ajustados separadamente depois.')
+    $displayUnits = (Read-WithDefault -Prompt (Get-UlanziText -Key 'Unidade das leituras (mgdl ou mmol)') -Default $initialDisplayUnits).ToLowerInvariant()
+    if ($displayUnits -notin @("mgdl", "mmol")) { throw (Get-UlanziText -Key 'Unidade invalida. Use mgdl ou mmol.') }
+    Write-Host (Get-UlanziText -Key 'A unidade escolhida altera as leituras. Todos os limites abaixo continuam em mg/dL.')
+    $lowThreshold = Read-WithDefault -Prompt (Get-UlanziText -Key 'Abaixo de qual valor usar a cor de glicemia baixa (mg/dL)') -Default "70"
+    $highThreshold = Read-WithDefault -Prompt (Get-UlanziText -Key 'Acima de qual valor usar a cor de glicemia alta (mg/dL)') -Default "180"
+    $staleMinutes = Read-WithDefault -Prompt (Get-UlanziText -Key 'Depois de quantos minutos considerar o dado antigo') -Default "15"
+    $sensorLifetimeDays = Read-WithDefault -Prompt (Get-UlanziText -Key 'Duracao nominal do sensor Libre em dias (varia conforme o modelo)') -Default "15"
+    $alarmEnabled = Read-YesNoBoolean -Prompt (Get-UlanziText -Key 'Ativar alarmes sonoros (sim/nao)') -Default "nao"
+    Write-Host (Get-UlanziText -Key 'As regras sonoras a seguir ficam pre-selecionadas, mas so terao efeito depois de ativar o alarme geral.')
+    $upSlightThreshold = Read-WithDefault -Prompt (Get-UlanziText -Key 'Acima de qual valor alertar seta diagonal para cima (mg/dL)') -Default "140"
+    $downThreshold = Read-WithDefault -Prompt (Get-UlanziText -Key 'Abaixo de qual valor alertar seta para baixo ou diagonal para baixo (mg/dL)') -Default "90"
+    $doubleUpEnabled = Read-YesNoBoolean -Prompt (Get-UlanziText -Key 'Alertar seta dupla para cima (sim/nao)') -Default "sim"
+    $noDataEnabled = Read-YesNoBoolean -Prompt (Get-UlanziText -Key 'Alertar quando a leitura ficar SEM DADO (sim/nao)') -Default "sim"
+    $alarmHysteresis = Read-WithDefault -Prompt (Get-UlanziText -Key 'Histerese para rearmar alarmes por valor (mg/dL)') -Default "5"
+    $alarmCooldown = Read-WithDefault -Prompt (Get-UlanziText -Key 'Intervalo minimo para rearmar o mesmo alarme (minutos)') -Default "5"
+    $alarmOnStartupExtreme = Read-YesNoBoolean -Prompt (Get-UlanziText -Key 'Alertar baixa ou alta ja na primeira leitura (sim/nao)') -Default "sim"
+    $alarmOnRecoveryExtreme = Read-YesNoBoolean -Prompt (Get-UlanziText -Key 'Alertar baixa ou alta ao recuperar de SEM DADO (sim/nao)') -Default "sim"
+    $alarmMaxDeliveryAttempts = Read-WithDefault -Prompt (Get-UlanziText -Key 'Maximo de tentativas para entregar cada alarme') -Default "3"
+    $alarmDeliveryRetrySeconds = Read-WithDefault -Prompt (Get-UlanziText -Key 'Segundos entre tentativas de entrega do alarme') -Default "30"
 }
 
 $generation = [Guid]::NewGuid().ToString("D")
 $lines = @(
     "# Gerado por configurar.cmd em $([DateTime]::Now.ToString('yyyy-MM-dd HH:mm:ss'))",
     "CONFIG_SCHEMA_VERSION=1",
+    "APP_LANGUAGE=$(Get-UlanziLanguage)",
     "CONFIG_GENERATION=$generation",
     "GLUCOSE_SOURCE=$source",
     "AWTRIX_HOST=$(ConvertTo-EnvLiteral $awtrixHost)",
@@ -314,7 +339,7 @@ $lines = @(
     "LIBRE_SENSOR_LIFETIME_DAYS=$sensorLifetimeDays",
     "LOW_THRESHOLD_MGDL=$lowThreshold",
     "HIGH_THRESHOLD_MGDL=$highThreshold",
-    "DISPLAY_UNITS=mgdl",
+    "DISPLAY_UNITS=$displayUnits",
     "GLUCOSE_ALARM_ENABLED=$alarmEnabled",
     "GLUCOSE_ALARM_SOUND_PROFILE=normal",
     "GLUCOSE_ALARM_LOW_THRESHOLD_MGDL=$lowThreshold",
@@ -368,7 +393,7 @@ try {
     $node = Get-Command node -ErrorAction Stop
     & $node.Source (Join-Path $projectRoot "src\validate-config.mjs") $envStagedPath
     if ($LASTEXITCODE -ne 0) {
-        throw "A configuracao informada e invalida; os arquivos anteriores foram preservados."
+        throw (Get-UlanziText -Key 'A configuracao informada e invalida; os arquivos anteriores foram preservados.')
     }
 
     $protectedSecrets = [ordered]@{}
@@ -412,9 +437,9 @@ try {
 }
 
 Write-Host ""
-Write-Host "Configuracao salva em $envPath"
-Write-Host "Teste sem enviar ao relogio: iniciar.cmd --once --dry-run"
-Write-Host "Teste do display com 112 mg/dL simulado: iniciar.cmd --source=mock --once"
+Write-Host (Get-UlanziText -Key 'Configuracao salva em {0}' -Arguments @(($envPath)))
+Write-Host (Get-UlanziText -Key 'Teste sem enviar ao relogio: iniciar.cmd --once --dry-run')
+Write-Host (Get-UlanziText -Key 'Teste do display com 112 mg/dL simulado: iniciar.cmd --source=mock --once')
 
 if ($ownsConfigMutex) { $configMutex.ReleaseMutex() }
 $configMutex.Dispose()

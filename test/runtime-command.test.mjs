@@ -201,7 +201,7 @@ test("leitura e escrita do volume usam status correlacionado sem sobrescrever hi
     assert.equal(status.sound.lastOrigin, "automatic");
     assert.equal(status.sound.lastTestRequestId, "teste-anterior-123");
     assert.equal(status.sound.lastTestState, "confirmed");
-    assert.equal(infoLogs.at(-1), "volume do buzzer lido do TC001: 55% (som ligado)");
+    assert.equal(infoLogs.at(-1), "buzzer volume read from TC001: 55% (sound on)");
 
     await writeFile(commandPath, JSON.stringify({
       version: 1,
@@ -224,7 +224,7 @@ test("leitura e escrita do volume usam status correlacionado sem sobrescrever hi
     assert.equal(status.sound.lastOrigin, "automatic");
     assert.equal(status.sound.lastTestRequestId, "teste-anterior-123");
     assert.equal(status.sound.lastTestState, "confirmed");
-    assert.equal(infoLogs.at(-1), "volume do buzzer aplicado no TC001: 30% (som desligado)");
+    assert.equal(infoLogs.at(-1), "buzzer volume applied to TC001: 30% (sound off)");
   } finally {
     if (previousStatusPath === undefined) delete process.env.ULANZI_STATUS_FILE;
     else process.env.ULANZI_STATUS_FILE = previousStatusPath;

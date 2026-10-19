@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [string]$InstallPath = (Join-Path $env:LOCALAPPDATA "Programs\Ulanzi Libre Bridge"),
     [switch]$NoShellIntegration
@@ -32,23 +32,23 @@ function Assert-NoReparsePath {
     $cursor = Get-Item -LiteralPath $Path -Force
     while ($null -ne $cursor) {
         if (($cursor.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) {
-            throw "Links e junctions não são aceitos durante a desinstalação: $($cursor.FullName)"
+            throw "Links and junctions are not allowed during uninstallation: $($cursor.FullName)"
         }
         if ($cursor.FullName -ieq $StopAt) { return }
         $cursor = if ($cursor -is [IO.DirectoryInfo]) { $cursor.Parent } else { $cursor.Directory }
     }
-    throw "Não foi possível confirmar os diretórios do caminho: $Path"
+    throw "Unable to verify the directories in this path: $Path"
 }
 
 function ConvertTo-SafeInstalledPath {
     param([Parameter(Mandatory = $true)][string]$RelativePath)
 
     if ([string]::IsNullOrWhiteSpace($RelativePath) -or [IO.Path]::IsPathRooted($RelativePath)) {
-        throw "Caminho inválido no manifesto instalado: '$RelativePath'."
+        throw "Invalid path in the installed manifest: '$RelativePath'."
     }
     $normalized = $RelativePath.Replace('/', '\').Trim()
     if ($normalized.Contains(':') -or $normalized -match '(^|\\)\.\.(\\|$)') {
-        throw "Travessia de diretório recusada: '$RelativePath'."
+        throw "Directory traversal rejected: '$RelativePath'."
     }
     $segments = @($normalized -split '\\')
     $protectedSegments = @(
@@ -58,20 +58,20 @@ function ConvertTo-SafeInstalledPath {
     )
     foreach ($segment in $segments) {
         if ($segment -match '(?i)^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$') {
-            throw "O manifesto instalado contém um nome reservado do Windows: '$RelativePath'."
+            throw "The installed manifest contains a reserved Windows name: '$RelativePath'."
         }
         if ($protectedSegments -icontains $segment) {
-            throw "O manifesto instalado tentou remover dados do usuário: '$RelativePath'."
+            throw "The installed manifest tried to remove user data: '$RelativePath'."
         }
     }
     $leaf = $segments[$segments.Count - 1]
     if ($leaf -like ".env*" -and $normalized -ine ".env.example") {
-        throw "O manifesto instalado tentou remover uma configuração do usuário: '$RelativePath'."
+        throw "The installed manifest tried to remove user configuration: '$RelativePath'."
     }
 
     $fullPath = [IO.Path]::GetFullPath((Join-Path $resolvedInstallPath $normalized))
     if (-not (Test-PathInside -Candidate $fullPath -Parent $resolvedInstallPath)) {
-        throw "O manifesto tentou remover um arquivo fora da instalação: '$RelativePath'."
+        throw "The manifest tried to remove a file outside the installation: '$RelativePath'."
     }
     return $fullPath
 }
@@ -87,17 +87,17 @@ function Assert-ApplicationStopped {
             $ownsMutex = $true
         }
         if (-not $ownsMutex) {
-            throw "O Ulanzi Libre Bridge ainda está aberto. Use 'Sair' no ícone da bandeja e tente novamente."
+            throw "Ulanzi Libre Bridge is still running. Select 'Exit' in its tray menu and try again."
         }
         $ownedMutexes.Add($mutex)
     }
 }
 
 if (-not (Test-PathInside -Candidate $resolvedInstallPath -Parent $programsRoot)) {
-    throw "A desinstalação local só pode operar dentro de '$programsRoot'."
+    throw "Local uninstallation can only operate inside '$programsRoot'."
 }
 if (-not (Test-Path -LiteralPath $resolvedInstallPath -PathType Container)) {
-    Write-Host "A pasta de instalação já não existe: $resolvedInstallPath"
+    Write-Host "The installation folder no longer exists: $resolvedInstallPath"
     exit 0
 }
 Assert-NoReparsePath -Path $resolvedInstallPath -StopAt $programsRoot
@@ -121,21 +121,21 @@ try {
         if (-not [string]::IsNullOrWhiteSpace($registeredLocation)) {
             $registeredFullPath = [IO.Path]::GetFullPath($registeredLocation).TrimEnd([IO.Path]::DirectorySeparatorChar)
             if ($registeredFullPath -ine $resolvedInstallPath) {
-                throw "O caminho informado não corresponde à instalação registrada."
+                throw "The specified path does not match the registered installation."
             }
         }
     }
 
     $checksumPath = Join-Path $resolvedInstallPath "checksums.sha256"
     if (-not (Test-Path -LiteralPath $checksumPath -PathType Leaf)) {
-        throw "O manifesto da instalação não foi encontrado. Nenhum arquivo foi removido; reinstale para reparar antes de desinstalar."
+        throw "The installation manifest is missing. No files were removed; reinstall to repair before uninstalling."
     }
 
     $ownedFiles = [Collections.Generic.List[string]]::new()
     foreach ($line in Get-Content -LiteralPath $checksumPath -Encoding UTF8) {
         if ([string]::IsNullOrWhiteSpace($line)) { continue }
         if ($line -notmatch '^[0-9A-Fa-f]{64} \*(.+)$') {
-            throw "O manifesto instalado está inválido. Nenhum arquivo foi removido."
+            throw "The installed manifest is invalid. No files were removed."
         }
         $ownedPath = ConvertTo-SafeInstalledPath -RelativePath $Matches[1]
         if (Test-Path -LiteralPath $ownedPath) {
@@ -143,7 +143,7 @@ try {
         }
         $ownedFiles.Add($ownedPath)
     }
-    if ($ownedFiles.Count -eq 0) { throw "O manifesto instalado está vazio. Nenhum arquivo foi removido." }
+    if ($ownedFiles.Count -eq 0) { throw "The installed manifest is empty. No files were removed." }
 
     # Um atalho inicia o PowerShell com a pasta do aplicativo como diretório
     # atual. Saia dela antes de tentar remover os últimos diretórios vazios.
@@ -155,6 +155,7 @@ try {
             (Join-Path $startMenuDirectory "Ulanzi Libre Bridge.lnk"),
             (Join-Path $startMenuDirectory "Configurar Ulanzi Libre Bridge.lnk"),
             (Join-Path $startMenuDirectory "Desinstalar Ulanzi Libre Bridge.lnk"),
+            (Join-Path $startMenuDirectory "Uninstall Ulanzi Libre Bridge.lnk"),
             (Join-Path ([Environment]::GetFolderPath("Startup")) "Ulanzi Libre Bridge.lnk"),
             (Join-Path ([Environment]::GetFolderPath("Desktop")) "Ulanzi Libre Bridge.lnk")
         )
@@ -200,9 +201,9 @@ try {
     }
     if (@(Get-ChildItem -LiteralPath $resolvedInstallPath -Force).Count -eq 0) {
         Remove-Item -LiteralPath $resolvedInstallPath
-        Write-Host "Ulanzi Libre Bridge desinstalado."
+        Write-Host "Ulanzi Libre Bridge uninstalled."
     } else {
-        Write-Host "Ulanzi Libre Bridge desinstalado; configuração ou dados locais foram preservados em: $resolvedInstallPath"
+        Write-Host "Ulanzi Libre Bridge uninstalled; configuration or local data was preserved in: $resolvedInstallPath"
     }
 } finally {
     foreach ($mutex in $ownedMutexes) {

@@ -1,85 +1,23 @@
-# Seguranca do AWTRIX NG no TC001
+﻿# AWTRIX network security
 
-## Conclusao
+The bridge communicates with the TC001 over HTTP on your local network. HTTP Basic authentication can restrict access but does not encrypt passwords, configuration or glucose data in transit. A browser's HTTP warning is not a certificate problem that the bridge can fix.
 
-O aviso `Nao seguro` do navegador e esperado e tecnicamente correto. O AWTRIX NG
-v1.1.0 oferece somente HTTP, sem HTTPS/TLS. A autenticacao opcional e HTTP Basic:
-ela impede acesso casual sem usuario e senha, mas nao criptografa o login, a
-configuracao ou a glicemia dentro da rede.
+## Prepare your clock
 
-O ponto de acesso de provisionamento tambem e deliberadamente aberto, sem senha
-WPA. Nao existe no firmware oficial:
+Use the official documentation for the firmware version you install: [AWTRIX NG setup](https://blueforcer.github.io/awtrix-ng/getting-started/flashing/) and [AWTRIX NG security policy](https://github.com/Blueforcer/awtrix-ng/blob/main/SECURITY.md).
 
-- provisionamento por USB/serial ou Bluetooth;
-- senha configuravel para o Wi-Fi do AP;
-- opcao para desativar permanentemente o fallback para AP.
+Provisioning may create an open Wi-Fi access point. Configure the device in a trusted environment and use the network name shown by your own clock; names and network behavior vary by firmware. Follow the firmware's instructions for connecting to your Wi-Fi and enabling authentication. Confirm that the clock reconnects to the intended network after reboot.
 
-Depois de conectar com sucesso ao Wi-Fi e reiniciar, o AP desaparece. Ele volta
-se o TC001 nao conseguir entrar na rede dentro do prazo configurado, ou se o
-botao central for mantido pressionado durante a inicializacao. Com
-`authEnabled=true`, o portal/API exige HTTP Basic tambem no AP, embora a rede
-Wi-Fi continue aberta.
+Do not reuse an account password as the device password. Enter the TC001 credentials in the bridge's local setup wizard, which stores them in the Windows-protected vault. The bridge does not need the Wi-Fi password you enter into the clock's own portal.
 
-## Procedimento pratico com menor exposicao
+## Limit exposure
 
-Este procedimento evita transmitir a senha permanente diretamente durante o
-primeiro acesso aberto. Ele reduz o risco, mas nao cria uma raiz de confianca:
-um atacante ativo e tecnicamente preparado, presente durante todo o processo,
-ainda poderia observar ou interferir no bootstrap.
+- Keep the clock on a trusted network. If available, use an IoT network with a rule allowing the bridge computer to reach the clock.
+- Do not forward the clock's HTTP port to the internet, place it in a router DMZ, or expose its configuration portal publicly.
+- Confirm that authentication is enabled and that an unauthenticated request is rejected when the firmware supports it.
+- Use firmware and scripts from verified sources, and review their update and security guidance.
+- Keep using the official glucose app and its alarms; this display is supplementary.
 
-### Etapa 1 - rede temporaria
+The TC001 receives the display payload, not your Nightscout token. Protect both ends: the computer contains source credentials, and anyone with access to the display can see its contents.
 
-1. No Android, crie um hotspot temporario WPA2 em 2,4 GHz, com SSID e senha
-   aleatorios que nunca serao reutilizados.
-2. Mantenha o Android no hotspot. Use o Wi-Fi deste computador para entrar no AP
-   aberto `awtrixng-317824`; a Ethernet do computador continua dando Internet.
-3. Abra `http://192.168.4.1/`. O aviso do navegador permanecera.
-4. Configure o TC001 para o hotspot temporario, defina hostname
-   `ulanzi-glicose` e habilite a autenticacao HTTP com usuario e senha tambem
-   temporarios.
-5. Defina `wifiConnectTimeout` como `120000` ms, salve e reinicie.
-6. Confirme que o relogio mostra outro IP e que `awtrixng-317824` desapareceu.
-
-Somente credenciais descartaveis passam pelo AP aberto nessa etapa.
-
-### Etapa 2 - rede definitiva
-
-1. Conecte o Wi-Fi do computador ao mesmo hotspot Android.
-2. Acesse o IP mostrado pelo TC001 e autentique-se com o login temporario.
-3. Na pagina System, troque simultaneamente:
-   - SSID e senha para uma rede domestica WPA2/WPA3 de 2,4 GHz;
-   - usuario e senha HTTP para valores finais, fortes e exclusivos;
-   - mantenha DHCP e `wifiConnectTimeout=120000`.
-4. Salve. Como o login muda imediatamente, reinicie fisicamente se o botao web
-   perder a sessao.
-5. Desligue o hotspot Android e descarte suas credenciais.
-6. No Wi-Fi definitivo, confirme que o TC001 mostra `AWTRIX <ip>` e que uma
-   chamada sem login recebe HTTP 401.
-
-Nao envie nenhuma dessas senhas pelo chat. A senha HTTP final sera inserida
-depois em `configurar.cmd`, cujo cofre DPAPI so pode ser aberto pelo mesmo
-usuario do Windows.
-
-## Rede definitiva recomendada
-
-Idealmente, use uma rede/VLAN IoT separada e uma regra permitindo somente este
-computador acessar a porta TCP 80 do TC001. Se nao houver VLAN, use uma rede
-domestica confiavel com WPA2/WPA3 e aparelhos conhecidos.
-
-- Nunca encaminhe a porta 80 no roteador e nao coloque o TC001 em DMZ.
-- Nao acesse o painel a partir de uma rede publica ou compartilhada.
-- Nao instale scripts, apps ou firmware de fontes desconhecidas.
-- O TC001 recebe somente o texto renderizado; o token Nightscout fica no PC.
-- O app Libre oficial e seus alarmes continuam sendo a fonte principal.
-
-Se a existencia de um AP aberto de fallback ou a ausencia de TLS for
-inaceitavel, a opcao correta e restaurar o firmware original usando o backup,
-nao tentar ocultar o aviso do navegador.
-
-## Fontes oficiais
-
-- Modelo de seguranca: https://github.com/Blueforcer/awtrix-ng/blob/v1.1.0/SECURITY.md
-- Primeiro acesso e portal: https://blueforcer.github.io/awtrix-ng/getting-started/web-ui/
-- Wi-Fi e autenticacao: https://blueforcer.github.io/awtrix-ng/reference/system/
-- Implementacao de rede v1.1.0:
-  https://github.com/Blueforcer/awtrix-ng/blob/v1.1.0/src/transport/net/NetworkService.cpp
+If the firmware's provisioning or HTTP behavior does not meet your requirements, do not work around the browser warning by weakening other protections. Reconsider the network setup or firmware before sending personal data to the device.

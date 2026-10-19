@@ -1,8 +1,12 @@
 # Allowlist literal do pacote público. Um arquivo novo nunca entra automaticamente.
 .env.example
+Start.cmd
+Configure.cmd
 configurar.cmd
 iniciar.cmd
 README.md
+README.pt-BR.md
+PUBLICACAO.md
 GUIA-NIGHTSCOUT.md
 GUIA-SEGURANCA-AWTRIX.md
 package.json
@@ -23,6 +27,7 @@ src/errors.mjs
 src/glucose-alarm.mjs
 src/http.mjs
 src/index.mjs
+src/i18n.mjs
 src/logger.mjs
 src/reading.mjs
 src/runtime-status.mjs
@@ -46,8 +51,13 @@ scripts/manutencao-ui.ps1
 scripts/painel-ui.ps1
 scripts/primeira-configuracao-ui.ps1
 scripts/ui-theme.ps1
+scripts/ui-language.ps1
+scripts/launch-app.ps1
+locales/en.json
+locales/pt-BR.json
 scripts/uninstall-local.ps1
 installer/iniciar-instalado.ps1
 installer/iniciar-instalado.vbs
 installer/configurar-instalado.ps1
 installer/configurar-instalado.vbs
+installer/set-language.ps1

@@ -1,3 +1,4 @@
+import { tr } from "./i18n.mjs";
 import { createHash, randomUUID } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
 import { mkdir, readFile, rename, rm } from "node:fs/promises";
@@ -109,38 +110,38 @@ function safeRemoteUrl(name, value) {
   try {
     parsed = new URL(value);
   } catch {
-    throw updateError(`${name} nao contem uma URL valida`);
+    throw updateError(tr("{0} does not contain a valid URL", "{0} nao contem uma URL valida", [name]));
   }
   const loopback = isLoopbackHost(parsed.hostname);
   if (parsed.protocol !== "https:" && !(loopback && parsed.protocol === "http:")) {
-    throw updateError(`${name} deve usar HTTPS`);
+    throw updateError(tr("{0} must use HTTPS", "{0} deve usar HTTPS", [name]));
   }
   if (parsed.username || parsed.password || parsed.hash) {
-    throw updateError(`${name} contem credenciais ou fragmento nao permitido`);
+    throw updateError(tr("{0} contains credentials or an unsupported fragment", "{0} contem credenciais ou fragmento nao permitido", [name]));
   }
   return parsed.toString();
 }
 
 function assertSafeUrlRelationship(manifestUrl, installerUrl) {
-  const parsedManifest = new URL(safeRemoteUrl("a URL do manifesto", manifestUrl));
-  const parsedInstaller = new URL(safeRemoteUrl("a URL do instalador", installerUrl));
+  const parsedManifest = new URL(safeRemoteUrl(tr("the manifest URL", "a URL do manifesto"), manifestUrl));
+  const parsedInstaller = new URL(safeRemoteUrl(tr("the installer URL", "a URL do instalador"), installerUrl));
   const manifestIsPrivate = isPrivateNetworkHost(parsedManifest.hostname);
   const installerIsPrivate = isPrivateNetworkHost(parsedInstaller.hostname);
   if (!manifestIsPrivate && installerIsPrivate) {
-    throw updateError("um manifesto remoto nao pode indicar um instalador em endereco local ou privado");
+    throw updateError(tr("a remote manifest cannot point to an installer at a local or private address", "um manifesto remoto nao pode indicar um instalador em endereco local ou privado"));
   }
   if (parsedInstaller.protocol === "http:" && !isLoopbackHost(parsedManifest.hostname)) {
-    throw updateError("um instalador HTTP local so e permitido quando o manifesto tambem usa loopback");
+    throw updateError(tr("a local HTTP installer is allowed only when the manifest also uses loopback", "um instalador HTTP local so e permitido quando o manifesto tambem usa loopback"));
   }
 }
 
 export function compareVersions(left, right) {
   const leftMatch = String(left).match(SEMVER);
   const rightMatch = String(right).match(SEMVER);
-  if (!leftMatch || !rightMatch) throw updateError("a versao informada nao usa o formato semantico");
+  if (!leftMatch || !rightMatch) throw updateError(tr("the supplied version does not use semantic versioning", "a versao informada nao usa o formato semantico"));
   for (const prerelease of [leftMatch[4], rightMatch[4]]) {
     if (prerelease?.split(".").some((identifier) => /^0\d+$/.test(identifier))) {
-      throw updateError("a versao informada nao usa o formato semantico");
+      throw updateError(tr("the supplied version does not use semantic versioning", "a versao informada nao usa o formato semantico"));
     }
   }
   for (let index = 1; index <= 3; index += 1) {
@@ -184,33 +185,33 @@ export function validateUpdateManifest(manifest) {
     !manifest.installer ||
     typeof manifest.installer !== "object"
   ) {
-    throw updateError("o manifesto de atualizacao tem formato invalido");
+    throw updateError(tr("the update manifest has an invalid format", "o manifesto de atualizacao tem formato invalido"));
   }
   if (manifest.version.includes("-") && manifest.version.split("-")[1].split(".").some((part) => /^0\d+$/.test(part))) {
-    throw updateError("a versao do manifesto nao usa o formato semantico");
+    throw updateError(tr("the manifest version does not use semantic versioning", "a versao do manifesto nao usa o formato semantico"));
   }
-  const installerUrl = safeRemoteUrl("a URL do instalador", manifest.installer.url);
+  const installerUrl = safeRemoteUrl(tr("the installer URL", "a URL do instalador"), manifest.installer.url);
   const fileName = String(manifest.installer.fileName ?? "");
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,119}\.exe$/i.test(fileName)) {
-    throw updateError("o nome do instalador no manifesto e invalido");
+    throw updateError(tr("the installer filename in the manifest is invalid", "o nome do instalador no manifesto e invalido"));
   }
   if (!SHA256.test(manifest.installer.sha256 ?? "")) {
-    throw updateError("o manifesto nao contem um SHA-256 valido");
+    throw updateError(tr("the manifest does not contain a valid SHA-256 hash", "o manifesto nao contem um SHA-256 valido"));
   }
   if (manifest.installer.requireAuthenticode !== true) {
-    throw updateError("o manifesto precisa exigir assinatura Authenticode");
+    throw updateError(tr("the manifest must require an Authenticode signature", "o manifesto precisa exigir assinatura Authenticode"));
   }
   const publishedAt = new Date(manifest.publishedAt ?? "");
   if (!Number.isFinite(publishedAt.getTime())) {
-    throw updateError("a data de publicacao da atualizacao e invalida");
+    throw updateError(tr("the update publication date is invalid", "a data de publicacao da atualizacao e invalida"));
   }
   const channel = String(manifest.channel ?? "");
   if (!/^[a-z0-9][a-z0-9-]{0,19}$/.test(channel)) {
-    throw updateError("o canal do manifesto e invalido");
+    throw updateError(tr("the manifest channel is invalid", "o canal do manifesto e invalido"));
   }
   const publisher = String(manifest.installer.publisher ?? "").trim();
   if (!publisher || publisher.length > 200 || /[\x00-\x1f\x7f]/.test(publisher)) {
-    throw updateError("o manifesto nao informa um publicador valido");
+    throw updateError(tr("the manifest does not specify a valid publisher", "o manifesto nao informa um publicador valido"));
   }
   return {
     schemaVersion: 1,
@@ -239,7 +240,7 @@ async function openWithDeadline(url, { fetchImpl = fetch, timeoutMs = 15_000, si
     signal?.removeEventListener("abort", abortFromParent);
   };
   try {
-    let currentUrl = safeRemoteUrl("a URL de atualizacao", url);
+    let currentUrl = safeRemoteUrl(tr("the update URL", "a URL de atualizacao"), url);
     const initialIsPrivate = isPrivateNetworkHost(new URL(currentUrl).hostname);
     for (let redirectCount = 0; redirectCount <= 3; redirectCount += 1) {
       const response = await fetchImpl(currentUrl, {
@@ -250,38 +251,38 @@ async function openWithDeadline(url, { fetchImpl = fetch, timeoutMs = 15_000, si
         headers: { Accept: "application/json, application/octet-stream" },
       });
       if (response.status >= 300 && response.status < 400) {
-        if (redirectCount >= 3) throw updateError("o servidor de atualizacao excedeu o limite de redirecionamentos");
+        if (redirectCount >= 3) throw updateError(tr("the update server exceeded the redirect limit", "o servidor de atualizacao excedeu o limite de redirecionamentos"));
         const location = response.headers.get("location");
-        if (!location) throw updateError("o servidor retornou um redirecionamento sem destino");
-        const nextUrl = safeRemoteUrl("o destino do redirecionamento", new URL(location, currentUrl).toString());
+        if (!location) throw updateError(tr("the server returned a redirect without a destination", "o servidor retornou um redirecionamento sem destino"));
+        const nextUrl = safeRemoteUrl(tr("the redirect destination", "o destino do redirecionamento"), new URL(location, currentUrl).toString());
         if (!initialIsPrivate && isPrivateNetworkHost(new URL(nextUrl).hostname)) {
-          throw updateError("o redirecionamento para um endereco local ou privado foi recusado");
+          throw updateError(tr("a redirect to a local or private address was refused", "o redirecionamento para um endereco local ou privado foi recusado"));
         }
         await response.body?.cancel().catch(() => {});
         currentUrl = nextUrl;
         continue;
       }
-      if (!response.ok) throw updateError(`o servidor de atualizacao respondeu HTTP ${response.status}`, "UPDATE_HTTP_ERROR");
+      if (!response.ok) throw updateError(tr("the update server returned HTTP {0}", "o servidor de atualizacao respondeu HTTP {0}", [response.status]), "UPDATE_HTTP_ERROR");
       return { response, signal: controller.signal, cleanup, url: currentUrl };
     }
-    throw updateError("o servidor de atualizacao excedeu o limite de redirecionamentos");
+    throw updateError(tr("the update server exceeded the redirect limit", "o servidor de atualizacao excedeu o limite de redirecionamentos"));
   } catch (error) {
     cleanup();
     if (error instanceof BridgeError) throw error;
-    if (controller.signal.aborted) throw updateError("a verificacao de atualizacao excedeu o tempo limite", "UPDATE_TIMEOUT");
-    throw updateError("nao foi possivel acessar o servidor de atualizacao", "UPDATE_NETWORK_ERROR");
+    if (controller.signal.aborted) throw updateError(tr("the update check timed out", "a verificacao de atualizacao excedeu o tempo limite"), "UPDATE_TIMEOUT");
+    throw updateError(tr("the update server could not be reached", "nao foi possivel acessar o servidor de atualizacao"), "UPDATE_NETWORK_ERROR");
   }
 }
 
 function assertPinnedRelease(manifest, expectedPublisher, expectedChannel = "stable") {
   const publisher = String(expectedPublisher ?? "").trim();
-  if (!publisher) throw updateError("a identidade local do publicador de atualizacoes nao foi configurada");
-  if (manifest.publisher !== undefined) throw updateError("o manifesto de atualizacao tem formato invalido");
+  if (!publisher) throw updateError(tr("the local update publisher identity has not been configured", "a identidade local do publicador de atualizacoes nao foi configurada"));
+  if (manifest.publisher !== undefined) throw updateError(tr("the update manifest has an invalid format", "o manifesto de atualizacao tem formato invalido"));
   if (manifest.installer.publisher !== publisher) {
-    throw updateError("o publicador do manifesto nao corresponde a identidade local configurada");
+    throw updateError(tr("the manifest publisher does not match the configured local identity", "o publicador do manifesto nao corresponde a identidade local configurada"));
   }
   if (manifest.channel !== expectedChannel) {
-    throw updateError("o manifesto pertence a outro canal de atualizacao");
+    throw updateError(tr("the manifest belongs to a different update channel", "o manifesto pertence a outro canal de atualizacao"));
   }
 }
 
@@ -293,29 +294,29 @@ export async function checkForUpdate({
   fetchImpl,
   signal,
 }) {
-  const safeManifestUrl = safeRemoteUrl("a URL do manifesto", manifestUrl);
+  const safeManifestUrl = safeRemoteUrl(tr("the manifest URL", "a URL do manifesto"), manifestUrl);
   const request = await openWithDeadline(safeManifestUrl, { fetchImpl, signal });
   let manifest;
   try {
     const contentType = request.response.headers.get("content-type") ?? "";
     if (!/application\/(?:[a-z0-9.+-]*\+)?json/i.test(contentType)) {
-      throw updateError("o servidor nao retornou um manifesto JSON");
+      throw updateError(tr("the server did not return a JSON manifest", "o servidor nao retornou um manifesto JSON"));
     }
     const declaredLength = Number(request.response.headers.get("content-length"));
     if (Number.isFinite(declaredLength) && declaredLength > MAX_MANIFEST_BYTES) {
-      throw updateError("o manifesto de atualizacao excede o tamanho permitido");
+      throw updateError(tr("the update manifest exceeds the size limit", "o manifesto de atualizacao excede o tamanho permitido"));
     }
     const manifestBytes = Buffer.from(await request.response.arrayBuffer());
     if (manifestBytes.length > MAX_MANIFEST_BYTES) {
-      throw updateError("o manifesto de atualizacao excede o tamanho permitido");
+      throw updateError(tr("the update manifest exceeds the size limit", "o manifesto de atualizacao excede o tamanho permitido"));
     }
     manifest = validateUpdateManifest(JSON.parse(manifestBytes.toString("utf8")));
     assertPinnedRelease(manifest, expectedPublisher, expectedChannel);
     assertSafeUrlRelationship(request.url, manifest.installer.url);
   } catch (error) {
     if (error instanceof BridgeError) throw error;
-    if (request.signal.aborted) throw updateError("a verificacao de atualizacao excedeu o tempo limite", "UPDATE_TIMEOUT");
-    throw updateError("o servidor retornou um manifesto JSON invalido");
+    if (request.signal.aborted) throw updateError(tr("the update check timed out", "a verificacao de atualizacao excedeu o tempo limite"), "UPDATE_TIMEOUT");
+    throw updateError(tr("the server returned an invalid JSON manifest", "o servidor retornou um manifesto JSON invalido"));
   } finally {
     request.cleanup();
   }
@@ -364,11 +365,11 @@ export async function downloadUpdate({
   const declaredLength = Number(request.response.headers.get("content-length"));
   if (Number.isFinite(declaredLength) && declaredLength > MAX_INSTALLER_BYTES) {
     request.cleanup();
-    throw updateError("o instalador excede o tamanho maximo permitido");
+    throw updateError(tr("the installer exceeds the maximum allowed size", "o instalador excede o tamanho maximo permitido"));
   }
   if (!request.response.body) {
     request.cleanup();
-    throw updateError("o servidor retornou um instalador vazio");
+    throw updateError(tr("the server returned an empty installer", "o servidor retornou um instalador vazio"));
   }
 
   const hash = createHash("sha256");
@@ -377,7 +378,7 @@ export async function downloadUpdate({
     transform(chunk, _encoding, callback) {
       received += chunk.length;
       if (received > MAX_INSTALLER_BYTES) {
-        callback(updateError("o instalador excede o tamanho maximo permitido"));
+        callback(updateError(tr("the installer exceeds the maximum allowed size", "o instalador excede o tamanho maximo permitido")));
         return;
       }
       hash.update(chunk);
@@ -388,7 +389,7 @@ export async function downloadUpdate({
     await pipeline(request.response.body, limiter, createWriteStream(temporaryPath, { flags: "wx", mode: 0o600 }));
     const digest = hash.digest("hex");
     if (digest !== safeManifest.installer.sha256) {
-      throw updateError("o instalador baixado falhou na verificacao SHA-256", "UPDATE_HASH_MISMATCH");
+      throw updateError(tr("the downloaded installer failed SHA-256 verification", "o instalador baixado falhou na verificacao SHA-256"), "UPDATE_HASH_MISMATCH");
     }
     await rm(targetPath, { force: true });
     await rename(temporaryPath, targetPath);
@@ -396,7 +397,7 @@ export async function downloadUpdate({
   } catch (error) {
     await rm(temporaryPath, { force: true }).catch(() => {});
     if (request.signal.aborted) {
-      throw updateError("o download da atualizacao excedeu o tempo limite", "UPDATE_TIMEOUT");
+      throw updateError(tr("the update download timed out", "o download da atualizacao excedeu o tempo limite"), "UPDATE_TIMEOUT");
     }
     throw error;
   } finally {

@@ -148,7 +148,7 @@ test("rejeita histerese que poderia sobrepor os episodios baixo e alto", () => {
   process.env.GLUCOSE_ALARM_LOW_THRESHOLD_MGDL = "70";
   process.env.GLUCOSE_ALARM_HIGH_THRESHOLD_MGDL = "80";
   process.env.GLUCOSE_ALARM_HYSTERESIS_MGDL = "5";
-  assert.throws(() => readConfig({ source: "mock", dryRun: true }), /metade da dist/);
+  assert.throws(() => readConfig({ source: "mock", dryRun: true }), /half the gap/);
 });
 
 test("configuracao visual estreita continua valida quando o alarme esta desligado", () => {

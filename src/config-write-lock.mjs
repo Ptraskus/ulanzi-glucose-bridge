@@ -1,3 +1,4 @@
+import { tr } from "./i18n.mjs";
 import { open, stat, unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { BridgeError } from "./errors.mjs";
@@ -39,12 +40,12 @@ export async function acquireConfigWriteLock(envPath, {
         continue;
       }
       throw new BridgeError(
-        "outro salvamento ou restauracao de configuracao esta em andamento; tente novamente em alguns segundos",
+        tr("another configuration save or restoration is in progress; try again in a few seconds", "outro salvamento ou restauracao de configuracao esta em andamento; tente novamente em alguns segundos"),
         { code: "CONFIG_BUSY", retryable: false },
       );
     }
   }
-  throw new BridgeError("nao foi possivel reservar o arquivo de configuracao", {
+  throw new BridgeError(tr("the configuration file could not be locked", "nao foi possivel reservar o arquivo de configuracao"), {
     code: "CONFIG_BUSY",
     retryable: false,
   });

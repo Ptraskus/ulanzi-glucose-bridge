@@ -1,9 +1,10 @@
+import { setAppLanguage, tr } from "./i18n.mjs";
 import { inspect } from "node:util";
 import { pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { AwtrixClient, awtrix3Payload, ngPayload } from "./awtrix-client.mjs";
-import { HELP, parseArgs, readConfig } from "./config.mjs";
+import { getHelp, parseArgs, readConfig } from "./config.mjs";
 import { loadEnv } from "./env.mjs";
 import { BridgeError, safeErrorMessage } from "./errors.mjs";
 import { createLogger } from "./logger.mjs";
@@ -39,7 +40,7 @@ async function withDeviceSoundBudget(parentSignal, budgetMs, operation) {
   );
   try {
     if (controller.signal.aborted) {
-      throw new BridgeError("controle de volume cancelado antes da confirmacao", {
+      throw new BridgeError(tr("volume control was cancelled before confirmation", "controle de volume cancelado antes da confirmacao"), {
         code: "AWTRIX_VOLUME_ABORTED",
       });
     }
@@ -47,7 +48,7 @@ async function withDeviceSoundBudget(parentSignal, budgetMs, operation) {
     // Um PATCH pode ter chegado ao relogio no instante do cancelamento. Sem a
     // resposta completa, o resultado e deliberadamente tratado como incerto.
     if (controller.signal.aborted) {
-      throw new BridgeError("o TC001 nao confirmou o volume dentro do prazo", {
+      throw new BridgeError(tr("TC001 did not confirm the volume before the deadline", "o TC001 nao confirmou o volume dentro do prazo"), {
         code: "AWTRIX_VOLUME_CONFIRMATION_TIMEOUT",
       });
     }
@@ -76,7 +77,7 @@ export function sleep(milliseconds, signal) {
 }
 
 function ageLabel(ageMs) {
-  if (ageMs === null) return "sem leitura anterior";
+  if (ageMs === null) return tr("no previous reading", "sem leitura anterior");
   if (ageMs < 60_000) return `${Math.floor(ageMs / 1000)} s`;
   return `${Math.floor(ageMs / 60_000)} min`;
 }
@@ -89,8 +90,8 @@ function isoTimestamp(value) {
 
 function dryRunOutput(state, config) {
   return {
-    estado: state.kind,
-    idade: ageLabel(state.ageMs),
+    state: state.kind,
+    age: ageLabel(state.ageMs),
     awtrixNg: ngPayload(state, config),
     awtrix3: awtrix3Payload(state, config),
   };
@@ -139,10 +140,10 @@ async function restoreAlarmState(path, tracker, maxAgeMs, logger, now = new Date
   try {
     const snapshot = JSON.parse(await readFile(path, "utf8"));
     const restored = tracker.restore(snapshot, now, maxAgeMs);
-    if (!restored) logger.warn("estado anterior dos alarmes foi ignorado por estar vencido ou incompatível");
+    if (!restored) logger.warn(tr("previous alarm state was ignored because it was expired or incompatible", "estado anterior dos alarmes foi ignorado por estar vencido ou incompatível"));
     return restored;
   } catch (error) {
-    if (error?.code !== "ENOENT") logger.warn("estado anterior dos alarmes não pôde ser restaurado");
+    if (error?.code !== "ENOENT") logger.warn(tr("previous alarm state could not be restored", "estado anterior dos alarmes não pôde ser restaurado"));
     return false;
   }
 }
@@ -152,7 +153,7 @@ async function persistAlarmState(path, tracker, logger, now = new Date()) {
   try {
     await writeJsonAtomically(path, tracker.snapshot(now));
   } catch {
-    logger.error("não foi possível persistir o estado dos alarmes");
+    logger.error(tr("alarm state could not be saved", "não foi possível persistir o estado dos alarmes"));
   }
 }
 
@@ -232,7 +233,7 @@ export async function deliverPendingAlarm({
     health.sound.lastError = null;
     await persist(confirmedAt);
     await publish(confirmedAt);
-    logger?.info("alarme sonoro automatico confirmado pelo TC001");
+    logger?.info(tr("automatic sound alert confirmed by TC001", "alarme sonoro automatico confirmado pelo TC001"));
     return { attempted: true, confirmed: true, kind: attempt.kind };
   } catch (error) {
     const failedAt = new Date();
@@ -251,7 +252,7 @@ export async function deliverPendingAlarm({
     health.sound.lastError = safeMessage;
     await persist(failedAt);
     await publish(failedAt);
-    logger?.error(`alarme sonoro: ${safeMessage}`);
+    logger?.error(tr("sound alert: {0}", "alarme sonoro: {0}", [safeMessage]));
     return { attempted: true, confirmed: false, kind: attempt.kind, error };
   }
 }
@@ -348,12 +349,12 @@ export function startStopRequestPolling({
           await unlink(path);
         } catch (unlinkError) {
           if (unlinkError?.code !== "ENOENT") {
-            logger?.warn(`pedido de encerramento: ${safeErrorMessage(unlinkError)}`);
+            logger?.warn(tr("shutdown request: {0}", "pedido de encerramento: {0}", [safeErrorMessage(unlinkError)]));
           }
         }
-        logger?.warn("pedido de encerramento inválido foi ignorado");
+        logger?.warn(tr("invalid shutdown request was ignored", "pedido de encerramento inválido foi ignorado"));
       } else if (error?.code !== "ENOENT") {
-        logger?.warn(`pedido de encerramento: ${safeErrorMessage(error)}`);
+        logger?.warn(tr("shutdown request: {0}", "pedido de encerramento: {0}", [safeErrorMessage(error)]));
       }
     } finally {
       checking = false;
@@ -417,9 +418,9 @@ async function processDeviceSoundCommand({
     logger.info(
       result.supported
         ? requestKind === "write"
-          ? `volume do buzzer aplicado no TC001: ${result.buzzerVolume}% (som ${result.soundEnabled ? "ligado" : "desligado"})`
-          : `volume do buzzer lido do TC001: ${result.buzzerVolume}% (som ${result.soundEnabled ? "ligado" : "desligado"})`
-        : "controle de volume indisponivel neste firmware ou hardware",
+          ? tr("buzzer volume applied to TC001: {0}% (sound {1})", "volume do buzzer aplicado no TC001: {0}% (som {1})", [result.buzzerVolume, result.soundEnabled ? tr("on", "ligado") : tr("off", "desligado")])
+          : tr("buzzer volume read from TC001: {0}% (sound {1})", "volume do buzzer lido do TC001: {0}% (som {1})", [result.buzzerVolume, result.soundEnabled ? tr("on", "ligado") : tr("off", "desligado")])
+        : tr("volume control is unavailable on this firmware or hardware", "controle de volume indisponivel neste firmware ou hardware"),
     );
   } catch (error) {
     const failedAt = new Date();
@@ -428,7 +429,7 @@ async function processDeviceSoundCommand({
     health.deviceSound.lastRequestCompletedAt = failedAt.toISOString();
     health.deviceSound.lastRequestError = safeErrorMessage(error);
     await publishRuntimeStatus(state, reading, health, failedAt);
-    logger.error(`volume geral do TC001: ${safeErrorMessage(error)}`);
+    logger.error(tr("TC001 device volume: {0}", "volume geral do TC001: {0}", [safeErrorMessage(error)]));
   }
 }
 
@@ -451,7 +452,7 @@ export async function processRuntimeCommand({
     const raw = await readFile(claimedPath, "utf8");
     const command = validateRuntimeCommand(JSON.parse(raw), instanceId, new Date(), maxAgeMs);
     if (!command) {
-      logger.warn("comando da bandeja inválido ou vencido foi ignorado");
+      logger.warn(tr("invalid or expired tray command was ignored", "comando da bandeja inválido ou vencido foi ignorado"));
       return false;
     }
 
@@ -501,7 +502,7 @@ export async function processRuntimeCommand({
       health.sound.lastTestError = null;
       health.sound.lastError = null;
       await publishRuntimeStatus(state, reading, health, confirmedAt);
-      logger.info("comando de teste de som confirmado pelo TC001");
+      logger.info(tr("sound test command confirmed by TC001", "comando de teste de som confirmado pelo TC001"));
     } catch (error) {
       const failedAt = new Date();
       health.sound.state = "error";
@@ -515,19 +516,19 @@ export async function processRuntimeCommand({
       health.sound.lastTestError = safeErrorMessage(error);
       health.sound.lastError = health.sound.lastTestError;
       await publishRuntimeStatus(state, reading, health, failedAt);
-      logger.error(`teste de som: ${safeErrorMessage(error)}`);
+      logger.error(tr("sound test: {0}", "teste de som: {0}", [safeErrorMessage(error)]));
     }
     return true;
   } catch (error) {
-    if (error?.name !== "SyntaxError") logger.error(`comando da bandeja: ${safeErrorMessage(error)}`);
-    else logger.warn("comando da bandeja com JSON inválido foi ignorado");
+    if (error?.name !== "SyntaxError") logger.error(tr("tray command: {0}", "comando da bandeja: {0}", [safeErrorMessage(error)]));
+    else logger.warn(tr("tray command with invalid JSON was ignored", "comando da bandeja com JSON inválido foi ignorado"));
     return false;
   } finally {
     if (claimedPath) {
       try {
         await unlink(claimedPath);
       } catch (error) {
-        if (error?.code !== "ENOENT") logger.warn("não foi possível remover um comando processado");
+        if (error?.code !== "ENOENT") logger.warn(tr("a processed command could not be removed", "não foi possível remover um comando processado"));
       }
     }
   }
@@ -613,14 +614,14 @@ export function readingClockStatus(
     return {
       state: "error",
       offsetSeconds,
-      message: "a leitura esta mais de cinco minutos a frente; confira os horarios do Windows e da fonte",
+      message: tr("the reading is more than five minutes ahead; check the Windows and source clocks", "a leitura esta mais de cinco minutos a frente; confira os horarios do Windows e da fonte"),
     };
   }
   if (offsetMs > warningToleranceMs) {
     return {
       state: "warning",
       offsetSeconds,
-      message: "a leitura esta adiantada; confira os horarios do Windows e da fonte",
+      message: tr("the reading is ahead of the clock; check the Windows and source clocks", "a leitura esta adiantada; confira os horarios do Windows e da fonte"),
     };
   }
   return { state: "ok", offsetSeconds, message: null };
@@ -669,10 +670,11 @@ export async function run(argv = process.argv.slice(2)) {
   loadEnv();
   const options = parseArgs(argv);
   if (options.help) {
-    process.stdout.write(HELP);
+    process.stdout.write(getHelp());
     return 0;
   }
   const config = readConfig(options);
+  setAppLanguage(config.language);
   const logger = createLogger(config.logLevel);
   const source = createSource(config);
   const awtrix = config.dryRun ? null : new AwtrixClient(config);
@@ -719,7 +721,7 @@ export async function run(argv = process.argv.slice(2)) {
     if (stopRequested) return;
     stopRequested = true;
     stopController.abort();
-    logger.info("encerramento solicitado; finalizando o ciclo atual");
+    logger.info(tr("shutdown requested; finishing the current cycle", "encerramento solicitado; finalizando o ciclo atual"));
   };
   process.once("SIGINT", requestStop);
   process.once("SIGTERM", requestStop);
@@ -757,13 +759,13 @@ export async function run(argv = process.argv.slice(2)) {
           if (sensorSessionResult.status === "fulfilled") {
             lastSensorSession = sensorSessionResult.value;
             if (sensorSessionLookupFailed) {
-              logger.info("consulta da idade do sensor ao Nightscout foi recuperada");
+              logger.info(tr("Nightscout sensor age lookup has recovered", "consulta da idade do sensor ao Nightscout foi recuperada"));
             }
             sensorSessionLookupFailed = false;
           } else if (!stopRequested) {
             if (!sensorSessionLookupFailed) {
               logger.warn(
-                `idade do sensor no Nightscout: ${safeErrorMessage(sensorSessionResult.reason)}`,
+                tr("Nightscout sensor age: {0}", "idade do sensor no Nightscout: {0}", [safeErrorMessage(sensorSessionResult.reason)]),
               );
             }
             sensorSessionLookupFailed = true;
@@ -778,7 +780,7 @@ export async function run(argv = process.argv.slice(2)) {
         health.clock.observedAt = clockObservedAt.toISOString();
         health.clock.message = clockStatus.message;
         if (clockStatus.state === "error") {
-          throw new BridgeError("a fonte retornou uma leitura com horário muito à frente", {
+          throw new BridgeError(tr("the source returned a reading too far in the future", "a fonte retornou uma leitura com horário muito à frente"), {
             code: "FUTURE_READING",
           });
         }
@@ -789,7 +791,7 @@ export async function run(argv = process.argv.slice(2)) {
             alarmTracker?.lastReadingTimestampMs,
           )
         ) {
-          throw new BridgeError("a fonte retornou uma leitura mais antiga que a já processada", {
+          throw new BridgeError(tr("the source returned a reading older than the last processed reading", "a fonte retornou uma leitura mais antiga que a já processada"), {
             code: "REGRESSIVE_READING",
           });
         }
@@ -800,7 +802,7 @@ export async function run(argv = process.argv.slice(2)) {
         health.source.lastSuccessAt = sourceCompletedAt.toISOString();
         health.source.consecutiveFailures = 0;
         health.source.lastError = null;
-        logger.info("leitura valida recebida da fonte");
+        logger.info(tr("valid reading received from the source", "leitura valida recebida da fonte"));
       } catch (error) {
         if (stopRequested) return 0;
         sourceFailed = true;
@@ -808,7 +810,7 @@ export async function run(argv = process.argv.slice(2)) {
         health.source.state = "error";
         health.source.consecutiveFailures = sourceFailures;
         health.source.lastError = safeErrorMessage(error);
-        logger.error(`fonte de glicemia: ${safeErrorMessage(error)}`);
+        logger.error(tr("glucose source: {0}", "fonte de glicemia: {0}", [safeErrorMessage(error)]));
       }
 
       state = buildCycleDisplayState(
@@ -863,7 +865,7 @@ export async function run(argv = process.argv.slice(2)) {
             isGlucoseDisplayState(pushedState) ? isoTimestamp(lastReading?.timestamp) : null;
           health.tc001.mode = mode;
           health.tc001.lastError = null;
-          logger.info(`TC001 atualizado via AWTRIX ${mode === "ng" ? "NG" : "3"}`);
+          logger.info(tr("TC001 updated via AWTRIX {0}", "TC001 atualizado via AWTRIX {0}", [mode === "ng" ? "NG" : "3"]));
           state = buildCycleDisplayState(
             lastReading,
             sourceFailed,
@@ -975,7 +977,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     const exitCode = await run();
     process.exitCode = exitCode;
   } catch (error) {
-    process.stderr.write(`ERRO: ${safeErrorMessage(error)}\n`);
+    process.stderr.write(`${tr("ERROR", "ERRO")}: ${safeErrorMessage(error)}\n`);
     process.exitCode = 1;
   }
 }

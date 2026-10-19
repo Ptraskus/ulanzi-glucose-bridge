@@ -1,164 +1,126 @@
-# Ulanzi Libre Bridge
+﻿# Ulanzi Libre Bridge
 
-**Sua leitura de glicemia no Ulanzi TC001, com um aplicativo local para Windows.**
+**Your glucose reading on an Ulanzi TC001, with a local Windows companion app.**
 
-O Ulanzi Libre Bridge consulta uma fonte Nightscout ou JSON autorizada e mostra o valor, a tendência e o estado da leitura no painel de LEDs do TC001. No computador, oferece assistente de configuração, painel de acompanhamento, alertas opcionais e ferramentas de diagnóstico.
+[Português (Brasil)](README.pt-BR.md) · [Report an issue](https://github.com/Ptraskus/ulanzi-libre-bridge/issues) · [Releases](https://github.com/Ptraskus/ulanzi-libre-bridge/releases)
 
-**Versão:** `0.1.0` · **Plataforma:** Windows · **Runtime:** Node.js 22+ · **Licença:** [MIT](LICENSE)
+The bridge reads an authorized Nightscout or JSON source and shows the glucose value, trend and reading status on the TC001. The Windows app includes guided setup, a dashboard, optional alerts, a floating display and troubleshooting tools.
 
-> O projeto está em versão inicial e disponível como código-fonte. Ainda não há um instalador publicado em [Releases](https://github.com/Ptraskus/ulanzi-libre-bridge/releases). Os scripts para gerar instaladores estão incluídos; a distribuição assinada tem requisitos próprios descritos em [PUBLICACAO.md](PUBLICACAO.md).
+**Windows 10 1809+ / Windows 11 · Node.js 22+ · English by default, Brazilian Portuguese available · mg/dL or mmol/L · [MIT license](LICENSE)**
 
-> **Uso complementar:** este software não é um dispositivo médico e não substitui os aplicativos oficiais, seus alarmes, o glicosímetro ou a orientação profissional. Não use o TC001 como única fonte para decisões de tratamento.
+> This is an early release. The public download currently provides source code; a signed Windows installer is not yet published. Follow the source ZIP instructions below. Build scripts and a bundled-runtime package format are available for maintainers, but an internally built installer is not a signed public release.
 
-## Neste README
+> This is a supplementary display, not a medical device. Keep using your official apps, their alarms and your usual monitoring tools. Do not use this app or the TC001 as your only basis for treatment decisions. Initial thresholds are software defaults, not clinical recommendations.
 
-- [O que a aplicação faz](#o-que-a-aplicação-faz)
-- [Como funciona](#como-funciona)
-- [Requisitos](#requisitos)
-- [Começar pelo código-fonte](#começar-pelo-código-fonte)
-- [Configuração e uso diário](#configuração-e-uso-diário)
-- [Fontes de dados](#fontes-de-dados)
-- [Alarmes e validade das leituras](#alarmes-e-validade-das-leituras)
-- [Privacidade e segurança](#privacidade-e-segurança)
-- [Solução de problemas](#solução-de-problemas)
-- [Desenvolvimento e contribuição](#desenvolvimento-e-contribuição)
-- [Documentação e licença](#documentação-e-licença)
+## Quick start on Windows
 
-## O que a aplicação faz
+You do not need Git, an account for this app, or `npm install`.
 
-| Recurso | O que oferece |
-| --- | --- |
-| Visor do TC001 | Valor em mg/dL ou mmol/L, seta de tendência, cores configuráveis e indicação de leitura indisponível ou sensor encerrado. |
-| Assistente inicial | Preparação do relógio, escolha da fonte, testes de conexão, preferências e revisão antes de salvar. |
-| Painel no Windows | Leitura atual, estado da fonte e do relógio, alertas, mostrador flutuante e acesso pela bandeja do sistema. |
-| Temas | Aparência clara, escura ou seguindo a preferência do Windows. |
-| Alertas opcionais | Avisos sonoros por valor, tendência ou falta de dados, com limites, repetição e padrão de som configuráveis. |
-| Diagnóstico | Testes do visor e buzzer, acompanhamento de falhas e exportação de relatório com remoção de dados sensíveis. |
-| Recuperação | Histórico das três configurações válidas mais recentes e restauração pela interface. |
-| Demonstração | Fonte simulada para conhecer o funcionamento sem conectar uma conta ou um relógio. |
+1. Install **Node.js LTS, version 22 or newer**, using the Windows installer from the [official Node.js download page](https://nodejs.org/en/download). Keep its default PATH option. Skip this step if a suitable Node.js version is already installed.
+2. Download the repository using **Code > Download ZIP** on GitHub.
+3. Right-click the ZIP and choose **Extract All**. Keep the extracted folder in a writable location such as your Documents folder. Open the folder containing `Start.cmd`; do not run it inside the ZIP or from `Program Files`.
+4. Double-click **`Start.cmd`**. The launcher checks Node.js, then opens the dashboard. Select **Set up now** when the app asks for initial configuration.
+5. Select your language and glucose unit, choose a source, enter the TC001 address and complete the connection tests. Review the settings before saving. **Automatic sound alerts start disabled.**
 
-O núcleo usa Node.js; a interface para Windows usa PowerShell e WinForms. Não há dependências npm de execução para instalar.
+For subsequent use, open `Start.cmd` again. The app stays in the Windows notification area; closing the panel does not quit it. Use **Exit** from its tray menu to stop the app. The computer must remain awake, connected to the source and TC001, with the app running.
 
-## Como funciona
+`Configure.cmd` opens the setup wizard directly. The original Portuguese commands, `configurar.cmd` and `iniciar.cmd`, remain available for compatibility. `iniciar.cmd` runs the bridge in a visible console; it does not open the dashboard.
 
-```mermaid
-flowchart LR
-    A["Nightscout ou endpoint JSON autorizado"] -->|"Consulta da leitura"| B["Bridge no Windows"]
-    M["Fonte simulada — mock"] --> B
-    B -->|"HTTP na rede local"| C["Ulanzi TC001 com AWTRIX NG ou AWTRIX 3"]
-    B --> D["Painel, alertas e diagnóstico no Windows"]
-```
+If Windows blocks a downloaded script, verify that it came from this repository and review the warning. Do not disable system protection globally. Managed work or school computers may require assistance from their administrator.
 
-O computador consulta a fonte, verifica a idade da leitura e calcula a apresentação e os alertas. O TC001 recebe os comandos pela rede local. **O computador precisa permanecer ligado, com o aplicativo em execução e acesso à fonte e ao relógio.**
+### Try it without an account or clock
 
-O projeto não faz login no LibreLinkUp, não pede senha Abbott e não lê o sensor diretamente. Para dados reais, a fonte Nightscout ou JSON precisa estar funcionando antes da configuração do bridge. A instalação e a manutenção de um uploader ou de um servidor Nightscout são etapas separadas.
-
-## Requisitos
-
-| Item | Requisito |
-| --- | --- |
-| Sistema | Windows 10 versão 1809 ou mais recente; interface baseada em Windows PowerShell 5.1 e WinForms. |
-| Node.js | Versão 22 ou mais recente, disponível no `PATH`, para executar o código-fonte. |
-| Relógio | Ulanzi TC001 com [AWTRIX NG](https://github.com/Blueforcer/awtrix-ng) ou AWTRIX 3. Dispensável para a demonstração no terminal. |
-| Rede | Computador e TC001 com comunicação permitida na rede local; acesso à fonte de dados configurada. |
-| Fonte | Instância Nightscout controlada por você ou endpoint JSON autorizado. Para demonstração, use `mock`. |
-| Git | Necessário apenas para clonar; também é possível baixar o código pelo botão **Code > Download ZIP** do GitHub. |
-
-Se o TC001 ainda precisar de firmware, o assistente orienta a preparação e abre a [ferramenta oficial do AWTRIX NG](https://blueforcer.github.io/awtrix-ng/getting-started/flashing/) mediante sua confirmação. A gravação exige um cabo USB de dados e um navegador compatível com a ferramenta. Faça backup antes: a troca de firmware pode apagar o software e as configurações do relógio.
-
-## Começar pelo código-fonte
-
-Abra o PowerShell e baixe o projeto:
-
-```powershell
-git clone https://github.com/Ptraskus/ulanzi-libre-bridge.git
-cd ulanzi-libre-bridge
-node --version
-```
-
-Se baixou o ZIP, extraia-o e abra o PowerShell na pasta que contém `package.json`. Os comandos abaixo partem dessa pasta.
-
-### 1. Experimentar com dados simulados
-
-Em um clone novo, execute:
+Open PowerShell in the extracted folder and run:
 
 ```powershell
 npm.cmd run demo
 ```
 
-O comando simula **112 mg/dL com tendência estável**, imprime os dados que seriam enviados ao AWTRIX NG e ao AWTRIX 3 e encerra. Não consulta uma fonte real nem envia comandos ao relógio. Não é necessário criar `.env`, configurar credenciais ou executar `npm install` para essa demonstração.
+This simulates **112 mg/dL**, prints the display payload and exits without contacting a real source or sending anything to a clock. It does not create configuration or credentials. It is a terminal demonstration; the full graphical setup still requires a TC001 for its device checks. Existing `.env` preferences can affect formatting, but the demo always uses the mock source with device delivery disabled.
 
-Se já existir um `.env`, suas opções também serão carregadas; a fonte continua sendo `mock` e o envio permanece desativado. Esse comando demonstra o processamento no terminal, sem abrir o painel gráfico.
+### Future installer and portable packages
 
-### 2. Configurar a aplicação
+When a release includes a signed `Ulanzi-Libre-Bridge-Setup-<version>.exe`, verify its publisher and the release checksums, then run it. It installs for the current user, offers English or Portuguese, and can create a desktop shortcut and start with Windows. A package marked `portable-node` includes Node.js and needs no separate runtime installation; extract it completely and open `Start.cmd`.
 
-```powershell
-.\configurar.cmd
-```
+The GitHub **Source code (zip)** download does **not** include Node.js. Do not confuse it with a `portable-node` release asset. See [release and signing instructions](PUBLICACAO.md) for maintainers.
 
-O assistente conduz sete etapas: preparação, AWTRIX NG, fonte de glicemia, conexão da fonte, TC001, preferências e revisão. Tenha em mãos o endereço do relógio, a URL da fonte e, quando necessário, suas credenciais de acesso.
-
-Escolha a duração correspondente ao seu modelo de sensor e confirme os testes de conexão antes de concluir. **Os alarmes automáticos começam desligados.** Credenciais são informadas apenas na interface local; não as coloque em issues, capturas ou arquivos enviados ao GitHub.
-
-### 3. Abrir o painel e manter o bridge na bandeja
+The bundled runtime contains Node.js and its license, without npm. To run the terminal demo from that package without installing Node globally:
 
 ```powershell
-wscript.exe .\scripts\iniciar-oculto.vbs /OpenPanel
+.\runtime\node\node.exe .\src\index.mjs --source=mock --once --dry-run
 ```
 
-O painel abre e o aplicativo fica disponível na bandeja do Windows, perto do relógio do sistema. Use **Encerrar** no menu da bandeja para encerrá-lo. Se a configuração estiver incompleta, o painel oferece **Configurar agora** e mantém o bridge parado até a validação.
+## What you need
 
-Para desenvolvimento ou suporte, também é possível executar em primeiro plano:
-
-```powershell
-.\iniciar.cmd
-```
-
-Esse comando mantém um terminal visível; use `Ctrl+C` para parar. Ele também é o comportamento de `npm.cmd start`.
-
-## Configuração e uso diário
-
-O painel reúne cinco áreas:
-
-| Área | Ações principais |
+| Item | Requirement |
 | --- | --- |
-| **Início** | Consultar a leitura e a situação do aplicativo, fonte, TC001 e som. |
-| **Alertas** | Ajustar limites, padrões sonoros, repetições e ativação dos alarmes. |
-| **Tela e sensor** | Configurar apresentação, atualização, duração do sensor e mostrador flutuante. |
-| **Conexões** | Conferir fonte e entrega ao relógio, abrir o Nightscout e refazer a configuração. |
-| **Suporte** | Executar diagnóstico, exportar relatório, recuperar configuração e reiniciar. |
+| Computer | Windows 10 version 1809 or newer; Windows PowerShell 5.1 and WinForms. The desktop app is Windows-only. Packaged runtimes target x64. |
+| Clock | Ulanzi TC001 with AWTRIX NG or AWTRIX 3, reachable from the computer on your local network. Original Ulanzi firmware is not supported. |
+| Data source | An already working Nightscout instance or authorized JSON endpoint. A mock source is available for testing. |
+| Network | Access to the data source and the TC001. The computer and clock must be able to communicate; guest network isolation can prevent this. |
 
-**Salvar e aplicar** valida os campos, grava e confirma os valores e reinicia o bridge para aplicá-los. O aplicativo preserva as três configurações válidas mais recentes. Para trocar endereços, tokens ou senhas, use **Conexões > Refazer configuração**.
+The project does **not** log into LibreLinkUp, request an Abbott password, or read a sensor directly. Installing and maintaining a sensor uploader or Nightscout server is a separate task. See [Nightscout setup](GUIA-NIGHTSCOUT.md).
 
-Os principais padrões estão abaixo. Eles descrevem o comportamento inicial do programa e **não são recomendações clínicas**.
+If the TC001 needs compatible firmware, setup links to the [official AWTRIX NG flashing tool](https://blueforcer.github.io/awtrix-ng/getting-started/flashing/). Read its instructions and back up the device first: replacing firmware can erase the existing software and settings. The bridge does not silently flash firmware or choose a serial port.
 
-| Opção | Padrão |
+## How it works
+
+```mermaid
+flowchart LR
+    A["Nightscout / authorized JSON"] -->|"Read latest glucose"| B["Bridge on Windows"]
+    M["Mock source"] --> B
+    B -->|"Local HTTP"| C["Ulanzi TC001 with AWTRIX"]
+    B --> D["Dashboard, optional alerts and diagnostics"]
+```
+
+The app validates the reading timestamp, checks its age, determines the display and optional alerts, and sends the result to the clock. Display commands expire so an old reading is not intended to remain indefinitely when delivery stops.
+
+## Setup and everyday settings
+
+Have your TC001 address, the source URL, and any required access token ready. Enter credentials only in the local wizard. Confirm the sensor duration for your model and verify what you see and hear during the clock tests: a successful HTTP request alone cannot confirm the LEDs or buzzer worked.
+
+| Area | What you can do |
 | --- | --- |
-| Consulta da fonte | A cada 60 segundos. |
-| Validade máxima da leitura | 15 minutos; depois disso, o visor mostra `SEM DADO`. |
-| Unidade no visor | mg/dL; também aceita mmol/L. |
-| Faixa visual inicial | Limites de 70 e 180 mg/dL, configuráveis. |
-| Alarmes sonoros automáticos | Desligados. |
-| Avisos de contingência no Windows | Desligados. |
-| Duração do sensor | Escolha explícita no assistente: 14 dias, 15 dias ou valor personalizado. |
+| Home | Check the latest reading and the app, source, clock and sound status. |
+| Alerts | Enable alarms and set thresholds, repeat intervals and sound patterns. |
+| Display and sensor | Choose language and glucose unit, display options, refresh interval, sensor duration and floating display. |
+| Connections | Check source and device connectivity, open Nightscout and rerun setup. |
+| Support | Run diagnostics, export a sanitized report, restore configuration and restart. |
 
-O arquivo [.env.example](.env.example) documenta as opções disponíveis. Para uso normal, prefira o assistente: ele mantém a correspondência entre configuração e cofre de credenciais. Não copie o `.env.example` por cima de uma instalação já configurada.
+Use **Save and apply** to validate and persist changes. The app keeps the three most recent valid configurations for recovery. To change credentials or source addresses, rerun setup from Connections.
 
-## Fontes de dados
+### Language and glucose units
 
-| Fonte | Finalidade | Autenticação |
+English is the default for new installations. Select **English** or **Português (Brasil)** during setup, or use the **Language / Idioma** button at the bottom of the dashboard to open display settings. Existing explicit language preferences are preserved.
+
+Choose **mg/dL** or **mmol/L** independently of the language. The display uses whole numbers for mg/dL and one decimal place for mmol/L. **Visual and alarm thresholds in settings remain explicitly labeled in mg/dL**, regardless of the reading unit. Changing units does not convert or round your saved thresholds. Internally, readings and environment variables ending in `_MGDL` use mg/dL. The JSON source always expects `valueMgDl`, even when displaying mmol/L. Switching the display unit does not change the source data.
+
+### Initial behavior
+
+| Setting | Default |
+| --- | --- |
+| Language | English (`APP_LANGUAGE=en`) |
+| Display unit | mg/dL (`DISPLAY_UNITS=mgdl`); mmol/L is available. |
+| Poll interval | 60 seconds. |
+| Maximum reading age | 15 minutes. |
+| Visual range | 70–180 mg/dL; configurable and independent from alarm thresholds. |
+| Automatic sound alarms | Off. |
+| Windows fallback notifications | Off. |
+| Sensor duration | Explicit choice during setup: 14 days, 15 days or custom. |
+
+The complete configuration reference is [.env.example](.env.example). For normal use, prefer the wizard, which saves credentials in the Windows-protected vault. Do not copy the example over an existing `.env`.
+
+## Sources and reading states
+
+| Source | Purpose | Authentication |
 | --- | --- | --- |
-| `nightscout` | Ler a entrada mais recente de uma instância Nightscout. | Access token ou `API_SECRET`; o `API_SECRET` é enviado como hash no cabeçalho da API. |
-| `json` | Integrar um endpoint autorizado que forneça o formato abaixo. | Token opcional, conforme o serviço. |
-| `mock` | Simular uma leitura para testes e demonstração. | Não exige credenciais. |
+| `nightscout` | Latest reading from your Nightscout instance. | Read access token or `API_SECRET`; the API secret is hashed before use in the header. |
+| `json` | Authorized endpoint with the response format below. | Optional token. |
+| `mock` | Simulated reading for testing. | None. |
 
-Use a URL HTTPS final da fonte, sem credenciais na URL. HTTP é aceito para fontes somente no próprio computador (`localhost`/loopback). As consultas de glicemia não seguem redirecionamentos para evitar o encaminhamento de autenticação a outro destino.
+Use the final HTTPS source URL without credentials in the URL. Plain HTTP sources are allowed only on the local computer (loopback). Source requests do not follow redirects, to avoid forwarding authentication to another destination. The TC001 uses local HTTP; see [AWTRIX network security](GUIA-SEGURANCA-AWTRIX.md).
 
-O [guia de integração com Nightscout](GUIA-NIGHTSCOUT.md) descreve a preparação da fonte e as limitações de conectores comunitários. O bridge não inclui nem mantém esses conectores.
-
-### Contrato do endpoint JSON
-
-Exemplo fictício de resposta:
+Example JSON response with fictitious data:
 
 ```json
 {
@@ -168,140 +130,68 @@ Exemplo fictício de resposta:
 }
 ```
 
-O valor de entrada é em **mg/dL**, mesmo quando o visor está configurado em mmol/L. `timestamp` deve representar o instante real da leitura; a data fictícia acima ficará vencida se for reutilizada.
+Use the actual reading time; this example's timestamp will be stale if copied unchanged. Accepted trends: `double-up`, `up`, `up-slight`, `flat`, `down-slight`, `down`, `double-down`, `unknown`.
 
-Tendências aceitas: `double-up`, `up`, `up-slight`, `flat`, `down-slight`, `down`, `double-down` e `unknown`. As cores e os alarmes são calculados localmente a partir da leitura e das configurações.
+An unavailable or stale reading shows **NO DATA** (**SEM DADO** in Portuguese). With Nightscout, a recorded `Sensor Start` or `Sensor Change` event and the configured duration can produce a **CHANGE** (**TROCAR**) status. Without this event the app cannot infer sensor expiry from time alone. A still-valid low or high reading retains priority until it becomes stale. The sensor-change state does not trigger the no-data sound.
 
-## Alarmes e validade das leituras
+Automatic alerts are optional. Their visual thresholds and audible thresholds are independent. Sound profiles change beep patterns and repetition, not calibrated loudness. Hysteresis and rearming delays reduce repeated alerts near thresholds. The `double-down` arrow is displayed but currently has no dedicated sound rule. Test the clock's actual behavior before relying on notifications.
 
-Os limites de cor do visor e os limites de alarme são independentes. Quando ativados, os alertas podem acompanhar valores baixos ou altos, tendências de subida ou queda e falta de dados. Histerese e intervalo de rearme reduzem repetições provocadas por pequenas oscilações.
+## Privacy and updates
 
-- **Perfis de som:** `discreet`, `normal` e `reinforced`, com padrões mais breves ou repetidos. Eles mudam a duração e o padrão dos bipes; não representam um volume calibrado em dB.
-- **Tendências:** há regras para `up`, `double-up`, `up-slight`, `down` e `down-slight`. A seta `double-down` é exibida, mas não possui uma regra sonora própria.
-- **SEM DADO:** indica leitura indisponível ou vencida. A idade é calculada pelo horário da leitura, não pelo momento em que o computador a recebeu.
-- **TROCAR:** com Nightscout, usa o evento mais recente `Sensor Start` ou `Sensor Change` e a duração configurada para indicar o fim previsto do sensor. Se essa informação não estiver disponível, o bridge mantém o tratamento de leitura vencida como `SEM DADO`.
-- **Expiração no relógio:** os comandos incluem validade para evitar que uma leitura antiga permaneça no TC001 como se ainda estivesse atual quando o bridge parar.
-- **Retentativas:** falhas de entrega são tratadas separadamente das consultas à fonte. O estado dos alarmes é salvo localmente para reduzir avisos duplicados após reinícios.
+There is no project telemetry, advertising, app account or project server. Glucose processing happens locally; the configured data service and firmware have their own behavior and privacy policies.
 
-`TROCAR` é um aviso visual e não dispara o som de `SEM DADO`. Uma leitura baixa ou alta ainda válida mantém prioridade até vencer.
-
-<details>
-<summary><strong>Referência das principais opções de alarme</strong></summary>
-
-| Variável | Padrão | Função |
-| --- | --- | --- |
-| `GLUCOSE_ALARM_ENABLED` | `false` | Controle geral dos alarmes automáticos. |
-| `GLUCOSE_ALARM_SOUND_PROFILE` | `normal` | Padrão sonoro: `discreet`, `normal` ou `reinforced`. |
-| `GLUCOSE_ALARM_LOW_THRESHOLD_MGDL` | `70` | Limite sonoro de baixa. |
-| `GLUCOSE_ALARM_HIGH_THRESHOLD_MGDL` | `180` | Limite sonoro de alta. |
-| `GLUCOSE_ALARM_UP_SLIGHT_THRESHOLD_MGDL` | `140` | Alerta de `up-slight` somente acima deste valor. |
-| `GLUCOSE_ALARM_DOWN_THRESHOLD_MGDL` | `90` | Alerta de `down` e `down-slight` somente abaixo deste valor. |
-| `GLUCOSE_ALARM_DOUBLE_UP_ENABLED` | `true` | Inclui `double-up` nos alertas de subida. |
-| `GLUCOSE_ALARM_NO_DATA_ENABLED` | `true` | Alerta uma vez por episódio de falta de dados. |
-| `GLUCOSE_ALARM_HYSTERESIS_MGDL` | `5` | Folga para rearmar os alarmes por valor. |
-| `GLUCOSE_ALARM_COOLDOWN_MINUTES` | `5` | Intervalo mínimo antes de rearmar o mesmo alarme. |
-| `GLUCOSE_ALARM_ON_STARTUP_EXTREME` | `true` | Permite alerta se a primeira leitura válida estiver baixa ou alta. |
-| `GLUCOSE_ALARM_ON_RECOVERY_EXTREME` | `true` | Permite alerta se a leitura voltar de `SEM DADO` baixa ou alta. |
-| `GLUCOSE_ALARM_MAX_DELIVERY_ATTEMPTS` | `3` | Tentativas por sequência de entrega de um comando sonoro. |
-| `GLUCOSE_ALARM_DELIVERY_RETRY_SECONDS` | `30` | Intervalo entre tentativas de entrega. |
-| `WINDOWS_FALLBACK_ALERT_ENABLED` | `false` | Avisos locais de contingência, sem mostrar o valor da glicemia. |
-| `WINDOWS_STATUS_NOTIFICATION_DELAY_MINUTES` | `2` | Atraso antes de avisar sobre uma falha operacional persistente. |
-
-As opções individuais só produzem alarmes automáticos quando o controle geral está ligado. Os limites permanecem em mg/dL mesmo com o visor em mmol/L. A histerese é validada para impedir a sobreposição dos limites de baixa e alta.
-
-</details>
-
-O diagnóstico pede confirmação do que você viu e ouviu: uma resposta HTTP confirma o recebimento do comando, mas não prova que os LEDs ou o buzzer funcionaram. O controle direto de ligar/desligar o buzzer depende do AWTRIX NG e do hardware anunciado pelo firmware; desligá-lo também afeta sons de outros aplicativos do relógio.
-
-## Privacidade e segurança
-
-O bridge não possui telemetria, publicidade, conta própria ou servidor do projeto. O processamento é local; a fonte escolhida, o firmware e eventuais serviços de atualização têm seus próprios comportamentos e políticas.
-
-| Arquivo ou pasta local | Conteúdo |
+| Local path | Contents |
 | --- | --- |
-| `.env` | Endereços e preferências de funcionamento; não deve ser compartilhado. |
-| `.secrets/` | Credenciais protegidas pelo DPAPI, vinculadas ao usuário do Windows. |
-| `.runtime/` | Estado operacional, alarmes e logs rotativos. |
-| `.config-history/` | Cópias locais para recuperação da configuração. |
-| `.updates/` | Arquivos de atualização baixados mediante ação do usuário. |
+| `.env` | Service addresses and preferences. Do not share it. |
+| `.secrets/` | Credentials protected with Windows DPAPI for the current Windows user. |
+| `.runtime/` | Operational state and rotating logs. |
+| `.config-history/` | Local recovery copies. |
+| `.updates/` | Installers explicitly downloaded for updates. |
 
-Esses caminhos ficam fora do Git. Apenas [.env.example](.env.example), com valores de exemplo, é publicado. Logs e relatórios passam por sanitização; revise qualquer exportação antes de compartilhá-la. A desinstalação preserva os dados locais por padrão.
+UI preferences are stored under `%LOCALAPPDATA%\Ulanzi Libre Bridge`. These paths are excluded from source publication and release packages. A normal uninstall preserves user data. Credentials must be entered again when moving to another Windows account or computer.
 
-A comunicação com o TC001 usa HTTP na rede local. Autenticação básica não criptografa o tráfego: mantenha o relógio em uma rede confiável e não exponha sua API à internet. Veja o [guia de segurança do AWTRIX](GUIA-SEGURANCA-AWTRIX.md).
+Review diagnostic exports before sharing them, even though they remove readings and redact sensitive fields. Never attach `.env`, vault files, logs or screenshots containing private information to a public issue.
 
-O atualizador permanece desativado enquanto o distribuidor não configurar o canal e o publicador esperado. Quando configurado, verifica HTTPS, SHA-256 e assinatura Authenticode antes de permitir a execução do instalador. A publicação do código no GitHub, por si só, não ativa esse canal.
+The updater stays disabled until a maintainer configures a release channel and expected publisher. When enabled, it checks HTTPS, SHA-256 and Authenticode before allowing installer execution. Publishing source code on GitHub does not activate automatic updates.
 
-Consulte a [política de privacidade](PRIVACY.md) e a [política de segurança](SECURITY.md). Relate vulnerabilidades pelo [canal privado do GitHub](https://github.com/Ptraskus/ulanzi-libre-bridge/security/advisories/new).
+See [Privacy](PRIVACY.md), [Security](SECURITY.md), and the [private vulnerability report form](https://github.com/Ptraskus/ulanzi-libre-bridge/security/advisories/new).
 
-## Solução de problemas
+## Troubleshooting
 
-| Situação | O que verificar |
+| Problem | Next step |
 | --- | --- |
-| `node` não é reconhecido | Instale Node.js 22 ou superior, reabra o terminal e confira `node --version`. |
-| O painel pede configuração | Use **Configurar agora**. Uma configuração incompleta ou um cofre incompatível impede o início do bridge. |
-| O TC001 não responde | Confira se ele usa AWTRIX, o endereço configurado, a rede local e os resultados dos testes do assistente. |
-| O visor mostra `SEM DADO` | Verifique a leitura e seu horário na fonte, a conexão e o prazo de validade configurado. |
-| A leitura aparece, mas não há som | Confira o controle geral dos alarmes, o buzzer do relógio e o teste auditivo em **Suporte**. |
-| Credenciais não funcionam após mudar de usuário ou computador | Refaça a configuração: a proteção DPAPI não permite tratar o cofre como um arquivo portátil de senhas. |
-| Atualizações indisponíveis | O canal fica inativo sem um manifesto e publicador configurados pelo distribuidor. |
+| Start says Node.js is missing or too old | Install Node.js LTS 22+ from the official site, then reopen Start. Extract every file if using a bundled-runtime ZIP. |
+| Setup is required | Select Set up now. The bridge stays stopped until configuration is valid. |
+| Start does not open another copy | Only one copy runs per Windows user. Use the existing tray icon; select Exit before launching from a different extracted or installed folder. |
+| Clock does not respond | Confirm compatible AWTRIX firmware, address, credentials, firewall and local network access; repeat the wizard's clock test. |
+| NO DATA | Check the source's timestamp, connectivity and maximum reading age. A successful connection does not guarantee a fresh reading. |
+| No sound | Check the automatic-alert switch, clock buzzer and physical sound test in Support. |
+| Unit or language is unexpected | Check Display and sensor. Language and glucose unit are independent preferences. |
+| Credentials fail after moving the folder | Rerun setup under the target Windows account; a DPAPI vault cannot be copied as portable passwords. |
+| Updates unavailable | A signed release channel is not configured; check GitHub for source changes. |
 
-Para uma falha persistente, abra **Suporte**, execute o diagnóstico e revise o relatório exportado antes de compartilhá-lo. Não publique `.env`, cofres, dados de glicemia ou capturas com informações pessoais.
-
-## Desenvolvimento e contribuição
-
-### Comandos disponíveis
+## Development and validation
 
 ```powershell
-# Verificação de sintaxe do ponto de entrada
+# Optional alternative to Download ZIP
+git clone https://github.com/Ptraskus/ulanzi-libre-bridge.git
+cd ulanzi-libre-bridge
+
+# Syntax, tests and a no-network demo
 npm.cmd run check
-
-# Suíte automatizada
 npm.cmd test
-
-# Demonstração com fonte simulada, sem envio ao relógio
 npm.cmd run demo
-```
 
-A suíte inclui testes da lógica Node.js e da interface PowerShell/WinForms; use Windows para validar o conjunto. Testes automatizados não substituem a confirmação física de visor, som e instalação em um TC001 real.
+# Check launcher prerequisites without opening the app
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\launch-app.ps1 -Check
 
-Depois de configurar uma fonte, estes comandos ajudam no diagnóstico:
-
-```powershell
-# Consulta a fonte configurada e imprime o resultado sem enviar ao TC001
+# Read the configured source without delivering to the clock
 .\iniciar.cmd --once --dry-run
 
-# Consulta a fonte configurada e envia uma leitura ao TC001
-.\iniciar.cmd --once
-
-# Configurador textual, para suporte
-.\configurar.cmd -Console
+# Text-based setup for support
+.\Configure.cmd -Console
 ```
 
-### Organização do projeto
+The automated suite includes Windows PowerShell/WinForms checks; run the full suite on Windows. It cannot substitute for physical clock testing or clean-machine installation validation. Maintainer packaging, signing and release checks are in [PUBLICACAO.md](PUBLICACAO.md).
 
-```text
-src/           Consulta de fontes, validação, visor, alarmes e diagnóstico
-src/sources/   Adaptadores Nightscout, JSON e mock
-scripts/       Interface Windows, configuração, execução e build
-test/          Testes automatizados
-installer/     Definição do instalador e inicializadores
-release/       Lista de arquivos permitidos e contratos de atualização
-assets/        Ícone da aplicação
-presentation/  Roteiro e gerador da apresentação técnica
-```
-
-Para contribuir, abra uma [issue](https://github.com/Ptraskus/ulanzi-libre-bridge/issues) ou um pull request com o problema, a mudança proposta e como ela foi validada. Use dados fictícios nos exemplos e execute os testes relevantes. Vulnerabilidades e segredos devem seguir o canal privado de segurança.
-
-## Documentação e licença
-
-| Documento | Conteúdo |
-| --- | --- |
-| [GUIA-NIGHTSCOUT.md](GUIA-NIGHTSCOUT.md) | Preparação da fonte Nightscout e limitações das integrações. |
-| [GUIA-SEGURANCA-AWTRIX.md](GUIA-SEGURANCA-AWTRIX.md) | Cuidados com firmware, provisionamento e rede do relógio. |
-| [.env.example](.env.example) | Referência das opções de configuração. |
-| [PRIVACY.md](PRIVACY.md) | Dados processados, armazenamento local e controle do usuário. |
-| [SECURITY.md](SECURITY.md) | Escopo de segurança e comunicação de vulnerabilidades. |
-| [PUBLICACAO.md](PUBLICACAO.md) | Build, assinatura, instaladores, atualização e publicação. |
-| [Apresentação técnica](presentation/ROTEIRO-APRESENTACAO.md) | Visão da arquitetura e pontos para discussão técnica. |
-
-O código deste projeto está sob a [licença MIT](LICENSE). AWTRIX, Nightscout, Node.js e outros componentes externos mantêm suas próprias licenças e condições de uso.
+Source is in `src/`, Windows UI and tooling in `scripts/`, translations in `locales/`, installer definitions in `installer/`, and automated checks in `test/`. Keep personal configurations and credentials out of commits and pull requests. This is an independent community project, not affiliated with Abbott, Ulanzi, AWTRIX or Nightscout.

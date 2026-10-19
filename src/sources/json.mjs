@@ -1,3 +1,4 @@
+import { tr } from "../i18n.mjs";
 import { BridgeError } from "../errors.mjs";
 import { fetchJson } from "../http.mjs";
 import { normalizeReading } from "../reading.mjs";
@@ -18,7 +19,7 @@ export class JsonSource {
       signal,
     });
     if (!data || typeof data !== "object" || Array.isArray(data)) {
-      throw new BridgeError("a fonte JSON não retornou um objeto de leitura", {
+      throw new BridgeError(tr("the JSON source did not return a reading object", "a fonte JSON não retornou um objeto de leitura"), {
         code: "INVALID_JSON_READING",
       });
     }

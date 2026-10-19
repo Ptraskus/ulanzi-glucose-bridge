@@ -1,72 +1,43 @@
-# Privacidade
+﻿# Privacy
 
-O Ulanzi Libre Bridge processa localmente dados de glicemia para mostrá-los em
-um Ulanzi TC001. Ele não possui telemetria, publicidade, conta própria nem
-servidor do projeto.
+Ulanzi Libre Bridge processes glucose readings locally to display them on an Ulanzi TC001. It has no telemetry, advertising, project account or project-operated server.
 
-## Dados acessados
+## Data accessed
 
-- leitura, tendência e horário fornecidos pelo Nightscout ou pela fonte JSON
-  escolhida pelo usuário;
-- endereço e credenciais dos serviços configurados;
-- estado operacional necessário para evitar alarmes duplicados e apresentar o
-  diagnóstico da conexão.
+The app accesses the reading, trend and timestamp from the configured Nightscout or JSON source; the configured service addresses and credentials; and operational state needed for diagnostics and to reduce duplicate alarms.
 
-O aplicativo se comunica somente com a fonte de glicemia e o TC001 indicados
-na configuração. Esses serviços têm políticas próprias. O projeto não controla
-o tratamento feito pelo provedor do Nightscout, pela rede local ou pelo
-firmware instalado no relógio.
+The bridge communicates with the glucose source and TC001 selected by the user. Those services, the network and the installed firmware have their own behavior and privacy policies.
 
-Durante a preparação, o assistente pode abrir, somente por clique do usuário,
-a documentação e o gravador hospedados no domínio oficial do AWTRIX NG. O
-navegador e esse site podem registrar informações técnicas usuais do acesso.
-O assistente não recebe a senha do Wi-Fi cadastrada no portal local do TC001,
-não pede credenciais Abbott/LibreLinkUp e não envia essas informações ao
-projeto.
+During device preparation, clicking the corresponding button opens documentation or a flashing page on the official AWTRIX NG domain. The browser and website may record ordinary access information. The bridge does not receive the Wi-Fi password entered in the clock's own portal, does not request Abbott/LibreLinkUp credentials, and does not send such information to this project.
 
-## Armazenamento local
+## Local storage
 
-A configuração sem os segredos fica em `.env`. Credenciais salvas pela
-interface ficam em `.secrets/vault.json`, protegidas pelo DPAPI do Windows para
-o mesmo usuário. Estado transitório e logs rotativos ficam em `.runtime`;
-cópias de configuração ficam em `.config-history`; instaladores baixados para
-uma atualização ficam em `.updates`. Esses arquivos não são incluídos nos
-pacotes oficiais e são preservados por padrão na desinstalação.
+| Path | Purpose |
+| --- | --- |
+| `.env` | Addresses and configuration. Although secrets are separated, this file remains private. |
+| `.secrets/vault.json` | Credentials protected by Windows DPAPI for the same Windows user. |
+| `.runtime/` | Operational state and rotating logs. |
+| `.config-history/` | Valid configuration snapshots for recovery. |
+| `.updates/` | Installers downloaded after an explicit update action. |
 
-A preferência de tema do painel (`system`, `light` ou `dark`) fica em
-`%LOCALAPPDATA%\Ulanzi Libre Bridge\ui-preferences.json`. Esse arquivo não
-contém leituras, limites, endereços ou credenciais e a troca de tema não altera
-o `.env`.
+These files are excluded from public source and release packages. Uninstalling normally preserves them. Copying a vault to another Windows account or computer does not make its credentials usable there.
 
-Snapshots válidos podem conter o cofre ainda criptografado por DPAPI. Quando a
-configuração atual está inválida, a quarentena guarda somente presença, hashes
-e o código do erro; ela não copia o `.env` ou o cofre problemático.
+Theme and initial language preferences are stored in `%LOCALAPPDATA%\Ulanzi Libre Bridge\ui-preferences.json`. This file contains no readings, thresholds, addresses or credentials. The saved application configuration can also contain the selected language and glucose unit.
 
-Os registros persistentes removem credenciais, endereços sensíveis e leituras
-de glicemia por padrão. A função **Exportar diagnóstico** volta a higienizar o
-estado e os trechos de log e declara no próprio arquivo que as leituras foram
-omitidas. Endereços são reduzidos a categorias como rede local ou internet, e
-o estado exportado exclui valor, tendência, faixa alta/baixa e horários das
-leituras. O arquivo ainda pode conter limites configurados, versão do sistema,
-estados de conexão e horários dos logs. Nenhum filtro é uma garantia absoluta
-diante de texto inesperado; revise o diagnóstico antes de compartilhá-lo.
+Valid recovery snapshots can contain a vault still encrypted with DPAPI. When configuration is invalid, quarantine records only file presence, hashes and the error code; it does not copy the problematic `.env` or vault.
 
-A verificação de atualização permanece desativada enquanto o distribuidor não
-configurar uma URL de manifesto, o canal e o publicador esperado. Esses valores
-ficam pinados localmente e não são aceitos a partir do próprio feed remoto.
-Quando usada, a verificação acessa a URL por HTTPS e somente baixa o instalador
-após a ação correspondente do usuário; o servidor de hospedagem pode registrar
-informações técnicas usuais, como endereço IP e horário do acesso.
+## Logs and diagnostic reports
 
-## Controle e exclusão
+Persistent logs remove credentials, sensitive addresses and glucose readings by default. Exported diagnostics are sanitized again and declare that readings have been omitted. Addresses are reduced to categories such as local network or internet. Exported state excludes the glucose value, trend, high/low classification and reading timestamps.
 
-O usuário pode encerrar o aplicativo e apagar a configuração e os dados locais
-a qualquer momento. A desinstalação comum preserva esses dados para evitar
-perda acidental; a exclusão deve ser feita conscientemente depois de conferir
-o diretório remanescente informado pelo desinstalador.
+An export can still contain configured thresholds, software/system versions, connection states and log timestamps. Redaction cannot guarantee removal of every possible unexpected value; review the file before sharing it. Terminal diagnostic commands can print glucose data and should also be reviewed before sharing output.
 
-## Atualizações desta política
+## Updates
 
-Uma versão futura que adicione telemetria, verificação automática em segundo
-plano ou um novo destino de dados deverá pedir consentimento quando necessário
-e atualizar este documento antes da distribuição.
+Update checking is disabled until the distributor configures a manifest URL, channel and expected publisher. These values are pinned locally and are not accepted from the remote feed itself. When used, checking contacts that HTTPS URL, and downloading an installer requires the corresponding user action. The hosting service may record ordinary access information, including IP address and time.
+
+## Control and deletion
+
+You can stop the app and remove local configuration and data. Standard uninstallation keeps user data to avoid accidental loss; inspect the remaining installation folder and UI-preferences folder before deliberately deleting them. No project account or cloud deletion request is needed.
+
+Future features that introduce telemetry, automatic background checks or new data destinations must update this policy before distribution and obtain consent when applicable.

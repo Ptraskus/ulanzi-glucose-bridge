@@ -1,10 +1,11 @@
 Set-StrictMode -Version Latest
+. (Join-Path $PSScriptRoot "ui-language.ps1")
 
 function ConvertTo-UlanziDiagnosticsProcessArgument {
     param([Parameter(Mandatory = $true)][string]$Value)
 
     if ($Value.IndexOf('"') -ge 0 -or $Value.IndexOf("`r") -ge 0 -or $Value.IndexOf("`n") -ge 0) {
-        throw "Um caminho local contem caracteres que nao podem ser usados com seguranca."
+        throw (Get-UlanziText -Key 'Um caminho local contem caracteres que nao podem ser usados com seguranca.')
     }
     return '"' + $Value + '"'
 }
@@ -41,7 +42,7 @@ function Start-UlanziDiagnosticsExport {
 function Complete-UlanziDiagnosticsExport {
     param([Parameter(Mandatory = $true)][Diagnostics.Process]$Process)
 
-    if (-not $Process.HasExited) { throw "A exportacao de diagnostico ainda nao terminou." }
+    if (-not $Process.HasExited) { throw (Get-UlanziText -Key 'A exportacao de diagnostico ainda nao terminou.') }
     $Process.WaitForExit()
     $standardOutput = $Process.UlanziStandardOutputTask.GetAwaiter().GetResult()
     $standardError = $Process.UlanziStandardErrorTask.GetAwaiter().GetResult()
@@ -57,7 +58,7 @@ function Complete-UlanziDiagnosticsExport {
         $safeMessage = if ($null -ne $payload -and -not [string]::IsNullOrWhiteSpace([string]$payload.message)) {
             [string]$payload.message
         } else {
-            "A exportacao local nao foi concluida."
+            (Get-UlanziText -Key 'A exportacao local nao foi concluida.')
         }
         throw $safeMessage
     }
@@ -92,22 +93,22 @@ function Show-UlanziDiagnosticsDialog {
             $running = ((& $BridgeRunning) -eq $true)
             return [pscustomobject]@{
                 Responsive = ($running -and $null -ne $RuntimeStatus)
-                Text = if ($running) { "aguardando status recente" } else { "aplicativo parado" }
+                Text = if ($running) { (Get-UlanziText -Key 'aguardando status recente') } else { (Get-UlanziText -Key 'aplicativo parado') }
             }
         }
         try {
             $result = & $BridgeHealth $RuntimeStatus
             return [pscustomobject]@{
                 Responsive = ((& $getProperty $result "Responsive" $false) -eq $true)
-                Text = [string](& $getProperty $result "Text" "aplicativo sem resposta")
+                Text = [string](& $getProperty $result "Text" (Get-UlanziText -Key 'aplicativo sem resposta'))
             }
         } catch {
-            return [pscustomobject]@{ Responsive = $false; Text = "nao foi possivel confirmar o aplicativo" }
+            return [pscustomobject]@{ Responsive = $false; Text = (Get-UlanziText -Key 'nao foi possivel confirmar o aplicativo') }
         }
     }
 
     $form = [Windows.Forms.Form]::new()
-    $form.Text = "Verificar tudo - Ulanzi Libre"
+    $form.Text = (Get-UlanziText -Key 'Verificar tudo - Ulanzi Libre')
     $form.ClientSize = [Drawing.Size]::new(660, 525)
     $form.MinimumSize = [Drawing.Size]::new(660, 525)
     $form.StartPosition = if ($null -ne $Owner) { [Windows.Forms.FormStartPosition]::CenterParent } else { [Windows.Forms.FormStartPosition]::CenterScreen }
@@ -130,14 +131,14 @@ function Show-UlanziDiagnosticsDialog {
     $header.BackColor = [Drawing.ColorTranslator]::FromHtml("#173A4D")
     $header.Tag = "Header"
     $title = [Windows.Forms.Label]::new()
-    $title.Text = "Verificar tudo"
+    $title.Text = (Get-UlanziText -Key 'Verificar tudo')
     $title.AutoSize = $true
     $title.Location = [Drawing.Point]::new(20, 12)
     $title.Font = [Drawing.Font]::new("Segoe UI", 17, [Drawing.FontStyle]::Bold)
     $title.ForeColor = [Drawing.Color]::White
     $title.Tag = "Text"
     $subtitle = [Windows.Forms.Label]::new()
-    $subtitle.Text = "Confirme cada elo sem incluir glicemia ou credenciais no relatorio."
+    $subtitle.Text = (Get-UlanziText -Key 'Confirme cada elo sem incluir glicemia ou credenciais no relatorio.')
     $subtitle.AutoSize = $true
     $subtitle.Location = [Drawing.Point]::new(22, 48)
     $subtitle.ForeColor = [Drawing.ColorTranslator]::FromHtml("#D4E7EF")
@@ -159,12 +160,12 @@ function Show-UlanziDiagnosticsDialog {
 
     $checkLabels = @{}
     $rows = @(
-        @("bridge", "Aplicativo"),
-        @("source", "Fonte de glicemia"),
-        @("reading", "Leitura recente"),
-        @("clock", "Horario"),
-        @("tc001", "TC001 e visor"),
-        @("sound", "Buzzer e aviso audivel")
+        @("bridge", (Get-UlanziText -Key 'Aplicativo')),
+        @("source", (Get-UlanziText -Key 'Fonte de glicemia')),
+        @("reading", (Get-UlanziText -Key 'Leitura recente')),
+        @("clock", (Get-UlanziText -Key 'Horario')),
+        @("tc001", (Get-UlanziText -Key 'TC001 e visor')),
+        @("sound", (Get-UlanziText -Key 'Buzzer e aviso audivel'))
     )
     for ($index = 0; $index -lt $rows.Count; $index++) {
         [void]$table.RowStyles.Add([Windows.Forms.RowStyle]::new([Windows.Forms.SizeType]::Percent, (100 / $rows.Count)))
@@ -175,12 +176,12 @@ function Show-UlanziDiagnosticsDialog {
         $name.Font = [Drawing.Font]::new("Segoe UI", 9, [Drawing.FontStyle]::Bold)
         $name.Tag = "Text"
         $value = [Windows.Forms.Label]::new()
-        $value.Text = "Aguardando..."
+        $value.Text = (Get-UlanziText -Key 'Aguardando...')
         $value.Dock = [Windows.Forms.DockStyle]::Fill
         $value.TextAlign = [Drawing.ContentAlignment]::MiddleLeft
         $value.AutoEllipsis = $true
-        $value.AccessibleName = "Estado de $([string]$rows[$index][1])"
-        $value.AccessibleDescription = "Aguardando verificacao."
+        $value.AccessibleName = (Get-UlanziText -Key 'Estado de {0}' -Arguments @(($([string]$rows[$index][1]))))
+        $value.AccessibleDescription = (Get-UlanziText -Key 'Aguardando verificacao.')
         $value.Tag = "Muted"
         [void]$table.Controls.Add($name, 0, $index)
         [void]$table.Controls.Add($value, 1, $index)
@@ -188,7 +189,7 @@ function Show-UlanziDiagnosticsDialog {
     }
 
     $statusLabel = [Windows.Forms.Label]::new()
-    $statusLabel.Text = "Clique em Verificar tudo para executar tambem os testes do volume e do som."
+    $statusLabel.Text = (Get-UlanziText -Key 'Clique em Verificar tudo para executar tambem os testes do volume e do som.')
     $statusLabel.Location = [Drawing.Point]::new(22, 377)
     $statusLabel.Size = [Drawing.Size]::new(616, 42)
     $statusLabel.Anchor = [Windows.Forms.AnchorStyles]::Top -bor [Windows.Forms.AnchorStyles]::Left -bor [Windows.Forms.AnchorStyles]::Right
@@ -204,8 +205,8 @@ function Show-UlanziDiagnosticsDialog {
     $progressBar.Style = [Windows.Forms.ProgressBarStyle]::Continuous
     $progressBar.Value = 0
     $progressBar.Visible = $false
-    $progressBar.AccessibleName = "Progresso do diagnostico"
-    $progressBar.AccessibleDescription = "Nenhuma verificacao em andamento."
+    $progressBar.AccessibleName = (Get-UlanziText -Key 'Progresso do diagnostico')
+    $progressBar.AccessibleDescription = (Get-UlanziText -Key 'Nenhuma verificacao em andamento.')
 
     $footer = [Windows.Forms.Panel]::new()
     $footer.Dock = [Windows.Forms.DockStyle]::Bottom
@@ -214,7 +215,7 @@ function Show-UlanziDiagnosticsDialog {
     $footer.BackColor = [Drawing.Color]::White
     $footer.Tag = "Surface"
     $verifyButton = [Windows.Forms.Button]::new()
-    $verifyButton.Text = "Verificar tudo"
+    $verifyButton.Text = (Get-UlanziText -Key 'Verificar tudo')
     $verifyButton.Size = [Drawing.Size]::new(112, 34)
     $verifyButton.Location = [Drawing.Point]::new(16, 18)
     $verifyButton.BackColor = [Drawing.ColorTranslator]::FromHtml("#167A91")
@@ -223,17 +224,17 @@ function Show-UlanziDiagnosticsDialog {
     $verifyButton.FlatAppearance.BorderSize = 0
     $verifyButton.Tag = "Accent"
     $exportButton = [Windows.Forms.Button]::new()
-    $exportButton.Text = "Exportar diagnostico"
+    $exportButton.Text = (Get-UlanziText -Key 'Exportar diagnostico')
     $exportButton.Size = [Drawing.Size]::new(142, 34)
     $exportButton.Location = [Drawing.Point]::new(138, 18)
     $exportButton.Tag = "Surface"
     $copyButton = [Windows.Forms.Button]::new()
-    $copyButton.Text = "Copiar resumo"
+    $copyButton.Text = (Get-UlanziText -Key 'Copiar resumo')
     $copyButton.Size = [Drawing.Size]::new(112, 34)
     $copyButton.Location = [Drawing.Point]::new(290, 18)
     $copyButton.Tag = "Surface"
     $closeButton = [Windows.Forms.Button]::new()
-    $closeButton.Text = "Fechar"
+    $closeButton.Text = (Get-UlanziText -Key 'Fechar')
     $closeButton.Size = [Drawing.Size]::new(88, 34)
     $closeButton.Location = [Drawing.Point]::new(552, 18)
     $closeButton.Anchor = [Windows.Forms.AnchorStyles]::Right -bor [Windows.Forms.AnchorStyles]::Bottom
@@ -294,9 +295,9 @@ function Show-UlanziDiagnosticsDialog {
         $label = $checkLabels[$Key]
         $levelText = switch ($Level) {
             "ok" { "OK" }
-            "warning" { "ATENCAO" }
-            "error" { "PROBLEMA" }
-            default { "AGUARDANDO" }
+            "warning" { (Get-UlanziText -Key 'ATENCAO') }
+            "error" { (Get-UlanziText -Key 'PROBLEMA') }
+            default { (Get-UlanziText -Key 'AGUARDANDO') }
         }
         $displayText = "$levelText - $Text"
         $semanticRole = switch ($Level) {
@@ -321,7 +322,7 @@ function Show-UlanziDiagnosticsDialog {
             $progressBar.Visible = $false
             $progressBar.Style = [Windows.Forms.ProgressBarStyle]::Continuous
             $progressBar.Value = 0
-            $progressBar.AccessibleDescription = if ([string]::IsNullOrWhiteSpace($Description)) { "Nenhuma verificacao em andamento." } else { $Description }
+            $progressBar.AccessibleDescription = if ([string]::IsNullOrWhiteSpace($Description)) { (Get-UlanziText -Key 'Nenhuma verificacao em andamento.') } else { $Description }
             return
         }
         $progressBar.Style = if ($Mode -eq "indeterminate") {
@@ -354,57 +355,57 @@ function Show-UlanziDiagnosticsDialog {
         $state.BridgeResponsive = [bool]$bridgeHealthResult.Responsive
         if (-not [bool]$bridgeHealthResult.Responsive) {
             & $setCheck "bridge" ([string]$bridgeHealthResult.Text) "error"
-            foreach ($key in @("source", "reading", "clock", "tc001", "sound")) { & $setCheck $key "Nao foi possivel verificar" "waiting" }
+            foreach ($key in @("source", "reading", "clock", "tc001", "sound")) { & $setCheck $key (Get-UlanziText -Key 'Nao foi possivel verificar') "waiting" }
             if ([string]::IsNullOrWhiteSpace([string]$state.PendingRequestId)) { $verifyButton.Enabled = $false }
             return
         }
-        & $setCheck "bridge" "Em execucao e publicando status" "ok"
+        & $setCheck "bridge" (Get-UlanziText -Key 'Em execucao e publicando status') "ok"
         $source = & $getProperty $RuntimeStatus "source" $null
         $sourceState = [string](& $getProperty $source "state" "waiting")
-        if ($sourceState -eq "connected") { & $setCheck "source" "Conexao confirmada" "ok" }
-        elseif ($sourceState -eq "error") { & $setCheck "source" ([string](& $getProperty $source "lastError" "Falha de conexao")) "error" }
-        else { & $setCheck "source" "Consulta em andamento" "waiting" }
+        if ($sourceState -eq "connected") { & $setCheck "source" (Get-UlanziText -Key 'Conexao confirmada') "ok" }
+        elseif ($sourceState -eq "error") { & $setCheck "source" ([string](& $getProperty $source "lastError" (Get-UlanziText -Key 'Falha de conexao'))) "error" }
+        else { & $setCheck "source" (Get-UlanziText -Key 'Consulta em andamento') "waiting" }
 
         $reading = & $getProperty $RuntimeStatus "reading" $null
         $readingTimestamp = & $getProperty $reading "timestamp" $null
         $expiresAt = $null
         try { $expiresAt = [DateTime]::Parse([string](& $getProperty $reading "expiresAt" "")).ToUniversalTime() } catch { }
-        if ($null -ne $readingTimestamp -and $null -ne $expiresAt -and [DateTime]::UtcNow -lt $expiresAt) { & $setCheck "reading" "Leitura valida e dentro do prazo" "ok" }
-        else { & $setCheck "reading" "Sem leitura recente" "error" }
+        if ($null -ne $readingTimestamp -and $null -ne $expiresAt -and [DateTime]::UtcNow -lt $expiresAt) { & $setCheck "reading" (Get-UlanziText -Key 'Leitura valida e dentro do prazo') "ok" }
+        else { & $setCheck "reading" (Get-UlanziText -Key 'Sem leitura recente') "error" }
 
         $clock = & $getProperty $RuntimeStatus "clock" $null
         $clockState = [string](& $getProperty $clock "state" "unknown")
-        if ($clockState -eq "ok") { & $setCheck "clock" "Horario coerente com a fonte" "ok" }
-        elseif ($clockState -in @("warning", "error")) { & $setCheck "clock" ([string](& $getProperty $clock "message" "Diferenca de horario detectada")) "error" }
-        else { & $setCheck "clock" "Aguardando leitura para comparar" "waiting" }
+        if ($clockState -eq "ok") { & $setCheck "clock" (Get-UlanziText -Key 'Horario coerente com a fonte') "ok" }
+        elseif ($clockState -in @("warning", "error")) { & $setCheck "clock" ([string](& $getProperty $clock "message" (Get-UlanziText -Key 'Diferenca de horario detectada'))) "error" }
+        else { & $setCheck "clock" (Get-UlanziText -Key 'Aguardando leitura para comparar') "waiting" }
 
         $tc001 = & $getProperty $RuntimeStatus "tc001" $null
         $tc001State = [string](& $getProperty $tc001 "state" "waiting")
-        if ($tc001State -eq "confirmed" -and $state.DisplaySeen -eq $true) { & $setCheck "tc001" "Envio confirmado e visor conferido por voce" "ok" }
-        elseif ($tc001State -eq "confirmed" -and $state.DisplaySeen -eq $false) { & $setCheck "tc001" "O comando foi aceito, mas o visor nao foi confirmado" "error" }
-        elseif ($tc001State -eq "confirmed") { & $setCheck "tc001" "Envio aceito; falta confirmar visualmente" "warning" }
-        elseif ($tc001State -eq "error") { & $setCheck "tc001" ([string](& $getProperty $tc001 "lastError" "Falha no TC001")) "error" }
-        else { & $setCheck "tc001" "Aguardando envio" "waiting" }
+        if ($tc001State -eq "confirmed" -and $state.DisplaySeen -eq $true) { & $setCheck "tc001" (Get-UlanziText -Key 'Envio confirmado e visor conferido por voce') "ok" }
+        elseif ($tc001State -eq "confirmed" -and $state.DisplaySeen -eq $false) { & $setCheck "tc001" (Get-UlanziText -Key 'O comando foi aceito, mas o visor nao foi confirmado') "error" }
+        elseif ($tc001State -eq "confirmed") { & $setCheck "tc001" (Get-UlanziText -Key 'Envio aceito; falta confirmar visualmente') "warning" }
+        elseif ($tc001State -eq "error") { & $setCheck "tc001" ([string](& $getProperty $tc001 "lastError" (Get-UlanziText -Key 'Falha no TC001'))) "error" }
+        else { & $setCheck "tc001" (Get-UlanziText -Key 'Aguardando envio') "waiting" }
 
         $deviceSound = & $getProperty $RuntimeStatus "deviceSound" $null
         $deviceState = [string](& $getProperty $deviceSound "state" "unknown")
         $volume = & $getProperty $deviceSound "buzzerVolume" $null
-        if ($state.SoundHeard -eq $true) { & $setCheck "sound" "Melodia ouvida; nivel tecnico informado $volume%" "ok" }
-        elseif ($state.SoundHeard -eq $false) { & $setCheck "sound" "Comando aceito, mas a melodia nao foi ouvida" "error" }
-        elseif ($deviceState -eq "confirmed") { & $setCheck "sound" "Buzzer ligado; falta o teste auditivo" "warning" }
-        elseif ($deviceState -eq "muted" -or $deviceState -eq "silent") { & $setCheck "sound" "Som geral desligado ou em 0%" "error" }
-        elseif ($deviceState -eq "unsupported") { & $setCheck "sound" "Controle seguro indisponivel neste firmware" "warning" }
-        elseif ($deviceState -eq "error") { & $setCheck "sound" ([string](& $getProperty $deviceSound "lastRequestError" "Falha ao consultar o som")) "error" }
-        else { & $setCheck "sound" "Buzzer ainda nao consultado" "waiting" }
+        if ($state.SoundHeard -eq $true) { & $setCheck "sound" (Get-UlanziText -Key 'Melodia ouvida; nivel tecnico informado {0}%' -Arguments @(($volume))) "ok" }
+        elseif ($state.SoundHeard -eq $false) { & $setCheck "sound" (Get-UlanziText -Key 'Comando aceito, mas a melodia nao foi ouvida') "error" }
+        elseif ($deviceState -eq "confirmed") { & $setCheck "sound" (Get-UlanziText -Key 'Buzzer ligado; falta o teste auditivo') "warning" }
+        elseif ($deviceState -eq "muted" -or $deviceState -eq "silent") { & $setCheck "sound" (Get-UlanziText -Key 'Som geral desligado ou em 0%') "error" }
+        elseif ($deviceState -eq "unsupported") { & $setCheck "sound" (Get-UlanziText -Key 'Controle seguro indisponivel neste firmware') "warning" }
+        elseif ($deviceState -eq "error") { & $setCheck "sound" ([string](& $getProperty $deviceSound "lastRequestError" (Get-UlanziText -Key 'Falha ao consultar o som'))) "error" }
+        else { & $setCheck "sound" (Get-UlanziText -Key 'Buzzer ainda nao consultado') "waiting" }
     }
 
     $startCommand = {
         param([string]$Command)
         if (-not [string]::IsNullOrWhiteSpace([string]$state.PendingRequestId)) { return $false }
-        if (-not [bool]$state.BridgeResponsive) { throw "O bridge esta parado ou sem resposta." }
+        if (-not [bool]$state.BridgeResponsive) { throw (Get-UlanziText -Key 'O bridge esta parado ou sem resposta.') }
         $requestResult = & $SendCommand $Command ([ordered]@{})
         $requestId = if ($requestResult -is [string]) { [string]$requestResult } else { [string](& $getProperty $requestResult "requestId" "") }
-        if ([string]::IsNullOrWhiteSpace($requestId)) { throw "O bridge nao forneceu um identificador para o teste." }
+        if ([string]::IsNullOrWhiteSpace($requestId)) { throw (Get-UlanziText -Key 'O bridge nao forneceu um identificador para o teste.') }
         $state.PendingRequestId = $requestId
         $state.PendingCommand = $Command
         $state.PendingDeadline = [DateTime]::UtcNow.AddSeconds($CommandTimeoutSeconds)
@@ -415,23 +416,23 @@ function Show-UlanziDiagnosticsDialog {
 
     $finishRunAll = {
         if ($state.Closing -or $form.IsDisposed -or $form.Disposing) { return }
-        & $setProgress $true "determinate" 85 "Confirmando o que apareceu no visor do TC001."
+        & $setProgress $true "determinate" 85 (Get-UlanziText -Key 'Confirmando o que apareceu no visor do TC001.')
         $runtimeStatus = & $ReadStatus
         & $updateFromStatus $runtimeStatus
         $displayAnswer = Show-UlanziOwnedMessageBox `
             -Owner $form `
-            -Text "O TC001 esta mostrando a leitura atual do Ulanzi Libre?" `
-            -Caption "Confirmar visor" `
+            -Text (Get-UlanziText -Key 'O TC001 esta mostrando a leitura atual do Ulanzi Libre?') `
+            -Caption (Get-UlanziText -Key 'Confirmar visor') `
             -Buttons ([Windows.Forms.MessageBoxButtons]::YesNo) `
             -Icon ([Windows.Forms.MessageBoxIcon]::Question)
         if ($state.Closing -or $form.IsDisposed -or $form.Disposing) { return }
         $state.DisplaySeen = $displayAnswer -eq [Windows.Forms.DialogResult]::Yes
         & $updateFromStatus $runtimeStatus
         $state.RunAll = $false
-        $statusLabel.Text = "Verificacao concluida. Itens marcados como PROBLEMA precisam de atencao; o relatorio pode ser exportado sem dados sensiveis."
+        $statusLabel.Text = (Get-UlanziText -Key 'Verificacao concluida. Itens marcados como PROBLEMA precisam de atencao; o relatorio pode ser exportado sem dados sensiveis.')
         & $setSemanticRole $statusLabel "Muted"
         $timer.Interval = 1000
-        & $setProgress $false "determinate" 100 "Verificacao concluida."
+        & $setProgress $false "determinate" 100 (Get-UlanziText -Key 'Verificacao concluida.')
         & $setOperationBusy $false
     }
 
@@ -442,21 +443,21 @@ function Show-UlanziDiagnosticsDialog {
             $state.SoundHeard = $null
             $state.DisplaySeen = $null
             & $setOperationBusy $true
-            & $setProgress $true "determinate" 15 "Lendo o estado atual do aplicativo e do TC001."
+            & $setProgress $true "determinate" 15 (Get-UlanziText -Key 'Lendo o estado atual do aplicativo e do TC001.')
             & $updateFromStatus (& $ReadStatus)
-            $statusLabel.Text = "Consultando o estado real do buzzer do TC001..."
+            $statusLabel.Text = (Get-UlanziText -Key 'Consultando o estado real do buzzer do TC001...')
             & $setSemanticRole $statusLabel "Muted"
             [void](& $startCommand "read-device-sound")
-            & $setProgress $true "determinate" 35 "Aguardando a resposta do buzzer do TC001."
+            & $setProgress $true "determinate" 35 (Get-UlanziText -Key 'Aguardando a resposta do buzzer do TC001.')
         } catch {
             $state.RunAll = $false
             $state.PendingRequestId = $null
             $state.PendingCommand = $null
             $state.PendingDeadline = [DateTime]::MinValue
             $timer.Interval = 1000
-            & $setProgress $false "determinate" 0 "A verificacao nao pode ser iniciada."
+            & $setProgress $false "determinate" 0 (Get-UlanziText -Key 'A verificacao nao pode ser iniciada.')
             & $setOperationBusy $false
-            $statusLabel.Text = "Nao foi possivel iniciar: $($_.Exception.Message)"
+            $statusLabel.Text = (Get-UlanziText -Key 'Nao foi possivel iniciar: {0}' -Arguments @(($($_.Exception.Message))))
             & $setSemanticRole $statusLabel "Error"
         }
     })
@@ -464,14 +465,14 @@ function Show-UlanziDiagnosticsDialog {
     $copyButton.add_Click({
         $lines = foreach ($row in $rows) { "$($row[1]): $($checkLabels[[string]$row[0]].Text)" }
         [Windows.Forms.Clipboard]::SetText(($lines -join [Environment]::NewLine))
-        $statusLabel.Text = "Resumo copiado sem valor de glicemia ou credenciais."
+        $statusLabel.Text = (Get-UlanziText -Key 'Resumo copiado sem valor de glicemia ou credenciais.')
         & $setSemanticRole $statusLabel "Success"
     })
 
     $exportButton.add_Click({
         $dialog = [Windows.Forms.SaveFileDialog]::new()
-        $dialog.Title = "Salvar diagnostico higienizado"
-        $dialog.Filter = "Relatorio JSON (*.json)|*.json"
+        $dialog.Title = (Get-UlanziText -Key 'Salvar diagnostico higienizado')
+        $dialog.Filter = (Get-UlanziText -Key 'Relatorio JSON (*.json)|*.json')
         $dialog.FileName = "ulanzi-libre-diagnostico-$([DateTime]::Now.ToString('yyyyMMdd-HHmmss')).json"
         try {
             if ($dialog.ShowDialog($form) -ne [Windows.Forms.DialogResult]::OK) { return }
@@ -487,17 +488,17 @@ function Show-UlanziDiagnosticsDialog {
             $state.PendingExportDeadline = [DateTime]::UtcNow.AddSeconds(30)
             $timer.Interval = 250
             & $setOperationBusy $true
-            & $setProgress $true "indeterminate" 0 "Coletando e higienizando o diagnostico local."
-            $statusLabel.Text = "Coletando e higienizando o diagnostico, sem glicemia nem credenciais..."
+            & $setProgress $true "indeterminate" 0 (Get-UlanziText -Key 'Coletando e higienizando o diagnostico local.')
+            $statusLabel.Text = (Get-UlanziText -Key 'Coletando e higienizando o diagnostico, sem glicemia nem credenciais...')
             & $setSemanticRole $statusLabel "Muted"
         } catch {
             $state.PendingExportProcess = $null
             $state.PendingExportPath = $null
             $state.PendingExportDeadline = [DateTime]::MinValue
             $timer.Interval = 1000
-            & $setProgress $false "determinate" 0 "A exportacao nao pode ser iniciada."
+            & $setProgress $false "determinate" 0 (Get-UlanziText -Key 'A exportacao nao pode ser iniciada.')
             & $setOperationBusy $false
-            $statusLabel.Text = "Nao foi possivel exportar: $($_.Exception.Message)"
+            $statusLabel.Text = (Get-UlanziText -Key 'Nao foi possivel exportar: {0}' -Arguments @(($($_.Exception.Message))))
             & $setSemanticRole $statusLabel "Error"
         } finally {
             $dialog.Dispose()
@@ -519,9 +520,9 @@ function Show-UlanziDiagnosticsDialog {
                     $state.PendingExportDeadline = [DateTime]::MinValue
                     $exportProcess.Dispose()
                     $timer.Interval = 1000
-                    & $setProgress $false "determinate" 0 "A exportacao excedeu o tempo limite."
+                    & $setProgress $false "determinate" 0 (Get-UlanziText -Key 'A exportacao excedeu o tempo limite.')
                     & $setOperationBusy $false
-                    $statusLabel.Text = "A exportacao excedeu o tempo limite de 30 segundos. Tente novamente."
+                    $statusLabel.Text = (Get-UlanziText -Key 'A exportacao excedeu o tempo limite de 30 segundos. Tente novamente.')
                     & $setSemanticRole $statusLabel "Error"
                 }
                 return
@@ -532,13 +533,13 @@ function Show-UlanziDiagnosticsDialog {
             $state.PendingExportDeadline = [DateTime]::MinValue
             try {
                 [void](Complete-UlanziDiagnosticsExport -Process $exportProcess)
-                $statusLabel.Text = "Diagnostico salvo em $destinationPath."
+                $statusLabel.Text = (Get-UlanziText -Key 'Diagnostico salvo em {0}.' -Arguments @(($destinationPath)))
                 & $setSemanticRole $statusLabel "Success"
-                & $setProgress $false "determinate" 100 "Exportacao concluida."
+                & $setProgress $false "determinate" 100 (Get-UlanziText -Key 'Exportacao concluida.')
             } catch {
-                $statusLabel.Text = "Nao foi possivel exportar: $($_.Exception.Message)"
+                $statusLabel.Text = (Get-UlanziText -Key 'Nao foi possivel exportar: {0}' -Arguments @(($($_.Exception.Message))))
                 & $setSemanticRole $statusLabel "Error"
-                & $setProgress $false "determinate" 0 "A exportacao falhou."
+                & $setProgress $false "determinate" 0 (Get-UlanziText -Key 'A exportacao falhou.')
             } finally {
                 $exportProcess.Dispose()
                 $timer.Interval = 1000
@@ -551,11 +552,11 @@ function Show-UlanziDiagnosticsDialog {
         if ([string]::IsNullOrWhiteSpace([string]$state.PendingRequestId)) {
             $bridgeIsResponsive = [bool]$state.BridgeResponsive
             $verifyButton.Enabled = $bridgeIsResponsive
-            if ($bridgeIsResponsive -and $statusLabel.Text.StartsWith("O aplicativo esta parado ou sem resposta")) {
-                $statusLabel.Text = "O aplicativo voltou a funcionar. Clique em Verificar tudo para executar os testes."
+            if ($bridgeIsResponsive -and $statusLabel.Text.StartsWith((Get-UlanziText -Key 'O aplicativo esta parado ou sem resposta'))) {
+                $statusLabel.Text = (Get-UlanziText -Key 'O aplicativo voltou a funcionar. Clique em Verificar tudo para executar os testes.')
                 & $setSemanticRole $statusLabel "Success"
             } elseif (-not $bridgeIsResponsive) {
-                $statusLabel.Text = "O aplicativo esta parado ou sem resposta. Voce ainda pode copiar o resumo ou exportar o diagnostico."
+                $statusLabel.Text = (Get-UlanziText -Key 'O aplicativo esta parado ou sem resposta. Voce ainda pode copiar o resumo ou exportar o diagnostico.')
                 & $setSemanticRole $statusLabel "Error"
             }
             return
@@ -583,25 +584,25 @@ function Show-UlanziDiagnosticsDialog {
                 $deviceSound = & $getProperty $runtimeStatus "deviceSound" $null
                 $deviceState = [string](& $getProperty $deviceSound "state" "unknown")
                 if ($deviceState -in @("muted", "silent")) {
-                    & $setProgress $true "determinate" 65 "O buzzer esta desligado; o teste auditivo foi pulado."
-                    $statusLabel.Text = "O som esta desligado ou em 0%; o teste auditivo foi pulado."
+                    & $setProgress $true "determinate" 65 (Get-UlanziText -Key 'O buzzer esta desligado; o teste auditivo foi pulado.')
+                    $statusLabel.Text = (Get-UlanziText -Key 'O som esta desligado ou em 0%; o teste auditivo foi pulado.')
                     & $setSemanticRole $statusLabel "Warning"
                     & $finishRunAll
                     return
                 }
                 $statusLabel.Text = if ($requestState -eq "confirmed") {
-                    "Buzzer confirmado. Enviando uma melodia curta..."
+                    (Get-UlanziText -Key 'Buzzer confirmado. Enviando uma melodia curta...')
                 } elseif ($requestState -eq "unsupported") {
-                    "O buzzer nao pode ser consultado neste firmware. Testando a melodia mesmo assim..."
+                    (Get-UlanziText -Key 'O buzzer nao pode ser consultado neste firmware. Testando a melodia mesmo assim...')
                 } else {
-                    "A consulta do buzzer falhou. Testando a melodia mesmo assim..."
+                    (Get-UlanziText -Key 'A consulta do buzzer falhou. Testando a melodia mesmo assim...')
                 }
                 & $setSemanticRole $statusLabel $(if ($requestState -eq "confirmed") { "Muted" } else { "Warning" })
-                & $setProgress $true "determinate" 60 "Enviando uma melodia curta ao TC001."
+                & $setProgress $true "determinate" 60 (Get-UlanziText -Key 'Enviando uma melodia curta ao TC001.')
                 try {
                     [void](& $startCommand "test-sound")
                 } catch {
-                    $statusLabel.Text = "Nao foi possivel iniciar o teste auditivo: $($_.Exception.Message)"
+                    $statusLabel.Text = (Get-UlanziText -Key 'Nao foi possivel iniciar o teste auditivo: {0}' -Arguments @(($($_.Exception.Message))))
                     & $setSemanticRole $statusLabel "Error"
                     & $finishRunAll
                 }
@@ -609,11 +610,11 @@ function Show-UlanziDiagnosticsDialog {
             }
             if ($requestState -eq "confirmed" -and $completedCommand -eq "test-sound") {
                 $state.SoundAccepted = $true
-                & $setProgress $true "determinate" 75 "Confirmando se a melodia do TC001 foi ouvida."
+                & $setProgress $true "determinate" 75 (Get-UlanziText -Key 'Confirmando se a melodia do TC001 foi ouvida.')
                 $heardAnswer = Show-UlanziOwnedMessageBox `
                     -Owner $form `
-                    -Text "Voce ouviu a melodia curta no TC001?" `
-                    -Caption "Confirmar som" `
+                    -Text (Get-UlanziText -Key 'Voce ouviu a melodia curta no TC001?') `
+                    -Caption (Get-UlanziText -Key 'Confirmar som') `
                     -Buttons ([Windows.Forms.MessageBoxButtons]::YesNo) `
                     -Icon ([Windows.Forms.MessageBoxIcon]::Question)
                 if ($state.Closing -or $form.IsDisposed -or $form.Disposing) { return }
@@ -621,8 +622,8 @@ function Show-UlanziDiagnosticsDialog {
                 & $finishRunAll
                 return
             }
-            & $setProgress $true "determinate" 70 "Uma etapa nao foi confirmada; concluindo as verificacoes restantes."
-            $statusLabel.Text = if ([string]::IsNullOrWhiteSpace($requestError)) { "O TC001 nao confirmou uma etapa do teste." } else { $requestError }
+            & $setProgress $true "determinate" 70 (Get-UlanziText -Key 'Uma etapa nao foi confirmada; concluindo as verificacoes restantes.')
+            $statusLabel.Text = if ([string]::IsNullOrWhiteSpace($requestError)) { (Get-UlanziText -Key 'O TC001 nao confirmou uma etapa do teste.') } else { $requestError }
             & $setSemanticRole $statusLabel "Warning"
             & $finishRunAll
             return
@@ -631,8 +632,8 @@ function Show-UlanziDiagnosticsDialog {
             $state.PendingRequestId = $null
             $state.PendingCommand = $null
             $state.PendingDeadline = [DateTime]::MinValue
-            & $setProgress $true "determinate" 70 "O teste atingiu o tempo limite; concluindo as verificacoes restantes."
-            $statusLabel.Text = "O bridge nao confirmou o teste dentro do prazo."
+            & $setProgress $true "determinate" 70 (Get-UlanziText -Key 'O teste atingiu o tempo limite; concluindo as verificacoes restantes.')
+            $statusLabel.Text = (Get-UlanziText -Key 'O bridge nao confirmou o teste dentro do prazo.')
             & $setSemanticRole $statusLabel "Error"
             & $finishRunAll
         }
@@ -643,7 +644,7 @@ function Show-UlanziDiagnosticsDialog {
         & $updateFromStatus $runtimeStatus
         if (-not [bool]$state.BridgeResponsive) {
             $verifyButton.Enabled = $false
-            $statusLabel.Text = "O aplicativo esta parado ou sem resposta. Voce ainda pode copiar o resumo ou exportar o diagnostico."
+            $statusLabel.Text = (Get-UlanziText -Key 'O aplicativo esta parado ou sem resposta. Voce ainda pode copiar o resumo ou exportar o diagnostico.')
             & $setSemanticRole $statusLabel "Error"
         }
         $timer.Start()
@@ -658,7 +659,7 @@ function Show-UlanziDiagnosticsDialog {
             )
         ) {
             $eventArgs.Cancel = $true
-            $statusLabel.Text = "Aguarde a etapa atual terminar antes de fechar."
+            $statusLabel.Text = (Get-UlanziText -Key 'Aguarde a etapa atual terminar antes de fechar.')
             & $setSemanticRole $statusLabel "Warning"
             return
         }

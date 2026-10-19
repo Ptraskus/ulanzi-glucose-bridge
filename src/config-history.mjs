@@ -1,3 +1,4 @@
+import { tr } from "./i18n.mjs";
 import { createHash, randomUUID } from "node:crypto";
 import {
   mkdir,
@@ -48,7 +49,7 @@ function assertInside(parent, child) {
   const base = `${resolve(parent)}\\`.toLowerCase();
   const candidate = `${resolve(child)}\\`.toLowerCase();
   if (!candidate.startsWith(base)) {
-    throw new BridgeError("o snapshot informado esta fora do historico de configuracoes", {
+    throw new BridgeError(tr("the selected snapshot is outside the configuration history", "o snapshot informado esta fora do historico de configuracoes"), {
       code: "INVALID_CONFIG_SNAPSHOT",
       retryable: false,
     });
@@ -62,7 +63,7 @@ function sameResolvedPath(left, right) {
 async function assertPhysicalSnapshotDirectory(historyDir, snapshotPath) {
   const entryStat = await lstat(snapshotPath);
   if (!entryStat.isDirectory() || entryStat.isSymbolicLink()) {
-    throw new BridgeError("o snapshot de configuracao nao e um diretorio local regular", {
+    throw new BridgeError(tr("the configuration snapshot is not a regular local directory", "o snapshot de configuracao nao e um diretorio local regular"), {
       code: "INVALID_CONFIG_SNAPSHOT",
       retryable: false,
     });
@@ -73,7 +74,7 @@ async function assertPhysicalSnapshotDirectory(historyDir, snapshotPath) {
   ]);
   const expectedPhysicalPath = join(physicalHistoryDir, basename(snapshotPath));
   if (!sameResolvedPath(physicalSnapshotPath, expectedPhysicalPath)) {
-    throw new BridgeError("o snapshot de configuracao usa um redirecionamento de arquivos", {
+    throw new BridgeError(tr("the configuration snapshot uses a file redirect", "o snapshot de configuracao usa um redirecionamento de arquivos"), {
       code: "INVALID_CONFIG_SNAPSHOT",
       retryable: false,
     });
@@ -90,14 +91,14 @@ async function readRegularSnapshotFile(snapshotPath, fileName, { optional = fals
     throw error;
   }
   if (!entryStat.isFile() || entryStat.isSymbolicLink()) {
-    throw new BridgeError("o snapshot de configuracao contem um arquivo redirecionado", {
+    throw new BridgeError(tr("the configuration snapshot contains a redirected file", "o snapshot de configuracao contem um arquivo redirecionado"), {
       code: "INVALID_CONFIG_SNAPSHOT",
       retryable: false,
     });
   }
   const physicalPath = await realpath(path);
   if (!sameResolvedPath(physicalPath, path)) {
-    throw new BridgeError("o snapshot de configuracao contem um arquivo redirecionado", {
+    throw new BridgeError(tr("the configuration snapshot contains a redirected file", "o snapshot de configuracao contem um arquivo redirecionado"), {
       code: "INVALID_CONFIG_SNAPSHOT",
       retryable: false,
     });
@@ -115,7 +116,7 @@ async function readSnapshot(historyDir, snapshotPath) {
     typeof manifest?.createdAt !== "string" ||
     typeof manifest?.envSha256 !== "string"
   ) {
-    throw new BridgeError("o snapshot de configuracao tem formato invalido", {
+    throw new BridgeError(tr("the configuration snapshot has an invalid format", "o snapshot de configuracao tem formato invalido"), {
       code: "INVALID_CONFIG_SNAPSHOT",
       retryable: false,
     });
@@ -126,7 +127,7 @@ async function readSnapshot(historyDir, snapshotPath) {
     sha256(envText) !== manifest.envSha256 ||
     (vaultText === null ? null : sha256(vaultText)) !== (manifest.vaultSha256 ?? null)
   ) {
-    throw new BridgeError("o snapshot de configuracao falhou na verificacao de integridade", {
+    throw new BridgeError(tr("the configuration snapshot failed its integrity check", "o snapshot de configuracao falhou na verificacao de integridade"), {
       code: "INVALID_CONFIG_SNAPSHOT",
       retryable: false,
     });
@@ -366,7 +367,7 @@ export async function restoreConfigSnapshot({
   snapshotName: requestedName,
 }) {
   if (!SNAPSHOT_NAME.test(requestedName ?? "")) {
-    throw new BridgeError("o identificador do snapshot e invalido", {
+    throw new BridgeError(tr("the snapshot identifier is invalid", "o identificador do snapshot e invalido"), {
       code: "INVALID_CONFIG_SNAPSHOT",
       retryable: false,
     });
@@ -401,7 +402,7 @@ export async function restoreConfigSnapshot({
       });
       if (rollbackErrors.length > 0) {
         throw new BridgeError(
-          "a restauracao falhou e o estado anterior nao pode ser recomposto por completo; use a quarentena de recuperacao",
+          tr("restoration failed and the previous state could not be fully recovered; use the recovery quarantine", "a restauracao falhou e o estado anterior nao pode ser recomposto por completo; use a quarentena de recuperacao"),
           { code: "CONFIG_RESTORE_ROLLBACK_FAILED", retryable: false, cause: error },
         );
       }

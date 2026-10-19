@@ -49,7 +49,7 @@ test("diferenca de horario distingue aviso de erro sem acusar leitura normal", (
     timestamp: new Date(now.getTime() + 6 * 60_000),
   }, now);
   assert.equal(error.state, "error");
-  assert.match(error.message, /horarios do Windows e da fonte/);
+  assert.match(error.message, /Windows and source clocks/);
 });
 
 test("pedido cooperativo de reinicio acorda o bridge e pode abortar rede", async () => {
@@ -120,7 +120,7 @@ test("falha próxima ao limite mostra SEM DADO antes que outro timeout cruze o s
     safetyConfig,
     NOW,
   );
-  assert.equal(state.text, "SEM DADO");
+  assert.equal(state.text, "NO DATA");
   assert.ok(state.lifetimeMs >= 20 * 60_000);
 });
 
@@ -146,7 +146,7 @@ test("SEM DADO é renovado antes de desaparecer mesmo com polling longo", () => 
   const longPollConfig = { ...safetyConfig, pollIntervalSeconds: 3600 };
   const state = buildCycleDisplayState(null, false, longPollConfig, NOW);
   const delay = nextCycleDelay(longPollConfig, false, 0, state);
-  assert.equal(state.text, "SEM DADO");
+  assert.equal(state.text, "NO DATA");
   assert.ok(delay <= state.lifetimeMs - longPollConfig.requestTimeoutMs);
 });
 

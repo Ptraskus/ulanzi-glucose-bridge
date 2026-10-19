@@ -22,7 +22,7 @@ function runWindowsPowerShell(script, timeoutMilliseconds = 15_000) {
     const child = spawn(
       "powershell.exe",
       ["-NoProfile", "-STA", "-ExecutionPolicy", "Bypass", "-EncodedCommand", encoded],
-      { cwd: projectRoot, windowsHide: true },
+      { cwd: projectRoot, windowsHide: true, env: { ...process.env, ULANZI_UI_LANGUAGE: "pt-BR" } },
     );
     let stdout = "";
     let stderr = "";
@@ -62,15 +62,15 @@ test("configurador abre o assistente WinForms por padrao e so usa console quando
   assert.match(configureScript, /Read-Host/);
   assert.doesNotMatch(configureScript, /O modo de texto sera usado/);
   assert.match(configureScript, /nunca aguardamos[\s\S]*perguntas de console/);
-  assert.match(launcher, /powershell\.exe -NoProfile -STA/i);
+  assert.match(launcher, /Configure\.cmd/i);
   assert.match(launcher, /%\*/);
 });
 
 test("assistente unifica preparacao, AWTRIX, fonte, testes, preferencias e revisao sem exibir segredos", () => {
-  assert.match(wizardScript, /Etapa \$\(\$Step \+ 1\) de 7/);
+  assert.match(wizardScript, /Etapa \{0\} de 7 - \{1\}/);
   assert.match(
     wizardScript,
-    /\$stepNames\s*=\s*@\("Preparacao", "AWTRIX NG", "Fonte", "Conexao fonte", "TC001", "Preferencias", "Revisao"\)/,
+    /\$stepNames\s*=\s*@\([^\r\n]*'Preparacao'[^\r\n]*"AWTRIX NG"[^\r\n]*'Fonte'[^\r\n]*'Conexao fonte'[^\r\n]*"TC001"[^\r\n]*'Preferencias'[^\r\n]*'Revisao'/,
   );
   assert.match(wizardScript, /Preparar o TC001/);
   assert.match(wizardScript, /AWTRIX NG/);
@@ -111,7 +111,7 @@ test("preparacao do AWTRIX e guiada, explicita e nunca grava firmware automatica
   assert.match(wizardScript, /\$openAwtrixWifiGuideButton\.add_Click\(\{/);
   assert.match(wizardScript, /& \$openSafePage "awtrix-first-boot"/);
   assert.match(wizardScript, /awtrixReadyBox/);
-  assert.match(wizardScript, /\$awtrixReadyBox\.Text\s*=\s*"[^"]*AWTRIX[^"]*Wi-Fi[^"]*"/i);
+  assert.match(wizardScript, /\$awtrixReadyBox\.Text\s*=\s*\(Get-UlanziText -Key '[^']*AWTRIX[^']*Wi-Fi[^']*'/i);
   assert.match(wizardScript, /if \(-not \$awtrixReadyBox\.Checked\)/);
 
   assert.doesNotMatch(wizardScript, /\besptool(?:\.py|\.exe)?\b/i);
@@ -158,7 +158,7 @@ test("testes de conexao nao bloqueiam o WinForms e podem ser cancelados com segu
   assert.match(wizardScript, /add_FormClosing/);
   assert.match(wizardScript, /\$operationState\.PendingClose = \$true/);
   assert.match(wizardScript, /Cancelando com seguranca/);
-  assert.match(wizardScript, /demorou mais de \$timeoutSeconds segundos/);
+  assert.match(wizardScript, /demorou mais de \{1\} segundos[^\r\n]*\$timeoutSeconds/);
   assert.match(wizardScript, /CancelDeadlineUtc/);
   assert.match(wizardScript, /BeginStop\(\$null, \$null\)/);
   assert.match(wizardScript, /EndStop\(\$stopAsyncResult\)/);
@@ -188,6 +188,7 @@ test(
     const fixtureDirectory = await mkdtemp(join(tmpdir(), "ulanzi-wizard-cancel-"));
     const fixturePath = join(fixtureDirectory, "primeira-configuracao-ui.ps1");
     const hiddenWizardScript = wizardScript
+      .replace('. (Join-Path $PSScriptRoot "ui-language.ps1")', `. '${join(projectRoot, "scripts", "ui-language.ps1").replaceAll("'", "''")}'`)
       .replace(
         "    $form.StartPosition = [Windows.Forms.FormStartPosition]::CenterScreen",
         [
@@ -378,7 +379,7 @@ test("assistente oferece ajuda contextual segura para Nightscout e TC001", () =>
 
 test("duracao do sensor exige escolha explicita antes da revisao", () => {
   assert.match(wizardScript, /sensorDurationControl/);
-  assert.match(wizardScript, /Items\.AddRange\(@\("Selecione a duracao\.\.\.", "14 dias", "15 dias", "Personalizado"\)\)/);
+  assert.match(wizardScript, /Items\.AddRange\(@\([^\r\n]*'Selecione a duracao\.\.\.'[^\r\n]*'14 dias'[^\r\n]*'15 dias'[^\r\n]*'Personalizado'/);
   assert.match(wizardScript, /\$sensorDurationBox\.SelectedIndex = 0/);
   assert.match(wizardScript, /\$isCustom = \$sensorDurationBox\.SelectedIndex -eq 3/);
   assert.doesNotMatch(wizardScript, /SelectedIndex -eq 0\) \{ return (?:14|15)/);
@@ -412,10 +413,10 @@ test("assistente continua usando geracao compartilhada, DPAPI e commit transacio
 
 test("instalacao nova deixa o alarme geral desativado e explica os defaults", () => {
   assert.match(wizardScript, /\$alarmEnabledBox\.Checked = \$false/);
-  assert.match(configureScript, /Ativar alarmes sonoros \(sim\/nao\)" -Default "nao"/);
+  assert.match(configureScript, /Ativar alarmes sonoros \(sim\/nao\)'\) -Default "nao"/);
   assert.match(
     configureScript,
-    /Abaixo de qual valor alertar seta para baixo ou diagonal para baixo \(mg\/dL\)" -Default "90"/,
+    /Abaixo de qual valor alertar seta para baixo ou diagonal para baixo \(mg\/dL\)'\) -Default "90"/,
   );
   assert.match(wizardScript, /DownThreshold = "90"/);
   assert.match(

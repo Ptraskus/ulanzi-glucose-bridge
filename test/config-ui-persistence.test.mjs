@@ -103,6 +103,12 @@ function Find-SettingsForm {
     $profile = $controls |
         Where-Object { $_ -is [Windows.Forms.ComboBox] -and $_.Name -eq 'soundProfileControl' } |
         Select-Object -First 1
+    $units = $controls |
+        Where-Object { $_ -is [Windows.Forms.ComboBox] -and $_.Name -eq 'displayUnitsControl' } |
+        Select-Object -First 1
+    $language = $controls |
+        Where-Object { $_ -is [Windows.Forms.ComboBox] -and $_.Name -eq 'languageControl' } |
+        Select-Object -First 1
     $saveButton = $controls |
         Where-Object { $_ -is [Windows.Forms.Button] -and $_.Text -like 'Salvar*' } |
         Select-Object -First 1
@@ -125,10 +131,12 @@ function Find-SettingsForm {
         Where-Object { $_ -is [Windows.Forms.NumericUpDown] -and $_.Name -eq 'deliveryRetrySecondsControl' } |
         Select-Object -First 1
     $script:lastFindEvidence = "controles=$($controls.Count); combos=$(@($controls | Where-Object { $_ -is [Windows.Forms.ComboBox] }).Count); salvar=$($null -ne $saveButton)"
-    if ($null -eq $profile -or $null -eq $saveButton) { return $null }
+    if ($null -eq $profile -or $null -eq $saveButton -or $null -eq $units) { return $null }
     return [pscustomobject]@{
         Form = $candidate
         Profile = $profile
+        Units = $units
+        Language = $language
         SaveButton = $saveButton
         SaveProgress = $saveProgress
         StatusLabel = $statusLabel
@@ -188,6 +196,9 @@ function Invoke-FirstOpening {
                 throw "o perfil inicial deveria ser Normal (indice 1), mas era $script:initialProfileIndex"
             }
             $profile.SelectedIndex = 0
+            if ($located.Units.SelectedIndex -ne 0) { throw 'default unit must be mg/dL' }
+            $located.Units.SelectedIndex = 1
+            $located.Language.SelectedIndex = 1
             $script:selectedProfileText = [string]$profile.SelectedItem
             $saveButton = [Windows.Forms.Button]$located.SaveButton
             $script:saveWithinFooterInitial = Test-ControlFullyInsideParent -Control $saveButton
@@ -263,6 +274,7 @@ function Invoke-SecondOpening {
     $script:secondError = $null
     $script:reopenedProfileIndex = $null
     $script:reopenedProfileText = $null
+    $script:reopenedUnitIndex = $null
     $script:secondInspected = $false
     $timer = [Windows.Forms.Timer]::new()
     $timer.Interval = 100
@@ -282,6 +294,7 @@ function Invoke-SecondOpening {
             $profile = [Windows.Forms.ComboBox]$located.Profile
             $script:reopenedProfileIndex = [int]$profile.SelectedIndex
             $script:reopenedProfileText = [string]$profile.SelectedItem
+            $script:reopenedUnitIndex = [int]$located.Units.SelectedIndex
             $script:secondInspected = $true
             $located.Form.Close()
         } catch {
@@ -327,6 +340,7 @@ function Invoke-ThirdOpeningAndDisposeDirtyForm {
                 throw "o terceiro ciclo deveria iniciar no perfil Discreto (indice 0), mas era $script:thirdInitialProfileIndex"
             }
             $profile.SelectedIndex = 2
+            $located.Units.SelectedIndex = 0
             $script:thirdSelectedProfileText = [string]$profile.SelectedItem
             $script:thirdDirtyButtonText = [string]$located.SaveButton.Text
             $script:thirdDisposeTriggered = $true
@@ -392,6 +406,7 @@ try {
         persistedProfile = $persistedProfile
         reopenedProfileIndex = $script:reopenedProfileIndex
         reopenedProfileText = $script:reopenedProfileText
+        reopenedUnitIndex = $script:reopenedUnitIndex
         secondResult = $secondResult
         thirdResult = $thirdResult
         thirdInitialProfileIndex = $script:thirdInitialProfileIndex
@@ -435,7 +450,7 @@ function environmentWithoutEditableOverrides() {
   );
 }
 
-test("janela salva o perfil sonoro e o apresenta ao reabrir", {
+test("janela salva perfil e unidade, preserva limites e descarta alteracoes nao salvas", {
   skip: process.platform !== "win32",
   timeout: 60_000,
 }, async () => {
@@ -495,7 +510,7 @@ test("janela salva o perfil sonoro e o apresenta ao reabrir", {
         {
           cwd: projectRoot,
           encoding: "utf8",
-          env: environmentWithoutEditableOverrides(),
+          env: { ...environmentWithoutEditableOverrides(), ULANZI_UI_LANGUAGE: "pt-BR" },
           timeout: 45_000,
           windowsHide: true,
         },
@@ -530,6 +545,7 @@ test("janela salva o perfil sonoro e o apresenta ao reabrir", {
     assert.equal(evidence.persistedProfile, "discreet");
     assert.equal(evidence.reopenedProfileIndex, 0);
     assert.match(evidence.reopenedProfileText, /^Discreto /);
+    assert.equal(evidence.reopenedUnitIndex, 1);
     assert.equal(evidence.secondResult.Saved, false);
     assert.equal(evidence.thirdResult.Saved, false);
     assert.equal(evidence.thirdResult.Changed, false);
@@ -540,6 +556,12 @@ test("janela salva o perfil sonoro e o apresenta ao reabrir", {
 
     const persistedEnv = await readFile(temporaryEnvPath, "utf8");
     assert.match(persistedEnv, /^GLUCOSE_ALARM_SOUND_PROFILE=discreet$/m);
+    assert.match(persistedEnv, /^DISPLAY_UNITS=mmol$/m);
+    assert.match(persistedEnv, /^APP_LANGUAGE=pt-BR$/m);
+    assert.match(persistedEnv, /^LOW_THRESHOLD_MGDL=70$/m);
+    assert.match(persistedEnv, /^HIGH_THRESHOLD_MGDL=180$/m);
+    assert.match(persistedEnv, /^GLUCOSE_ALARM_LOW_THRESHOLD_MGDL=70$/m);
+    assert.match(persistedEnv, /^GLUCOSE_ALARM_HIGH_THRESHOLD_MGDL=180$/m);
     const snapshots = await readdir(join(temporaryProjectRoot, ".config-history"));
     assert.equal(snapshots.length, 1);
 

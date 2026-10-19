@@ -1,4 +1,5 @@
 import { BridgeError } from "./errors.mjs";
+import { APP_LANGUAGES, getAppLanguage, tr } from "./i18n.mjs";
 
 const SOURCES = new Set(["nightscout", "json", "mock"]);
 const AWTRIX_APIS = new Set(["auto", "ng", "3"]);
@@ -14,7 +15,7 @@ function numberValue(
   const raw = environment[name];
   const value = raw === undefined || raw === "" ? fallback : Number(raw);
   if (!Number.isFinite(value) || value < min || value > max || (integer && !Number.isInteger(value))) {
-    throw new BridgeError(`${name} tem um valor inválido`, {
+    throw new BridgeError(tr("{0} has an invalid value", "{0} tem um valor inválido", [name], getAppLanguage(environment)), {
       code: "INVALID_CONFIG",
       retryable: false,
     });
@@ -27,7 +28,7 @@ function boolValue(name, fallback, environment = process.env) {
   if (raw === undefined || raw === "") return fallback;
   if (/^(1|true|yes|sim)$/i.test(raw)) return true;
   if (/^(0|false|no|nao|não)$/i.test(raw)) return false;
-  throw new BridgeError(`${name} deve ser true ou false`, {
+  throw new BridgeError(tr("{0} must be true or false", "{0} deve ser true ou false", [name], getAppLanguage(environment)), {
     code: "INVALID_CONFIG",
     retryable: false,
   });
@@ -37,7 +38,7 @@ function enumValue(name, fallback, allowedValues, environment = process.env) {
   const raw = environment[name];
   const value = raw === undefined || raw === "" ? fallback : raw;
   if (!allowedValues.has(value)) {
-    throw new BridgeError(`${name} tem um valor inválido`, {
+    throw new BridgeError(tr("{0} has an invalid value", "{0} tem um valor inválido", [name], getAppLanguage(environment)), {
       code: "INVALID_CONFIG",
       retryable: false,
     });
@@ -48,7 +49,7 @@ function enumValue(name, fallback, allowedValues, environment = process.env) {
 function colorValue(name, fallback, environment = process.env) {
   const value = environment[name] || fallback;
   if (!/^#[0-9a-f]{6}$/i.test(value)) {
-    throw new BridgeError(`${name} deve usar o formato #RRGGBB`, {
+    throw new BridgeError(tr("{0} must use the #RRGGBB format", "{0} deve usar o formato #RRGGBB", [name], getAppLanguage(environment)), {
       code: "INVALID_CONFIG",
       retryable: false,
     });
@@ -71,7 +72,7 @@ export function normalizeHttpUrl(name, value, {
 } = {}) {
   if (!value) {
     if (!required) return "";
-    throw new BridgeError(`${name} não foi configurado`, {
+    throw new BridgeError(tr("{0} has not been configured", "{0} não foi configurado", [name]), {
       code: "MISSING_CONFIG",
       retryable: false,
     });
@@ -82,31 +83,31 @@ export function normalizeHttpUrl(name, value, {
     if (requireExplicitScheme && !hasScheme) throw new Error("scheme required");
     parsed = new URL(hasScheme ? value : `http://${value}`);
   } catch {
-    throw new BridgeError(`${name} não contém uma URL válida`, {
+    throw new BridgeError(tr("{0} does not contain a valid URL", "{0} não contém uma URL válida", [name]), {
       code: "INVALID_CONFIG",
       retryable: false,
     });
   }
   if (!new Set(["http:", "https:"]).has(parsed.protocol)) {
-    throw new BridgeError(`${name} deve começar com http:// ou https://`, {
+    throw new BridgeError(tr("{0} must start with http:// or https://", "{0} deve começar com http:// ou https://", [name]), {
       code: "INVALID_CONFIG",
       retryable: false,
     });
   }
   if (parsed.username || parsed.password) {
-    throw new BridgeError(`${name} não deve conter usuário ou senha na URL`, {
+    throw new BridgeError(tr("{0} must not include a username or password in the URL", "{0} não deve conter usuário ou senha na URL", [name]), {
       code: "INVALID_CONFIG",
       retryable: false,
     });
   }
   if (parsed.hash || (!allowQuery && parsed.search) || (!allowPath && parsed.pathname !== "/")) {
-    throw new BridgeError(`${name} contém caminho, query ou fragmento não permitido`, {
+    throw new BridgeError(tr("{0} contains a path, query or fragment that is not allowed", "{0} contém caminho, query ou fragmento não permitido", [name]), {
       code: "INVALID_CONFIG",
       retryable: false,
     });
   }
   if (requireSecureSource && parsed.protocol !== "https:" && !isLoopbackHostname(parsed.hostname)) {
-    throw new BridgeError(`${name} deve usar https:// (http:// é aceito somente em localhost)`, {
+    throw new BridgeError(tr("{0} must use https:// (http:// is allowed only on localhost)", "{0} deve usar https:// (http:// é aceito somente em localhost)", [name]), {
       code: "INSECURE_SOURCE_URL",
       retryable: false,
     });
@@ -123,7 +124,7 @@ export function parseArgs(argv = process.argv.slice(2)) {
     else if (arg === "--help" || arg === "-h") options.help = true;
     else if (arg.startsWith("--source=")) options.source = arg.slice("--source=".length).toLowerCase();
     else {
-      throw new BridgeError(`opção desconhecida: ${arg}`, {
+      throw new BridgeError(tr("Unknown option. Use --help to see supported options.", "Opção desconhecida. Use --help para ver as opções disponíveis."), {
         code: "INVALID_ARGUMENT",
         retryable: false,
       });
@@ -133,6 +134,14 @@ export function parseArgs(argv = process.argv.slice(2)) {
 }
 
 export function readConfig(options = {}, environment = process.env) {
+  const language = environment.APP_LANGUAGE || "en";
+  if (!APP_LANGUAGES.includes(language)) {
+    throw new BridgeError("APP_LANGUAGE must be en or pt-BR", {
+      code: "INVALID_CONFIG",
+      retryable: false,
+    });
+  }
+  const message = (english, portuguese) => tr(english, portuguese, [], language);
   const readNumber = (name, fallback, constraints) =>
     numberValue(name, fallback, constraints, environment);
   const readBool = (name, fallback) => boolValue(name, fallback, environment);
@@ -146,7 +155,7 @@ export function readConfig(options = {}, environment = process.env) {
     integer: true,
   });
   if (!SOURCES.has(source)) {
-    throw new BridgeError("GLUCOSE_SOURCE deve ser nightscout, json ou mock", {
+    throw new BridgeError(message("GLUCOSE_SOURCE must be nightscout, json or mock", "GLUCOSE_SOURCE deve ser nightscout, json ou mock"), {
       code: "INVALID_CONFIG",
       retryable: false,
     });
@@ -164,7 +173,7 @@ export function readConfig(options = {}, environment = process.env) {
   const lowThresholdMgDl = readNumber("LOW_THRESHOLD_MGDL", 70, { min: 20, max: 300 });
   const highThresholdMgDl = readNumber("HIGH_THRESHOLD_MGDL", 180, { min: 40, max: 600 });
   if (highThresholdMgDl <= lowThresholdMgDl) {
-    throw new BridgeError("HIGH_THRESHOLD_MGDL deve ser maior que LOW_THRESHOLD_MGDL", {
+    throw new BridgeError(message("HIGH_THRESHOLD_MGDL must be greater than LOW_THRESHOLD_MGDL", "HIGH_THRESHOLD_MGDL deve ser maior que LOW_THRESHOLD_MGDL"), {
       code: "INVALID_CONFIG",
       retryable: false,
     });
@@ -184,7 +193,7 @@ export function readConfig(options = {}, environment = process.env) {
   );
   if (alarmHighThresholdMgDl <= alarmLowThresholdMgDl) {
     throw new BridgeError(
-      "GLUCOSE_ALARM_HIGH_THRESHOLD_MGDL deve ser maior que GLUCOSE_ALARM_LOW_THRESHOLD_MGDL",
+      message("GLUCOSE_ALARM_HIGH_THRESHOLD_MGDL must be greater than GLUCOSE_ALARM_LOW_THRESHOLD_MGDL", "GLUCOSE_ALARM_HIGH_THRESHOLD_MGDL deve ser maior que GLUCOSE_ALARM_LOW_THRESHOLD_MGDL"),
       { code: "INVALID_CONFIG", retryable: false },
     );
   }
@@ -198,14 +207,14 @@ export function readConfig(options = {}, environment = process.env) {
     alarmHysteresisMgDl * 2 >= alarmHighThresholdMgDl - alarmLowThresholdMgDl
   ) {
     throw new BridgeError(
-      "GLUCOSE_ALARM_HYSTERESIS_MGDL deve ser menor que metade da distância entre GLUCOSE_ALARM_LOW_THRESHOLD_MGDL e GLUCOSE_ALARM_HIGH_THRESHOLD_MGDL",
+      message("GLUCOSE_ALARM_HYSTERESIS_MGDL must be less than half the gap between GLUCOSE_ALARM_LOW_THRESHOLD_MGDL and GLUCOSE_ALARM_HIGH_THRESHOLD_MGDL", "GLUCOSE_ALARM_HYSTERESIS_MGDL deve ser menor que metade da distância entre GLUCOSE_ALARM_LOW_THRESHOLD_MGDL e GLUCOSE_ALARM_HIGH_THRESHOLD_MGDL"),
       { code: "INVALID_CONFIG", retryable: false },
     );
   }
 
   const displayUnits = (environment.DISPLAY_UNITS || "mgdl").toLowerCase();
   if (!new Set(["mgdl", "mmol"]).has(displayUnits)) {
-    throw new BridgeError("DISPLAY_UNITS deve ser mgdl ou mmol", {
+    throw new BridgeError(message("DISPLAY_UNITS must be mgdl or mmol", "DISPLAY_UNITS deve ser mgdl ou mmol"), {
       code: "INVALID_CONFIG",
       retryable: false,
     });
@@ -213,21 +222,21 @@ export function readConfig(options = {}, environment = process.env) {
 
   const awtrixApi = (environment.AWTRIX_API || "auto").toLowerCase();
   if (!AWTRIX_APIS.has(awtrixApi)) {
-    throw new BridgeError("AWTRIX_API deve ser auto, ng ou 3", {
+    throw new BridgeError(message("AWTRIX_API must be auto, ng or 3", "AWTRIX_API deve ser auto, ng ou 3"), {
       code: "INVALID_CONFIG",
       retryable: false,
     });
   }
   const appName = environment.AWTRIX_APP_NAME || "glicemia";
   if (!/^[A-Za-z0-9_-]{1,32}$/.test(appName)) {
-    throw new BridgeError("AWTRIX_APP_NAME deve conter apenas letras, números, _ ou -", {
+    throw new BridgeError(message("AWTRIX_APP_NAME may contain only letters, numbers, _ or -", "AWTRIX_APP_NAME deve conter apenas letras, números, _ ou -"), {
       code: "INVALID_CONFIG",
       retryable: false,
     });
   }
   const staleExpiry = (environment.AWTRIX_STALE_EXPIRY || "remove").toLowerCase();
   if (staleExpiry !== "remove") {
-    throw new BridgeError("AWTRIX_STALE_EXPIRY deve ser remove para não manter glicemia vencida", {
+    throw new BridgeError(message("AWTRIX_STALE_EXPIRY must be remove to avoid displaying stale glucose", "AWTRIX_STALE_EXPIRY deve ser remove para não manter glicemia vencida"), {
       code: "INVALID_CONFIG",
       retryable: false,
     });
@@ -235,6 +244,7 @@ export function readConfig(options = {}, environment = process.env) {
 
   const config = {
     schemaVersion,
+    language,
     source,
     once: Boolean(options.once),
     dryRun: Boolean(options.dryRun),
@@ -344,7 +354,7 @@ export function readConfig(options = {}, environment = process.env) {
   };
 
   if (source === "nightscout" && config.nightscout.token && config.nightscout.apiSecret) {
-    throw new BridgeError("configure NIGHTSCOUT_TOKEN ou NIGHTSCOUT_API_SECRET, não os dois", {
+    throw new BridgeError(message("Configure NIGHTSCOUT_TOKEN or NIGHTSCOUT_API_SECRET, not both", "configure NIGHTSCOUT_TOKEN ou NIGHTSCOUT_API_SECRET, não os dois"), {
       code: "INVALID_CONFIG",
       retryable: false,
     });
@@ -353,7 +363,18 @@ export function readConfig(options = {}, environment = process.env) {
   return config;
 }
 
-export const HELP = `Uso: iniciar.cmd [opções]
+export function getHelp(language = getAppLanguage()) {
+  return tr(`Usage: Start.cmd (graphical app) or iniciar.cmd [options]
+
+  --once              run a single cycle
+  --dry-run           do not send to the clock; print a payload without secrets
+  --source=mock       use simulated readings
+  --source=nightscout use the configured Nightscout source
+  --source=json       use an authorized JSON endpoint
+  --help              show this help
+
+Language: APP_LANGUAGE=en or pt-BR. Display units: DISPLAY_UNITS=mgdl or mmol.
+`, `Uso: Start.cmd (interface) ou iniciar.cmd [opções]
 
   --once              executa um único ciclo
   --dry-run           não envia nada ao relógio; mostra o payload sem segredos
@@ -361,4 +382,9 @@ export const HELP = `Uso: iniciar.cmd [opções]
   --source=nightscout usa o Nightscout configurado
   --source=json       usa um endpoint JSON autorizado
   --help              mostra esta ajuda
-`;
+
+Idioma: APP_LANGUAGE=en ou pt-BR. Unidade: DISPLAY_UNITS=mgdl ou mmol.
+`, [], language);
+}
+
+export const HELP = getHelp("en");

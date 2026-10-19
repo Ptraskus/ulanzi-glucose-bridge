@@ -1,37 +1,22 @@
-# Política de segurança
+﻿# Security policy
 
-## Versões com suporte
+## Supported versions
 
-Somente a versão estável mais recente recebe correções de segurança. Os
-artefatos oficiais devem ser obtidos pelos links publicados pelo mantenedor e
-conferidos com o arquivo `SHA256SUMS.txt` da mesma versão.
+Only the latest stable version receives security fixes. Obtain releases from this repository and verify the checksums supplied with that version. A SHA-256 checksum verifies integrity against the value you trust; it does not itself identify the publisher. Public installer distribution additionally requires verified Authenticode signing as described in [PUBLICACAO.md](PUBLICACAO.md).
 
-## Como comunicar uma vulnerabilidade
+## Reporting a vulnerability
 
-Não publique tokens, senhas, endereços privados, leituras de glicemia ou um
-arquivo de diagnóstico em uma issue pública.
+Use the [private GitHub vulnerability reporting form](https://github.com/Ptraskus/ulanzi-libre-bridge/security/advisories/new). Include the affected version, a reproducible description using fictitious data, impact and a proposed fix if available.
 
-Use o [canal privado de relatos de vulnerabilidades do GitHub](https://github.com/Ptraskus/ulanzi-libre-bridge/security/advisories/new),
-habilitado neste repositório, para informar a versão, uma descrição
-reproduzível, o impacto e, quando possível, uma correção sugerida. Remova dados
-pessoais e use exemplos fictícios na reprodução. Se o canal estiver
-indisponível, não substitua o relato privado por uma issue pública com detalhes
-sensíveis.
+Never publish tokens, passwords, private addresses, glucose readings or diagnostic files in a public security issue. If private reporting is unavailable, do not replace it with public sensitive details. The project aims to acknowledge reports within five business days; remediation and coordinated disclosure depend on severity and maintainer availability.
 
-O recebimento deve ser confirmado em até 5 dias úteis. Prazos de correção e de
-divulgação coordenada dependem da gravidade e serão combinados com quem fez o
-relato.
+## Priority scope
 
-## Escopo prioritário
+- Exposure of Nightscout or AWTRIX credentials.
+- Inclusion of personal configuration, vaults, logs, recovery snapshots, updates, backups or diagnostics in a public package.
+- Code execution without consent during updates or installation.
+- Firmware changes without explicit confirmation, outside the official allowed page, or with automatic serial-port selection.
+- Acceptance of packages with invalid hashes or required signatures.
+- Sending readings or telemetry to destinations not configured by the user.
 
-- exposição das credenciais do Nightscout ou do AWTRIX;
-- inclusão de `.env`, `.secrets`, `.runtime`, `.config-history`, `.updates`,
-  backups, firmware, logs ou diagnósticos em um pacote público;
-- execução de código sem consentimento na atualização ou instalação;
-- alteração do firmware do TC001 sem confirmação explícita, fora da página
-  oficial allowlisted ou com seleção automática de porta serial;
-- aceitação de um pacote com hash ou assinatura inválidos;
-- envio de glicemia ou telemetria para terceiros não configurados pelo usuário.
-
-Problemas gerais de funcionamento que não envolvam segurança podem ser
-relatados no rastreador público, sempre removendo dados pessoais e segredos.
+General issues that do not involve security can use the [public issue tracker](https://github.com/Ptraskus/ulanzi-libre-bridge/issues), after removing personal data and secrets. Review the [privacy policy](PRIVACY.md) before sharing diagnostic exports.

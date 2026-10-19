@@ -1,4 +1,5 @@
 Set-StrictMode -Version Latest
+. (Join-Path $PSScriptRoot "ui-language.ps1")
 
 function Get-UlanziPanelProperty {
     param(
@@ -25,20 +26,20 @@ function Format-UlanziPanelAge {
     param([Parameter(Mandatory = $false)][AllowNull()][object]$Value)
 
     $date = ConvertTo-UlanziPanelDate -Value $Value
-    if ($null -eq $date) { return "horario desconhecido" }
+    if ($null -eq $date) { return (Get-UlanziText -Key 'horario desconhecido') }
     $seconds = [Math]::Max(0, [Math]::Floor(([DateTime]::UtcNow - $date).TotalSeconds))
-    if ($seconds -lt 10) { return "agora" }
-    if ($seconds -lt 60) { return "ha $([int]$seconds) segundos" }
+    if ($seconds -lt 10) { return (Get-UlanziText -Key 'agora') }
+    if ($seconds -lt 60) { return (Get-UlanziText -Key 'ha {0} segundos' -Arguments @(($([int]$seconds)))) }
     if ($seconds -lt 3600) {
         $minutes = [int][Math]::Floor($seconds / 60)
-        return $(if ($minutes -eq 1) { "ha 1 minuto" } else { "ha $minutes minutos" })
+        return $(if ($minutes -eq 1) { (Get-UlanziText -Key 'ha 1 minuto') } else { (Get-UlanziText -Key 'ha {0} minutos' -Arguments @(($minutes))) })
     }
     if ($seconds -lt 86400) {
         $hours = [int][Math]::Floor($seconds / 3600)
-        return $(if ($hours -eq 1) { "ha 1 hora" } else { "ha $hours horas" })
+        return $(if ($hours -eq 1) { (Get-UlanziText -Key 'ha 1 hora') } else { (Get-UlanziText -Key 'ha {0} horas' -Arguments @(($hours))) })
     }
     $days = [int][Math]::Floor($seconds / 86400)
-    return $(if ($days -eq 1) { "ha 1 dia" } else { "ha $days dias" })
+    return $(if ($days -eq 1) { (Get-UlanziText -Key 'ha 1 dia') } else { (Get-UlanziText -Key 'ha {0} dias' -Arguments @(($days))) })
 }
 
 function New-UlanziPanelLabel {
@@ -108,8 +109,8 @@ function New-UlanziGlucoseMark {
     $mark.Location = [Drawing.Point]::new(20, 15)
     $mark.Size = [Drawing.Size]::new(46, 54)
     $mark.Tag = @{ PreserveColors = $true }
-    $mark.AccessibleName = "Simbolo de glicose e tendencia"
-    $mark.AccessibleDescription = "Uma gota com uma linha de tendencia, identidade visual do Ulanzi Libre."
+    $mark.AccessibleName = (Get-UlanziText -Key 'Simbolo de glicose e tendencia')
+    $mark.AccessibleDescription = (Get-UlanziText -Key 'Uma gota com uma linha de tendencia, identidade visual do Ulanzi Libre.')
     $mark.add_Paint(({
         param($sender, $eventArgs)
         try {
@@ -157,14 +158,14 @@ function New-UlanziPanelCard {
     $panel.Dock = [Windows.Forms.DockStyle]::Fill
     $panel.Margin = [Windows.Forms.Padding]::new(6)
     $panel.Tag = "Elevated"
-    $panel.AccessibleName = "Cartao $Title"
+    $panel.AccessibleName = (Get-UlanziText -Key 'Cartao {0}' -Arguments @(($Title)))
     $panel.AccessibleRole = [Windows.Forms.AccessibleRole]::Grouping
 
     $indicator = [Windows.Forms.Panel]::new()
     $indicator.Dock = [Windows.Forms.DockStyle]::Left
-    $indicator.Width = if ($Title -like "Leitura*") { 6 } else { 4 }
+    $indicator.Width = if ($Title -like (Get-UlanziText -Key 'Leitura*')) { 6 } else { 4 }
     $indicator.Tag = @{ PreserveColors = $true }
-    $indicator.AccessibleName = "Indicador de estado de $Title"
+    $indicator.AccessibleName = (Get-UlanziText -Key 'Indicador de estado de {0}' -Arguments @(($Title)))
 
     $cardBody = [Windows.Forms.Panel]::new()
     $cardBody.Dock = [Windows.Forms.DockStyle]::Fill
@@ -179,7 +180,7 @@ function New-UlanziPanelCard {
     $titleLabel.Tag = "Muted"
 
     $valueLabel = [Windows.Forms.Label]::new()
-    $valueLabel.Text = "Aguardando..."
+    $valueLabel.Text = (Get-UlanziText -Key 'Aguardando...')
     $valueLabel.Dock = [Windows.Forms.DockStyle]::Top
     $valueLabel.Height = 34
     $valueLabel.Font = [Drawing.Font]::new("Segoe UI", 13, [Drawing.FontStyle]::Bold)
@@ -268,7 +269,7 @@ function New-UlanziControlPanel {
     )
 
     $form = [Windows.Forms.Form]::new()
-    $form.Text = "Painel do Ulanzi Libre"
+    $form.Text = (Get-UlanziText -Key 'Painel do Ulanzi Libre')
     $form.ClientSize = [Drawing.Size]::new(960, 680)
     $form.MinimumSize = [Drawing.Size]::new(940, 620)
     $form.StartPosition = [Windows.Forms.FormStartPosition]::CenterScreen
@@ -319,18 +320,18 @@ function New-UlanziControlPanel {
     $header.Height = 88
     $header.Tag = "Header"
     $glucoseMark = New-UlanziGlucoseMark
-    $title = New-UlanziPanelLabel -Text "Painel do Ulanzi Libre" -X 78 -Y 12 -Width 500 -Height 34 -Size 18 -Bold -Role "Text"
-    $subtitle = New-UlanziPanelLabel -Text "Glicose, alertas e conexoes em um unico lugar." -X 80 -Y 50 -Width 520 -Height 24 -Role "HeaderMuted"
-    $themeLabel = New-UlanziPanelLabel -Text "Tema" -X 698 -Y 13 -Width 220 -Height 20 -Bold -Role "HeaderMuted"
+    $title = New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Painel do Ulanzi Libre') -X 78 -Y 12 -Width 500 -Height 34 -Size 18 -Bold -Role "Text"
+    $subtitle = New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Glicose, alertas e conexoes em um unico lugar.') -X 80 -Y 50 -Width 520 -Height 24 -Role "HeaderMuted"
+    $themeLabel = New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Tema') -X 698 -Y 13 -Width 220 -Height 20 -Bold -Role "HeaderMuted"
     $themeLabel.Anchor = [Windows.Forms.AnchorStyles]::Top -bor [Windows.Forms.AnchorStyles]::Right
     $themeCombo = [Windows.Forms.ComboBox]::new()
     $themeCombo.DropDownStyle = [Windows.Forms.ComboBoxStyle]::DropDownList
-    $themeCombo.Items.AddRange(@("Usar tema do Windows", "Claro", "Escuro"))
+    $themeCombo.Items.AddRange(@((Get-UlanziText -Key 'Usar tema do Windows'), (Get-UlanziText -Key 'Claro'), (Get-UlanziText -Key 'Escuro')))
     $themeCombo.Location = [Drawing.Point]::new(698, 37)
     $themeCombo.Size = [Drawing.Size]::new(230, 28)
     $themeCombo.Anchor = [Windows.Forms.AnchorStyles]::Top -bor [Windows.Forms.AnchorStyles]::Right
     $themeCombo.Tag = "Input"
-    $themeCombo.AccessibleName = "Tema do painel"
+    $themeCombo.AccessibleName = (Get-UlanziText -Key 'Tema do painel')
     $header.Controls.Add($glucoseMark)
     $header.Controls.Add($title)
     $header.Controls.Add($subtitle)
@@ -350,18 +351,30 @@ function New-UlanziControlPanel {
     $footerProgress.MarqueeAnimationSpeed = 0
     $footerProgress.Visible = $false
     $footerProgress.TabStop = $false
-    $footerProgress.AccessibleName = "Carregamento do painel"
-    $footerProgress.AccessibleDescription = "Indica que uma configuracao ou operacao ainda esta sendo carregada."
-    $footerStatus = New-UlanziPanelLabel -Text "Atualizacao automatica ativa." -X 18 -Y 18 -Width 690 -Height 24 -Role "Muted"
+    $footerProgress.AccessibleName = (Get-UlanziText -Key 'Carregamento do painel')
+    $footerProgress.AccessibleDescription = (Get-UlanziText -Key 'Indica que uma configuracao ou operacao ainda esta sendo carregada.')
+    $footerStatus = New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Atualizacao automatica ativa.') -X 18 -Y 18 -Width 640 -Height 24 -Role "Muted"
     $footerStatus.Anchor = [Windows.Forms.AnchorStyles]::Left -bor [Windows.Forms.AnchorStyles]::Right -bor [Windows.Forms.AnchorStyles]::Top
-    $footerStatus.AccessibleName = "Estado do painel"
+    $footerStatus.AccessibleName = (Get-UlanziText -Key 'Estado do painel')
     $footerStatus.AccessibleRole = [Windows.Forms.AccessibleRole]::StatusBar
-    $closeButton = New-UlanziPanelButton -Text "Fechar" -Width 100
+    $closeButton = New-UlanziPanelButton -Text (Get-UlanziText -Key 'Fechar') -Width 100
     $closeButton.Location = [Drawing.Point]::new(840, 10)
     $closeButton.Anchor = [Windows.Forms.AnchorStyles]::Top -bor [Windows.Forms.AnchorStyles]::Right
     $footer.Controls.Add($footerProgress)
     $footer.Controls.Add($footerStatus)
     $footer.Controls.Add($closeButton)
+    $languageButton = New-UlanziPanelButton -Text "Language / Idioma" -Width 155
+    $languageButton.Name = "languageSettingsButton"
+    $languageButton.Location = [Drawing.Point]::new(675, 10)
+    $languageButton.Anchor = [Windows.Forms.AnchorStyles]::Top -bor [Windows.Forms.AnchorStyles]::Right
+    $languageButton.add_Click(({
+        if ($state.SetupState -ne "ready" -and $null -ne $StartSetup) {
+            & $state.InvokeAction $StartSetup @() (Get-UlanziText -Key 'Abrindo o assistente de configuracao...')
+        } else {
+            & $state.InvokeAction $OpenSettings @("display") (Get-UlanziText -Key 'Abrindo configuracoes de tela e sensor...')
+        }
+    }).GetNewClosure())
+    $footer.Controls.Add($languageButton)
 
     $body = [Windows.Forms.Panel]::new()
     $body.Dock = [Windows.Forms.DockStyle]::Fill
@@ -399,11 +412,11 @@ function New-UlanziControlPanel {
 
     $navButtons = @{}
     $navigationItems = @(
-        @("overview", "Inicio"),
-        @("alerts", "Alertas"),
-        @("display", "Tela e sensor"),
-        @("connections", "Conexoes"),
-        @("support", "Suporte")
+        @("overview", (Get-UlanziText -Key 'Inicio')),
+        @("alerts", (Get-UlanziText -Key 'Alertas')),
+        @("display", (Get-UlanziText -Key 'Tela e sensor')),
+        @("connections", (Get-UlanziText -Key 'Conexoes')),
+        @("support", (Get-UlanziText -Key 'Suporte'))
     )
     for ($index = $navigationItems.Count - 1; $index -ge 0; $index--) {
         $pageName = [string]$navigationItems[$index][0]
@@ -415,14 +428,14 @@ function New-UlanziControlPanel {
         $button.Padding = [Windows.Forms.Padding]::new(12, 0, 0, 0)
         $button.Tag = "Surface"
         $button.Name = "nav-$pageName"
-        $button.AccessibleDescription = "Abrir a pagina $($navigationItems[$index][1])"
+        $button.AccessibleDescription = (Get-UlanziText -Key 'Abrir a pagina {0}' -Arguments @(($($navigationItems[$index][1]))))
         $navButtons[$pageName] = $button
         $navigation.Controls.Add($button)
     }
 
     $overviewPage = $pages.overview
-    $overviewHeading = New-UlanziPanelLabel -Text "Inicio" -X 24 -Y 18 -Width 500 -Height 34 -Size 16 -Bold
-    $overallLabel = New-UlanziPanelLabel -Text "Aguardando o aplicativo..." -X 24 -Y 54 -Width 700 -Height 32 -Size 11 -Bold -Role "Warning"
+    $overviewHeading = New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Inicio') -X 24 -Y 18 -Width 500 -Height 34 -Size 16 -Bold
+    $overallLabel = New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Aguardando o aplicativo...') -X 24 -Y 54 -Width 700 -Height 32 -Size 11 -Bold -Role "Warning"
     $overallLabel.Anchor = [Windows.Forms.AnchorStyles]::Top -bor [Windows.Forms.AnchorStyles]::Left -bor [Windows.Forms.AnchorStyles]::Right
     $overviewPage.Controls.Add($overviewHeading)
     $overviewPage.Controls.Add($overallLabel)
@@ -437,12 +450,12 @@ function New-UlanziControlPanel {
     [void]$cards.ColumnStyles.Add([Windows.Forms.ColumnStyle]::new([Windows.Forms.SizeType]::Percent, 50))
     for ($row = 0; $row -lt 3; $row++) { [void]$cards.RowStyles.Add([Windows.Forms.RowStyle]::new([Windows.Forms.SizeType]::Percent, 33.333)) }
     $statusCards = [ordered]@{
-        reading = New-UlanziPanelCard -Title "Leitura atual"
-        alarms = New-UlanziPanelCard -Title "Alertas de glicose"
-        source = New-UlanziPanelCard -Title "Fonte de glicemia"
-        tc001 = New-UlanziPanelCard -Title "Envio ao TC001"
-        application = New-UlanziPanelCard -Title "Aplicativo"
-        volume = New-UlanziPanelCard -Title "Som do TC001"
+        reading = New-UlanziPanelCard -Title (Get-UlanziText -Key 'Leitura atual')
+        alarms = New-UlanziPanelCard -Title (Get-UlanziText -Key 'Alertas de glicose')
+        source = New-UlanziPanelCard -Title (Get-UlanziText -Key 'Fonte de glicemia')
+        tc001 = New-UlanziPanelCard -Title (Get-UlanziText -Key 'Envio ao TC001')
+        application = New-UlanziPanelCard -Title (Get-UlanziText -Key 'Aplicativo')
+        volume = New-UlanziPanelCard -Title (Get-UlanziText -Key 'Som do TC001')
     }
     $cardIndex = 0
     foreach ($card in $statusCards.Values) {
@@ -458,15 +471,15 @@ function New-UlanziControlPanel {
     $setupPanel.Anchor = [Windows.Forms.AnchorStyles]::Top -bor [Windows.Forms.AnchorStyles]::Left -bor [Windows.Forms.AnchorStyles]::Right
     $setupPanel.Tag = "Elevated"
     $setupPanel.Visible = $false
-    $setupPanel.AccessibleName = "Primeira configuracao"
-    $setupTitle = New-UlanziPanelLabel -Text "Vamos configurar o Ulanzi Libre" -X 24 -Y 22 -Width 620 -Height 34 -Size 15 -Bold
-    $setupDescription = New-UlanziPanelLabel -Text "Prepare o AWTRIX, conecte a fonte e teste o TC001 em um unico assistente. O aplicativo so comecara depois que tudo for salvo e conferido." -X 24 -Y 64 -Width 640 -Height 50 -Size 10 -Role "Muted"
-    $setupSteps = New-UlanziPanelLabel -Text "1. Preparar  2. AWTRIX  3. Fonte  4. Teste  5. TC001  6. Preferencias  7. Revisao" -X 24 -Y 126 -Width 640 -Height 30 -Size 9 -Role "Muted"
-    $setupMessage = New-UlanziPanelLabel -Text "A configuracao inicial ainda nao foi concluida." -X 24 -Y 166 -Width 640 -Height 32 -Size 10 -Bold -Role "Warning"
-    $startSetupButton = New-UlanziPanelButton -Text "Configurar agora" -Width 190 -Role "Accent"
+    $setupPanel.AccessibleName = (Get-UlanziText -Key 'Primeira configuracao')
+    $setupTitle = New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Vamos configurar o Ulanzi Libre') -X 24 -Y 22 -Width 620 -Height 34 -Size 15 -Bold
+    $setupDescription = New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Prepare o AWTRIX, conecte a fonte e teste o TC001 em um unico assistente. O aplicativo so comecara depois que tudo for salvo e conferido.') -X 24 -Y 64 -Width 640 -Height 50 -Size 10 -Role "Muted"
+    $setupSteps = New-UlanziPanelLabel -Text (Get-UlanziText -Key '1. Preparar  2. AWTRIX  3. Fonte  4. Teste  5. TC001  6. Preferencias  7. Revisao') -X 24 -Y 126 -Width 640 -Height 30 -Size 9 -Role "Muted"
+    $setupMessage = New-UlanziPanelLabel -Text (Get-UlanziText -Key 'A configuracao inicial ainda nao foi concluida.') -X 24 -Y 166 -Width 640 -Height 32 -Size 10 -Bold -Role "Warning"
+    $startSetupButton = New-UlanziPanelButton -Text (Get-UlanziText -Key 'Configurar agora') -Width 190 -Role "Accent"
     $startSetupButton.Name = "startSetupButton"
     $startSetupButton.Location = [Drawing.Point]::new(24, 216)
-    $startSetupButton.AccessibleDescription = "Abrir o assistente grafico de primeira configuracao"
+    $startSetupButton.AccessibleDescription = (Get-UlanziText -Key 'Abrir o assistente grafico de primeira configuracao')
     $setupPanel.Controls.Add($setupTitle)
     $setupPanel.Controls.Add($setupDescription)
     $setupPanel.Controls.Add($setupSteps)
@@ -476,41 +489,41 @@ function New-UlanziControlPanel {
     $setupPanel.BringToFront()
 
     $alertsPage = $pages.alerts
-    $alertsPage.Controls.Add((New-UlanziPanelLabel -Text "Alertas" -X 24 -Y 18 -Width 500 -Height 34 -Size 16 -Bold))
+    $alertsPage.Controls.Add((New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Alertas') -X 24 -Y 18 -Width 500 -Height 34 -Size 16 -Bold))
     $alertNotice = [Windows.Forms.Panel]::new()
     $alertNotice.Location = [Drawing.Point]::new(24, 60)
     $alertNotice.Size = [Drawing.Size]::new(700, 78)
     $alertNotice.Anchor = [Windows.Forms.AnchorStyles]::Top -bor [Windows.Forms.AnchorStyles]::Left -bor [Windows.Forms.AnchorStyles]::Right
     $alertNotice.Tag = "Elevated"
-    $alertNoticeText = New-UlanziPanelLabel -Text "Os alertas deste aplicativo sao complementares. Mantenha os alarmes oficiais do Libre e use os limites definidos com sua equipe de saude." -X 14 -Y 13 -Width 665 -Height 52 -Role "Text"
+    $alertNoticeText = New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Os alertas deste aplicativo sao complementares. Mantenha os alarmes oficiais do Libre e use os limites definidos com sua equipe de saude.') -X 14 -Y 13 -Width 665 -Height 52 -Role "Text"
     $alertNoticeText.Anchor = [Windows.Forms.AnchorStyles]::Top -bor [Windows.Forms.AnchorStyles]::Left -bor [Windows.Forms.AnchorStyles]::Right
     $alertNotice.Controls.Add($alertNoticeText)
     $alertsPage.Controls.Add($alertNotice)
-    $alarmSummaryTitle = New-UlanziPanelLabel -Text "Configuracao atual" -X 24 -Y 158 -Width 300 -Height 26 -Size 10 -Bold
-    $alarmSummary = New-UlanziPanelLabel -Text "Carregando os ajustes..." -X 24 -Y 190 -Width 700 -Height 100 -Size 10 -Role "Muted"
+    $alarmSummaryTitle = New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Configuracao atual') -X 24 -Y 158 -Width 300 -Height 26 -Size 10 -Bold
+    $alarmSummary = New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Carregando os ajustes...') -X 24 -Y 190 -Width 700 -Height 100 -Size 10 -Role "Muted"
     $alarmSummary.Anchor = [Windows.Forms.AnchorStyles]::Top -bor [Windows.Forms.AnchorStyles]::Left -bor [Windows.Forms.AnchorStyles]::Right
     $alertsPage.Controls.Add($alarmSummaryTitle)
     $alertsPage.Controls.Add($alarmSummary)
-    [void](New-UlanziPanelFeature -Parent $alertsPage -Y 306 -Title "Alertas de glicose" -Description "Defina limites, tendencias, falta de dados e a duracao dos avisos." -ButtonText "Configurar alertas" -ButtonRole "Accent" -Click ({ & $state.InvokeAction $OpenSettings @("alerts") "Abrindo configuracoes de alertas..." }).GetNewClosure())
-    [void](New-UlanziPanelFeature -Parent $alertsPage -Y 424 -Title "Som do TC001" -Description "Ative, silencie ou teste o som geral do relogio." -ButtonText "Configurar som" -Click ({ & $state.InvokeAction $OpenVolume @() "Consultando o som geral do TC001..." }).GetNewClosure() -SecondaryButtonText "Testar som" -SecondaryClick ({ & $state.InvokeAction $RequestSoundTest }).GetNewClosure())
+    [void](New-UlanziPanelFeature -Parent $alertsPage -Y 306 -Title (Get-UlanziText -Key 'Alertas de glicose') -Description (Get-UlanziText -Key 'Defina limites, tendencias, falta de dados e a duracao dos avisos.') -ButtonText (Get-UlanziText -Key 'Configurar alertas') -ButtonRole "Accent" -Click ({ & $state.InvokeAction $OpenSettings @("alerts") (Get-UlanziText -Key 'Abrindo configuracoes de alertas...') }).GetNewClosure())
+    [void](New-UlanziPanelFeature -Parent $alertsPage -Y 424 -Title (Get-UlanziText -Key 'Som do TC001') -Description (Get-UlanziText -Key 'Ative, silencie ou teste o som geral do relogio.') -ButtonText (Get-UlanziText -Key 'Configurar som') -Click ({ & $state.InvokeAction $OpenVolume @() (Get-UlanziText -Key 'Consultando o som geral do TC001...') }).GetNewClosure() -SecondaryButtonText (Get-UlanziText -Key 'Testar som') -SecondaryClick ({ & $state.InvokeAction $RequestSoundTest }).GetNewClosure())
 
     $displayPage = $pages.display
-    $displayPage.Controls.Add((New-UlanziPanelLabel -Text "Tela e sensor" -X 24 -Y 18 -Width 500 -Height 34 -Size 16 -Bold))
-    $displaySummary = New-UlanziPanelLabel -Text "Carregando os ajustes..." -X 24 -Y 62 -Width 700 -Height 78 -Size 10 -Role "Muted"
+    $displayPage.Controls.Add((New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Tela e sensor') -X 24 -Y 18 -Width 500 -Height 34 -Size 16 -Bold))
+    $displaySummary = New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Carregando os ajustes...') -X 24 -Y 62 -Width 700 -Height 78 -Size 10 -Role "Muted"
     $displaySummary.Anchor = [Windows.Forms.AnchorStyles]::Top -bor [Windows.Forms.AnchorStyles]::Left -bor [Windows.Forms.AnchorStyles]::Right
     $displayPage.Controls.Add($displaySummary)
-    $widgetFeature = New-UlanziPanelFeature -Parent $displayPage -Y 154 -Title "Mostrador no computador" -Description "Mostra a leitura perto do relogio do Windows. Esta escolha nao altera o TC001." -ButtonText "Mostrar ou ocultar" -Click ({ & $state.InvokeAction $ToggleWidget; & $state.RefreshWidgetText }).GetNewClosure()
+    $widgetFeature = New-UlanziPanelFeature -Parent $displayPage -Y 154 -Title (Get-UlanziText -Key 'Mostrador no computador') -Description (Get-UlanziText -Key 'Mostra a leitura perto do relogio do Windows. Esta escolha nao altera o TC001.') -ButtonText (Get-UlanziText -Key 'Mostrar ou ocultar') -Click ({ & $state.InvokeAction $ToggleWidget; & $state.RefreshWidgetText }).GetNewClosure()
     $widgetButton = $widgetFeature.PrimaryButton
-    [void](New-UlanziPanelFeature -Parent $displayPage -Y 272 -Title "Tela do TC001 e sensor" -Description "Ajuste cores, atualizacao da leitura e duracao do sensor Libre." -ButtonText "Configurar tela e sensor" -ButtonRole "Accent" -Click ({ & $state.InvokeAction $OpenSettings @("display") "Abrindo configuracoes de tela e sensor..." }).GetNewClosure())
+    [void](New-UlanziPanelFeature -Parent $displayPage -Y 272 -Title (Get-UlanziText -Key 'Tela do TC001 e sensor') -Description (Get-UlanziText -Key 'Ajuste cores, atualizacao da leitura e duracao do sensor Libre.') -ButtonText (Get-UlanziText -Key 'Configurar tela e sensor') -ButtonRole "Accent" -Click ({ & $state.InvokeAction $OpenSettings @("display") (Get-UlanziText -Key 'Abrindo configuracoes de tela e sensor...') }).GetNewClosure())
 
     $connectionsPage = $pages.connections
-    $connectionsPage.Controls.Add((New-UlanziPanelLabel -Text "Conexoes" -X 24 -Y 18 -Width 500 -Height 34 -Size 16 -Bold))
-    $connectionsIntro = New-UlanziPanelLabel -Text "Confira separadamente a fonte, o horario e o ultimo envio ao TC001. Senhas e tokens nunca aparecem aqui." -X 24 -Y 58 -Width 700 -Height 48 -Role "Muted"
+    $connectionsPage.Controls.Add((New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Conexoes') -X 24 -Y 18 -Width 500 -Height 34 -Size 16 -Bold))
+    $connectionsIntro = New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Confira separadamente a fonte, o horario e o ultimo envio ao TC001. Senhas e tokens nunca aparecem aqui.') -X 24 -Y 58 -Width 700 -Height 48 -Role "Muted"
     $connectionsIntro.Anchor = [Windows.Forms.AnchorStyles]::Top -bor [Windows.Forms.AnchorStyles]::Left -bor [Windows.Forms.AnchorStyles]::Right
     $connectionsPage.Controls.Add($connectionsIntro)
-    $connectionSource = New-UlanziPanelCard -Title "Fonte de glicemia"
-    $connectionClock = New-UlanziPanelCard -Title "Data e hora da leitura"
-    $connectionTc001 = New-UlanziPanelCard -Title "Envio ao TC001"
+    $connectionSource = New-UlanziPanelCard -Title (Get-UlanziText -Key 'Fonte de glicemia')
+    $connectionClock = New-UlanziPanelCard -Title (Get-UlanziText -Key 'Data e hora da leitura')
+    $connectionTc001 = New-UlanziPanelCard -Title (Get-UlanziText -Key 'Envio ao TC001')
     $connectionSource.Panel.Dock = [Windows.Forms.DockStyle]::None
     $connectionClock.Panel.Dock = [Windows.Forms.DockStyle]::None
     $connectionTc001.Panel.Dock = [Windows.Forms.DockStyle]::None
@@ -527,9 +540,9 @@ function New-UlanziControlPanel {
     $connectionActions.Size = [Drawing.Size]::new(700, 55)
     $connectionActions.Tag = "Window"
     $connectionActions.Anchor = [Windows.Forms.AnchorStyles]::Top -bor [Windows.Forms.AnchorStyles]::Left -bor [Windows.Forms.AnchorStyles]::Right
-    $connectionsVerify = New-UlanziPanelButton -Text "Verificar conexoes" -Width 170 -Role "Accent"
-    $connectionsNightscout = New-UlanziPanelButton -Text "Abrir Nightscout" -Width 150
-    $connectionsReconfigure = New-UlanziPanelButton -Text "Refazer configuracao" -Width 175
+    $connectionsVerify = New-UlanziPanelButton -Text (Get-UlanziText -Key 'Verificar conexoes') -Width 170 -Role "Accent"
+    $connectionsNightscout = New-UlanziPanelButton -Text (Get-UlanziText -Key 'Abrir Nightscout') -Width 150
+    $connectionsReconfigure = New-UlanziPanelButton -Text (Get-UlanziText -Key 'Refazer configuracao') -Width 175
     $connectionsReconfigure.Name = "connectionsReconfigureButton"
     [void]$connectionActions.Controls.Add($connectionsVerify)
     [void]$connectionActions.Controls.Add($connectionsNightscout)
@@ -537,26 +550,26 @@ function New-UlanziControlPanel {
     $connectionsPage.Controls.Add($connectionActions)
 
     $supportPage = $pages.support
-    $supportPage.Controls.Add((New-UlanziPanelLabel -Text "Suporte e manutencao" -X 24 -Y 18 -Width 500 -Height 34 -Size 16 -Bold))
-    $supportIntro = New-UlanziPanelLabel -Text "Ferramentas para verificar, recuperar e atualizar o aplicativo sem expor credenciais ou leituras no relatorio." -X 24 -Y 58 -Width 700 -Height 46 -Role "Muted"
+    $supportPage.Controls.Add((New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Suporte e manutencao') -X 24 -Y 18 -Width 500 -Height 34 -Size 16 -Bold))
+    $supportIntro = New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Ferramentas para verificar, recuperar e atualizar o aplicativo sem expor credenciais ou leituras no relatorio.') -X 24 -Y 58 -Width 700 -Height 46 -Role "Muted"
     $supportIntro.Anchor = [Windows.Forms.AnchorStyles]::Top -bor [Windows.Forms.AnchorStyles]::Left -bor [Windows.Forms.AnchorStyles]::Right
     $supportPage.Controls.Add($supportIntro)
-    [void](New-UlanziPanelFeature -Parent $supportPage -Y 116 -Title "Diagnostico e suporte" -Description "Teste cada conexao e exporte um relatorio higienizado quando precisar de ajuda." -ButtonText "Abrir diagnostico" -ButtonRole "Accent" -Click ({ & $state.InvokeAction $OpenDiagnostics @() "Preparando o diagnostico..." }).GetNewClosure())
-    [void](New-UlanziPanelFeature -Parent $supportPage -Y 234 -Title "Atualizacoes e recuperacao" -Description "Verifique atualizacoes assinadas ou restaure uma configuracao anterior valida." -ButtonText "Atualizar ou recuperar" -Click ({ & $state.InvokeAction $OpenMaintenance @() "Carregando manutencao e recuperacao..." }).GetNewClosure())
-    [void](New-UlanziPanelFeature -Parent $supportPage -Y 352 -Title "Ferramentas avancadas" -Description "Abra a pasta local para suporte ou reinicie somente a conexao em segundo plano." -ButtonText "Abrir pasta" -Click ({ & $state.InvokeAction $OpenFolder }).GetNewClosure() -SecondaryButtonText "Reiniciar conexao" -SecondaryClick ({ & $state.InvokeAction $RestartBridge @() "Reiniciando a conexao..." }).GetNewClosure())
-    $version = "versao desconhecida"
+    [void](New-UlanziPanelFeature -Parent $supportPage -Y 116 -Title (Get-UlanziText -Key 'Diagnostico e suporte') -Description (Get-UlanziText -Key 'Teste cada conexao e exporte um relatorio higienizado quando precisar de ajuda.') -ButtonText (Get-UlanziText -Key 'Abrir diagnostico') -ButtonRole "Accent" -Click ({ & $state.InvokeAction $OpenDiagnostics @() (Get-UlanziText -Key 'Preparando o diagnostico...') }).GetNewClosure())
+    [void](New-UlanziPanelFeature -Parent $supportPage -Y 234 -Title (Get-UlanziText -Key 'Atualizacoes e recuperacao') -Description (Get-UlanziText -Key 'Verifique atualizacoes assinadas ou restaure uma configuracao anterior valida.') -ButtonText (Get-UlanziText -Key 'Atualizar ou recuperar') -Click ({ & $state.InvokeAction $OpenMaintenance @() (Get-UlanziText -Key 'Carregando manutencao e recuperacao...') }).GetNewClosure())
+    [void](New-UlanziPanelFeature -Parent $supportPage -Y 352 -Title (Get-UlanziText -Key 'Ferramentas avancadas') -Description (Get-UlanziText -Key 'Abra a pasta local para suporte ou reinicie somente a conexao em segundo plano.') -ButtonText (Get-UlanziText -Key 'Abrir pasta') -Click ({ & $state.InvokeAction $OpenFolder }).GetNewClosure() -SecondaryButtonText (Get-UlanziText -Key 'Reiniciar conexao') -SecondaryClick ({ & $state.InvokeAction $RestartBridge @() (Get-UlanziText -Key 'Reiniciando a conexao...') }).GetNewClosure())
+    $version = (Get-UlanziText -Key 'versao desconhecida')
     try {
         $packageData = Get-Content -Raw -LiteralPath (Join-Path $ProjectRoot "package.json") | ConvertFrom-Json
-        $version = "versao $([string]$packageData.version)"
+        $version = (Get-UlanziText -Key 'versao {0}' -Arguments @(($([string]$packageData.version))))
     } catch { }
-    $supportVersion = New-UlanziPanelLabel -Text "Ulanzi Libre Bridge - $version. Consulte README, PRIVACY e SECURITY na pasta do aplicativo." -X 24 -Y 486 -Width 700 -Height 40 -Role "Muted"
+    $supportVersion = New-UlanziPanelLabel -Text (Get-UlanziText -Key 'Ulanzi Libre Bridge - {0}. Consulte README, PRIVACY e SECURITY na pasta do aplicativo.' -Arguments @(($version))) -X 24 -Y 486 -Width 700 -Height 40 -Role "Muted"
     $supportVersion.Anchor = [Windows.Forms.AnchorStyles]::Top -bor [Windows.Forms.AnchorStyles]::Left -bor [Windows.Forms.AnchorStyles]::Right
     $supportPage.Controls.Add($supportVersion)
 
     $allCards = @($statusCards.Values) + @($connectionSource, $connectionClock, $connectionTc001)
     $readSetupState = ({
         if ($null -eq $GetSetupState) {
-            return [pscustomobject]@{ State = "ready"; Message = "Configuracao pronta." }
+            return [pscustomobject]@{ State = "ready"; Message = (Get-UlanziText -Key 'Configuracao pronta.') }
         }
         try {
             $result = & $GetSetupState
@@ -567,13 +580,13 @@ function New-UlanziControlPanel {
         } catch {
             return [pscustomobject]@{
                 State = "required"
-                Message = "Nao foi possivel confirmar a configuracao. Tente abrir o assistente novamente."
+                Message = (Get-UlanziText -Key 'Nao foi possivel confirmar a configuracao. Tente abrir o assistente novamente.')
             }
         }
     }).GetNewClosure()
 
     $state.BeginBusy = ({
-        param([string]$Message = "Carregando...")
+        param([string]$Message = (Get-UlanziText -Key 'Carregando...'))
         if ($state.Closing -or $form.IsDisposed -or $form.Disposing) { return }
         $state.BusyDepth++
         if (-not [string]::IsNullOrWhiteSpace($Message) -and $footerStatus.Text -cne $Message) {
@@ -592,7 +605,7 @@ function New-UlanziControlPanel {
     }).GetNewClosure()
 
     $state.EndBusy = ({
-        param([string]$Message = "Atualizacao automatica ativa.")
+        param([string]$Message = (Get-UlanziText -Key 'Atualizacao automatica ativa.'))
         if ($state.BusyDepth -gt 0) { $state.BusyDepth-- }
         if ($state.BusyDepth -gt 0 -or $state.Closing -or $form.IsDisposed -or $form.Disposing) { return }
         if ($state.RuntimeBusy) {
@@ -673,7 +686,7 @@ function New-UlanziControlPanel {
                 }
                 if ($null -ne $state.RefreshStatus) { & $state.RefreshStatus }
             }
-            if ($showBusy -and $null -ne $state.EndBusy) { & $state.EndBusy "Atualizacao automatica ativa." }
+            if ($showBusy -and $null -ne $state.EndBusy) { & $state.EndBusy (Get-UlanziText -Key 'Atualizacao automatica ativa.') }
         }
     }).GetNewClosure()
 
@@ -693,7 +706,7 @@ function New-UlanziControlPanel {
             if ($Card.Value.ForeColor.ToArgb() -ne $color.ToArgb()) { $Card.Value.ForeColor = $color }
             if ($Card.Indicator.BackColor.ToArgb() -ne $color.ToArgb()) { $Card.Indicator.BackColor = $color }
         }
-        $accessibleDescription = "Estado: $Value. $Detail"
+        $accessibleDescription = (Get-UlanziText -Key 'Estado: {0}. {1}' -Arguments @(($Value), ($Detail)))
         if ($Card.Indicator.AccessibleDescription -cne $accessibleDescription) {
             $Card.Indicator.AccessibleDescription = $accessibleDescription
         }
@@ -701,7 +714,7 @@ function New-UlanziControlPanel {
 
     $state.RefreshWidgetText = ({
         $visible = ((& $GetWidgetVisible) -eq $true)
-        $newText = if ($visible) { "Ocultar mostrador" } else { "Mostrar mostrador" }
+        $newText = if ($visible) { (Get-UlanziText -Key 'Ocultar mostrador') } else { (Get-UlanziText -Key 'Mostrar mostrador') }
         if ($widgetButton.Text -cne $newText) { $widgetButton.Text = $newText }
     }).GetNewClosure()
 
@@ -715,30 +728,30 @@ function New-UlanziControlPanel {
         $alarmLow = Get-UlanziPanelProperty -Object $values -Name "GLUCOSE_ALARM_LOW_THRESHOLD_MGDL" -DefaultValue $values.LOW_THRESHOLD_MGDL
         $alarmHigh = Get-UlanziPanelProperty -Object $values -Name "GLUCOSE_ALARM_HIGH_THRESHOLD_MGDL" -DefaultValue $values.HIGH_THRESHOLD_MGDL
         $soundProfile = switch ([string](Get-UlanziPanelProperty -Object $values -Name "GLUCOSE_ALARM_SOUND_PROFILE" -DefaultValue "normal")) {
-            "discreet" { "Discreto (~0,6 s)" }
-            "reinforced" { "Reforcado (~2,1 s)" }
-            default { "Normal (~1,2 s)" }
+            "discreet" { (Get-UlanziText -Key 'Discreto (~0,6 s)') }
+            "reinforced" { (Get-UlanziText -Key 'Reforcado (~2,1 s)') }
+            default { (Get-UlanziText -Key 'Normal (~1,2 s)') }
         }
         $types = [Collections.Generic.List[string]]::new()
-        $types.Add("baixa abaixo de $alarmLow mg/dL")
-        $types.Add("alta acima de $alarmHigh mg/dL")
-        $types.Add("seta diagonal acima de $($values.GLUCOSE_ALARM_UP_SLIGHT_THRESHOLD_MGDL) mg/dL")
-        $types.Add("setas para baixo abaixo de $($values.GLUCOSE_ALARM_DOWN_THRESHOLD_MGDL) mg/dL")
-        if ([bool]$values.GLUCOSE_ALARM_DOUBLE_UP_ENABLED) { $types.Add("seta dupla para cima") }
-        if ([bool]$values.GLUCOSE_ALARM_NO_DATA_ENABLED) { $types.Add("perda de dados") }
+        $types.Add((Get-UlanziText -Key 'baixa abaixo de {0} mg/dL' -Arguments @(($alarmLow))))
+        $types.Add((Get-UlanziText -Key 'alta acima de {0} mg/dL' -Arguments @(($alarmHigh))))
+        $types.Add((Get-UlanziText -Key 'seta diagonal acima de {0} mg/dL' -Arguments @(($($values.GLUCOSE_ALARM_UP_SLIGHT_THRESHOLD_MGDL)))))
+        $types.Add((Get-UlanziText -Key 'setas para baixo abaixo de {0} mg/dL' -Arguments @(($($values.GLUCOSE_ALARM_DOWN_THRESHOLD_MGDL)))))
+        if ([bool]$values.GLUCOSE_ALARM_DOUBLE_UP_ENABLED) { $types.Add((Get-UlanziText -Key 'seta dupla para cima')) }
+        if ([bool]$values.GLUCOSE_ALARM_NO_DATA_ENABLED) { $types.Add((Get-UlanziText -Key 'perda de dados')) }
         $newAlarmSummary = if ($alarmEnabled) {
-            "Alertas ligados, duracao $soundProfile. Serao avisados: $($types -join '; ')."
+            (Get-UlanziText -Key 'Alertas ligados, duracao {0}. Serao avisados: {1}.' -Arguments @(($soundProfile), ($($types -join '; '))))
         } else {
-            "Alertas sonoros deste aplicativo estao desligados. A faixa visual continua ativa e nao produz som."
+            (Get-UlanziText -Key 'Alertas sonoros deste aplicativo estao desligados. A faixa visual continua ativa e nao produz som.')
         }
-        $newDisplaySummary = "Faixa visual: $($values.LOW_THRESHOLD_MGDL) a $($values.HIGH_THRESHOLD_MGDL) mg/dL. Sensor configurado para $($values.LIBRE_SENSOR_LIFETIME_DAYS) dias; SEM DADO depois de $($values.STALE_AFTER_MINUTES) min; consulta a cada $($values.POLL_INTERVAL_SECONDS) s. Confirme a duracao correta do seu modelo de sensor."
+        $newDisplaySummary = (Get-UlanziText -Key 'Faixa visual: {0} a {1} mg/dL. Sensor configurado para {2} dias; SEM DADO depois de {3} min; consulta a cada {4} s. Confirme a duracao correta do seu modelo de sensor.' -Arguments @(($($values.LOW_THRESHOLD_MGDL)), ($($values.HIGH_THRESHOLD_MGDL)), ($($values.LIBRE_SENSOR_LIFETIME_DAYS)), ($($values.STALE_AFTER_MINUTES)), ($($values.POLL_INTERVAL_SECONDS))))
         if ($alarmSummary.Text -cne $newAlarmSummary) { $alarmSummary.Text = $newAlarmSummary }
         if ($displaySummary.Text -cne $newDisplaySummary) { $displaySummary.Text = $newDisplaySummary }
     }).GetNewClosure()
 
     $showConfigurationError = ({
-        $alarmError = "Os ajustes nao puderam ser lidos. Abra Suporte para diagnosticar ou recuperar uma configuracao anterior."
-        $displayError = "A configuracao de tela e sensor nao esta disponivel neste momento."
+        $alarmError = (Get-UlanziText -Key 'Os ajustes nao puderam ser lidos. Abra Suporte para diagnosticar ou recuperar uma configuracao anterior.')
+        $displayError = (Get-UlanziText -Key 'A configuracao de tela e sensor nao esta disponivel neste momento.')
         if ($alarmSummary.Text -cne $alarmError) { $alarmSummary.Text = $alarmError }
         if ($displaySummary.Text -cne $displayError) { $displaySummary.Text = $displayError }
     }).GetNewClosure()
@@ -748,8 +761,8 @@ function New-UlanziControlPanel {
         if ($state.Closing -or $form.IsDisposed -or $form.Disposing) { return }
         $setupSnapshot = & $readSetupState
         if ([string]$setupSnapshot.State -cne "ready") {
-            $alarmSummary.Text = "Conclua a configuracao inicial para definir os alertas."
-            $displaySummary.Text = "Conclua a configuracao inicial para definir a tela e o sensor."
+            $alarmSummary.Text = (Get-UlanziText -Key 'Conclua a configuracao inicial para definir os alertas.')
+            $displaySummary.Text = (Get-UlanziText -Key 'Conclua a configuracao inicial para definir a tela e o sensor.')
             & $state.RefreshWidgetText
             return
         }
@@ -760,7 +773,7 @@ function New-UlanziControlPanel {
             return
         }
         try {
-            & $state.BeginBusy "Carregando configuracao segura..."
+            & $state.BeginBusy (Get-UlanziText -Key 'Carregando configuracao segura...')
             $state.ConfigurationOperation = Start-UlanziConfigEditorOperation -Command "read" -ProjectRoot $ProjectRoot -EnvPath $EnvPath
             $state.ConfigurationDeadline = [DateTime]::UtcNow.AddSeconds(30)
             $configurationTimer.Start()
@@ -768,7 +781,7 @@ function New-UlanziControlPanel {
             & $showConfigurationError
             $state.ConfigurationStamp = Get-UlanziPanelConfigurationStamp -ProjectRoot $ProjectRoot -EnvPath $EnvPath
             $state.ConfigurationLoaded = $true
-            & $state.EndBusy "A configuracao nao pode ser carregada; o status continua ativo."
+            & $state.EndBusy (Get-UlanziText -Key 'A configuracao nao pode ser carregada; o status continua ativo.')
         }
         & $state.RefreshWidgetText
     }).GetNewClosure()
@@ -784,7 +797,7 @@ function New-UlanziControlPanel {
             if ($timedOut -and -not $operation.Process.HasExited) {
                 Stop-UlanziConfigEditorOperation -Operation $operation
                 $operation = $null
-                throw "A leitura da configuracao excedeu o tempo limite."
+                throw (Get-UlanziText -Key 'A leitura da configuracao excedeu o tempo limite.')
             }
             try {
                 $readResult = Complete-UlanziConfigEditorOperation -Operation $operation
@@ -792,10 +805,10 @@ function New-UlanziControlPanel {
                 $operation = $null
             }
             & $applyConfigurationResult $readResult
-            & $state.EndBusy "Configuracao carregada; atualizacao automatica ativa."
+            & $state.EndBusy (Get-UlanziText -Key 'Configuracao carregada; atualizacao automatica ativa.')
         } catch {
             & $showConfigurationError
-            & $state.EndBusy "A configuracao nao pode ser carregada; o status continua ativo."
+            & $state.EndBusy (Get-UlanziText -Key 'A configuracao nao pode ser carregada; o status continua ativo.')
         } finally {
             if ($null -ne $operation) { Stop-UlanziConfigEditorOperation -Operation $operation }
             $state.ConfigurationStamp = Get-UlanziPanelConfigurationStamp -ProjectRoot $ProjectRoot -EnvPath $EnvPath
@@ -820,15 +833,15 @@ function New-UlanziControlPanel {
                 $setupPanel.Visible = $true
                 $cards.Visible = $false
                 $setupMessage.Text = if ([string]::IsNullOrWhiteSpace([string]$setupSnapshot.Message)) {
-                    "A configuracao inicial ainda nao foi concluida."
+                    (Get-UlanziText -Key 'A configuracao inicial ainda nao foi concluida.')
                 } else {
                     [string]$setupSnapshot.Message
                 }
                 $startSetupButton.Enabled = ($state.SetupState -eq "required" -and $null -ne $StartSetup)
                 $startSetupButton.Text = switch ($state.SetupState) {
-                    "checking" { "Verificando..." }
-                    "configuring" { "Assistente aberto" }
-                    default { "Configurar agora" }
+                    "checking" { (Get-UlanziText -Key 'Verificando...') }
+                    "configuring" { (Get-UlanziText -Key 'Assistente aberto') }
+                    default { (Get-UlanziText -Key 'Configurar agora') }
                 }
                 foreach ($name in $navButtons.Keys) {
                     $navButtons[$name].Enabled = ($name -in @("overview", "support"))
@@ -836,11 +849,11 @@ function New-UlanziControlPanel {
                 $setupBusy = $state.SetupState -in @("checking", "configuring")
                 $state.RuntimeBusy = $setupBusy
                 $state.RuntimeBusyMessage = if ($state.SetupState -eq "configuring") {
-                    "Assistente aberto; conclua as etapas ou feche para continuar depois."
+                    (Get-UlanziText -Key 'Assistente aberto; conclua as etapas ou feche para continuar depois.')
                 } elseif ($setupBusy) {
-                    "Verificando a configuracao inicial..."
+                    (Get-UlanziText -Key 'Verificando a configuracao inicial...')
                 } else {
-                    "Configuracao necessaria."
+                    (Get-UlanziText -Key 'Configuracao necessaria.')
                 }
                 if ($setupBusy) {
                     $footerProgress.Visible = $true
@@ -855,9 +868,9 @@ function New-UlanziControlPanel {
                     $content.Enabled = $true
                 }
                 $overallLabel.Text = switch ($state.SetupState) {
-                    "checking" { "Verificando a configuracao..." }
-                    "configuring" { "Conclua o assistente de configuracao" }
-                    default { "Configuracao necessaria" }
+                    "checking" { (Get-UlanziText -Key 'Verificando a configuracao...') }
+                    "configuring" { (Get-UlanziText -Key 'Conclua o assistente de configuracao') }
+                    default { (Get-UlanziText -Key 'Configuracao necessaria') }
                 }
                 $overallLabel.Tag = "Warning"
                 return
@@ -878,10 +891,10 @@ function New-UlanziControlPanel {
             $state.LastStatus = $runtimeStatus
             $health = & $BridgeHealth $runtimeStatus
             $responsive = ((Get-UlanziPanelProperty -Object $health -Name "Responsive" -DefaultValue $false) -eq $true)
-            $healthText = [string](Get-UlanziPanelProperty -Object $health -Name "Text" -DefaultValue "aplicativo sem resposta")
+            $healthText = [string](Get-UlanziPanelProperty -Object $health -Name "Text" -DefaultValue (Get-UlanziText -Key 'aplicativo sem resposta'))
             $runtimeBusy = ((Get-UlanziPanelProperty -Object $health -Name "Busy" -DefaultValue $false) -eq $true)
             $state.RuntimeBusy = $runtimeBusy
-            $state.RuntimeBusyMessage = if ($runtimeBusy) { "Operacao em andamento: $healthText." } else { "" }
+            $state.RuntimeBusyMessage = if ($runtimeBusy) { (Get-UlanziText -Key 'Operacao em andamento: {0}.' -Arguments @(($healthText))) } else { "" }
             if ($runtimeBusy) {
                 $footerProgress.Visible = $true
                 $footerProgress.MarqueeAnimationSpeed = 28
@@ -889,15 +902,15 @@ function New-UlanziControlPanel {
                 $navigation.Enabled = $false
                 $content.Enabled = $false
                 if ($footerStatus.Text -cne $state.RuntimeBusyMessage) { $footerStatus.Text = $state.RuntimeBusyMessage }
-                $overallLabel.Text = "Reiniciando a conexao"
+                $overallLabel.Text = (Get-UlanziText -Key 'Reiniciando a conexao')
                 $overallLabel.Tag = "Warning"
-                & $state.SetCard $statusCards.application "Reiniciando" $healthText "warning"
+                & $state.SetCard $statusCards.application (Get-UlanziText -Key 'Reiniciando') $healthText "warning"
                 foreach ($key in @("source", "reading", "tc001", "alarms", "volume")) {
-                    & $state.SetCard $statusCards[$key] "Aguardando" "A nova conexao sera confirmada automaticamente." "warning"
+                    & $state.SetCard $statusCards[$key] (Get-UlanziText -Key 'Aguardando') (Get-UlanziText -Key 'A nova conexao sera confirmada automaticamente.') "warning"
                 }
-                & $state.SetCard $connectionSource "Aguardando" "A fonte sera consultada pela nova conexao." "warning"
-                & $state.SetCard $connectionClock "Aguardando" "O horario sera verificado depois da proxima leitura." "warning"
-                & $state.SetCard $connectionTc001 "Aguardando" "O proximo envio confirmara a nova conexao." "warning"
+                & $state.SetCard $connectionSource (Get-UlanziText -Key 'Aguardando') (Get-UlanziText -Key 'A fonte sera consultada pela nova conexao.') "warning"
+                & $state.SetCard $connectionClock (Get-UlanziText -Key 'Aguardando') (Get-UlanziText -Key 'O horario sera verificado depois da proxima leitura.') "warning"
+                & $state.SetCard $connectionTc001 (Get-UlanziText -Key 'Aguardando') (Get-UlanziText -Key 'O proximo envio confirmara a nova conexao.') "warning"
                 return
             } elseif ($state.BusyDepth -eq 0 -and $footerProgress.Visible) {
                 $footerProgress.Visible = $false
@@ -906,15 +919,15 @@ function New-UlanziControlPanel {
                 $content.Enabled = $true
             }
             if (-not $responsive) {
-                $overallLabel.Text = "Precisa de atencao - $healthText"
+                $overallLabel.Text = (Get-UlanziText -Key 'Precisa de atencao - {0}' -Arguments @(($healthText)))
                 $overallLabel.Tag = "Error"
-                & $state.SetCard $statusCards.application "Sem resposta" $healthText "error"
+                & $state.SetCard $statusCards.application (Get-UlanziText -Key 'Sem resposta') $healthText "error"
                 foreach ($key in @("source", "reading", "tc001", "alarms", "volume")) {
-                    & $state.SetCard $statusCards[$key] "Nao verificavel" "Aguardando o aplicativo responder." "warning"
+                    & $state.SetCard $statusCards[$key] (Get-UlanziText -Key 'Nao verificavel') (Get-UlanziText -Key 'Aguardando o aplicativo responder.') "warning"
                 }
-                & $state.SetCard $connectionSource "Nao verificavel" "O aplicativo esta parado ou sem resposta." "warning"
-                & $state.SetCard $connectionClock "Nao verificavel" "O aplicativo esta parado ou sem resposta." "warning"
-                & $state.SetCard $connectionTc001 "Nao verificavel" "O aplicativo esta parado ou sem resposta." "warning"
+                & $state.SetCard $connectionSource (Get-UlanziText -Key 'Nao verificavel') (Get-UlanziText -Key 'O aplicativo esta parado ou sem resposta.') "warning"
+                & $state.SetCard $connectionClock (Get-UlanziText -Key 'Nao verificavel') (Get-UlanziText -Key 'O aplicativo esta parado ou sem resposta.') "warning"
+                & $state.SetCard $connectionTc001 (Get-UlanziText -Key 'Nao verificavel') (Get-UlanziText -Key 'O aplicativo esta parado ou sem resposta.') "warning"
                 return
             }
 
@@ -926,46 +939,46 @@ function New-UlanziControlPanel {
                     [string](Get-UlanziPanelProperty -Object $runtimeStatus -Name "status" -DefaultValue "unavailable") -eq "active" -and
                     ($null -eq $legacyExpiresAt -or [DateTime]::UtcNow -lt $legacyExpiresAt)
                 )
-                $overallLabel.Text = if ($legacyActive) { "Funcionando com status basico" } else { "Sem leitura recente (status basico)" }
+                $overallLabel.Text = if ($legacyActive) { (Get-UlanziText -Key 'Funcionando com status basico') } else { (Get-UlanziText -Key 'Sem leitura recente (status basico)') }
                 $overallLabel.Tag = if ($legacyActive) { "Warning" } else { "Error" }
-                & $state.SetCard $statusCards.application "Status basico" "Atualize o aplicativo para ver cada conexao separadamente." "warning"
-                & $state.SetCard $statusCards.reading ([string](Get-UlanziPanelProperty -Object $runtimeStatus -Name "text" -DefaultValue "SEM DADO")) "O status antigo nao informa todos os detalhes da leitura." $(if ($legacyActive) { "ok" } else { "error" })
+                & $state.SetCard $statusCards.application (Get-UlanziText -Key 'Status basico') (Get-UlanziText -Key 'Atualize o aplicativo para ver cada conexao separadamente.') "warning"
+                & $state.SetCard $statusCards.reading ([string](Get-UlanziPanelProperty -Object $runtimeStatus -Name "text" -DefaultValue (Get-UlanziText -Key 'SEM DADO'))) (Get-UlanziText -Key 'O status antigo nao informa todos os detalhes da leitura.') $(if ($legacyActive) { "ok" } else { "error" })
                 foreach ($key in @("source", "tc001", "alarms", "volume")) {
-                    & $state.SetCard $statusCards[$key] "Nao informado" "Detalhe indisponivel no status basico." "warning"
+                    & $state.SetCard $statusCards[$key] (Get-UlanziText -Key 'Nao informado') (Get-UlanziText -Key 'Detalhe indisponivel no status basico.') "warning"
                 }
-                & $state.SetCard $connectionSource "Nao informado" "A versao antiga nao separa a fonte." "warning"
-                & $state.SetCard $connectionClock "Nao informado" "A versao antiga nao informa a coerencia do horario." "warning"
-                & $state.SetCard $connectionTc001 "Nao informado" "A versao antiga nao confirma o TC001 separadamente." "warning"
+                & $state.SetCard $connectionSource (Get-UlanziText -Key 'Nao informado') (Get-UlanziText -Key 'A versao antiga nao separa a fonte.') "warning"
+                & $state.SetCard $connectionClock (Get-UlanziText -Key 'Nao informado') (Get-UlanziText -Key 'A versao antiga nao informa a coerencia do horario.') "warning"
+                & $state.SetCard $connectionTc001 (Get-UlanziText -Key 'Nao informado') (Get-UlanziText -Key 'A versao antiga nao confirma o TC001 separadamente.') "warning"
                 return
             }
 
             $overallState = [string](Get-UlanziPanelProperty -Object $runtimeStatus -Name "healthStatus" -DefaultValue "starting")
             $overallLabel.Text = switch ($overallState) {
-                "active" { "Tudo funcionando" }
-                "action-required" { "Acao necessaria" }
-                "unavailable" { "Sem leitura recente" }
-                "degraded" { "Precisa de atencao" }
-                default { "Conectando..." }
+                "active" { (Get-UlanziText -Key 'Tudo funcionando') }
+                "action-required" { (Get-UlanziText -Key 'Acao necessaria') }
+                "unavailable" { (Get-UlanziText -Key 'Sem leitura recente') }
+                "degraded" { (Get-UlanziText -Key 'Precisa de atencao') }
+                default { (Get-UlanziText -Key 'Conectando...') }
             }
             $overallLevel = if ($overallState -eq "active") { "ok" } elseif ($overallState -eq "starting") { "warning" } else { "error" }
             $overallLabel.Tag = switch ($overallLevel) { "ok" { "Success" }; "error" { "Error" }; default { "Warning" } }
-            & $state.SetCard $statusCards.application "Funcionando" $healthText "ok"
+            & $state.SetCard $statusCards.application (Get-UlanziText -Key 'Funcionando') $healthText "ok"
 
             $source = Get-UlanziPanelProperty -Object $runtimeStatus -Name "source"
             $sourceState = [string](Get-UlanziPanelProperty -Object $source -Name "state" -DefaultValue "waiting")
-            $sourceValue = switch ($sourceState) { "connected" { "Conectada" }; "connecting" { "Consultando..." }; "error" { "Falha" }; default { "Aguardando" } }
+            $sourceValue = switch ($sourceState) { "connected" { (Get-UlanziText -Key 'Conectada') }; "connecting" { (Get-UlanziText -Key 'Consultando...') }; "error" { (Get-UlanziText -Key 'Falha') }; default { (Get-UlanziText -Key 'Aguardando') } }
             $sourceLevel = if ($sourceState -eq "connected") { "ok" } elseif ($sourceState -eq "error") { "error" } else { "warning" }
             $sourceLastSuccessAt = Get-UlanziPanelProperty -Object $source -Name "lastSuccessAt"
             $sourceHasSuccess = $null -ne (ConvertTo-UlanziPanelDate $sourceLastSuccessAt)
-            $sourceLastSuccessText = if ($sourceHasSuccess) { "Ultima consulta confirmada $(Format-UlanziPanelAge $sourceLastSuccessAt)." } else { "Nenhuma consulta foi confirmada nesta execucao." }
+            $sourceLastSuccessText = if ($sourceHasSuccess) { (Get-UlanziText -Key 'Ultima consulta confirmada {0}.' -Arguments @(($(Format-UlanziPanelAge $sourceLastSuccessAt)))) } else { (Get-UlanziText -Key 'Nenhuma consulta foi confirmada nesta execucao.') }
             $sourceError = [string](Get-UlanziPanelProperty -Object $source -Name "lastError" -DefaultValue "")
             $sourceDetail = switch ($sourceState) {
                 "connected" { $sourceLastSuccessText }
-                "connecting" { "Consultando a fonte. $sourceLastSuccessText" }
+                "connecting" { (Get-UlanziText -Key 'Consultando a fonte. {0}' -Arguments @(($sourceLastSuccessText))) }
                 "error" {
-                    if ([string]::IsNullOrWhiteSpace($sourceError)) { "A consulta falhou. $sourceLastSuccessText" } else { "$sourceError $sourceLastSuccessText" }
+                    if ([string]::IsNullOrWhiteSpace($sourceError)) { (Get-UlanziText -Key 'A consulta falhou. {0}' -Arguments @(($sourceLastSuccessText))) } else { "$sourceError $sourceLastSuccessText" }
                 }
-                default { "Aguardando uma consulta valida. $sourceLastSuccessText" }
+                default { (Get-UlanziText -Key 'Aguardando uma consulta valida. {0}' -Arguments @(($sourceLastSuccessText))) }
             }
             & $state.SetCard $statusCards.source $sourceValue $sourceDetail $sourceLevel
             & $state.SetCard $connectionSource $sourceValue $sourceDetail $sourceLevel
@@ -973,16 +986,18 @@ function New-UlanziControlPanel {
             $kind = [string](Get-UlanziPanelProperty -Object $runtimeStatus -Name "kind" -DefaultValue "unavailable")
             $reading = Get-UlanziPanelProperty -Object $runtimeStatus -Name "reading"
             $readingTimestamp = Get-UlanziPanelProperty -Object $reading -Name "timestamp"
-            $readingValue = if ($kind -eq "replace-sensor") { "TROCAR" } elseif ($kind -eq "unavailable") { "SEM DADO" } else { [string](Get-UlanziPanelProperty -Object $runtimeStatus -Name "text" -DefaultValue "Leitura atual") }
+            $readingValue = if ($kind -eq "replace-sensor") { (Get-UlanziText -Key 'TROCAR') } elseif ($kind -eq "unavailable") { (Get-UlanziText -Key 'SEM DADO') } else { [string](Get-UlanziPanelProperty -Object $runtimeStatus -Name "text" -DefaultValue (Get-UlanziText -Key 'Leitura atual')) }
             $readingLevel = if ($kind -eq "replace-sensor" -or $kind -eq "unavailable") { "error" } else { "ok" }
-            & $state.SetCard $statusCards.reading $readingValue ("Recebida " + (Format-UlanziPanelAge $readingTimestamp) + ".") $readingLevel
+            $readingUnits = if ([string](Get-UlanziPanelProperty -Object $runtimeStatus -Name "displayUnits" -DefaultValue "mgdl") -eq "mmol") { "mmol/L" } else { "mg/dL" }
+            if ($kind -notin @("replace-sensor", "unavailable")) { $readingValue = "$readingValue $readingUnits" }
+            & $state.SetCard $statusCards.reading $readingValue ((Get-UlanziText -Key 'Recebida ') + (Format-UlanziPanelAge $readingTimestamp) + ".") $readingLevel
 
             $clock = Get-UlanziPanelProperty -Object $runtimeStatus -Name "clock"
             $clockState = [string](Get-UlanziPanelProperty -Object $clock -Name "state" -DefaultValue "unknown")
-            $clockValue = if ($clockState -eq "ok") { "Coerente" } elseif ($clockState -in @("warning", "error")) { "Diferenca detectada" } else { "Aguardando" }
+            $clockValue = if ($clockState -eq "ok") { (Get-UlanziText -Key 'Coerente') } elseif ($clockState -in @("warning", "error")) { (Get-UlanziText -Key 'Diferenca detectada') } else { (Get-UlanziText -Key 'Aguardando') }
             $clockLevel = if ($clockState -eq "ok") { "ok" } elseif ($clockState -in @("warning", "error")) { "error" } else { "warning" }
-            $clockDetail = [string](Get-UlanziPanelProperty -Object $clock -Name "message" -DefaultValue "Comparacao disponivel depois de uma leitura valida.")
-            if ([string]::IsNullOrWhiteSpace($clockDetail)) { $clockDetail = "Comparacao disponivel depois de uma leitura valida." }
+            $clockDetail = [string](Get-UlanziPanelProperty -Object $clock -Name "message" -DefaultValue (Get-UlanziText -Key 'Comparacao disponivel depois de uma leitura valida.'))
+            if ([string]::IsNullOrWhiteSpace($clockDetail)) { $clockDetail = (Get-UlanziText -Key 'Comparacao disponivel depois de uma leitura valida.') }
             & $state.SetCard $connectionClock $clockValue $clockDetail $clockLevel
 
             $tc001 = Get-UlanziPanelProperty -Object $runtimeStatus -Name "tc001"
@@ -996,23 +1011,23 @@ function New-UlanziControlPanel {
             )
             $tc001LastConfirmedAt = Get-UlanziPanelProperty -Object $tc001 -Name "lastConfirmedAt"
             $tc001HasConfirmation = $null -ne (ConvertTo-UlanziPanelDate $tc001LastConfirmedAt)
-            $tc001LastConfirmedText = if ($tc001HasConfirmation) { "Ultimo envio confirmado $(Format-UlanziPanelAge $tc001LastConfirmedAt)." } else { "Nenhum envio foi confirmado nesta execucao." }
+            $tc001LastConfirmedText = if ($tc001HasConfirmation) { (Get-UlanziText -Key 'Ultimo envio confirmado {0}.' -Arguments @(($(Format-UlanziPanelAge $tc001LastConfirmedAt)))) } else { (Get-UlanziText -Key 'Nenhum envio foi confirmado nesta execucao.') }
             $tc001Value = if ($tc001AwaitingCurrentReading) {
-                "Aguardando leitura atual"
+                (Get-UlanziText -Key 'Aguardando leitura atual')
             } else {
-                switch ($tc001State) { "confirmed" { "Atualizado" }; "sending" { "Enviando..." }; "error" { "Falha" }; default { "Aguardando" } }
+                switch ($tc001State) { "confirmed" { (Get-UlanziText -Key 'Atualizado') }; "sending" { (Get-UlanziText -Key 'Enviando...') }; "error" { (Get-UlanziText -Key 'Falha') }; default { (Get-UlanziText -Key 'Aguardando') } }
             }
             $tc001Level = if ($tc001AwaitingCurrentReading) { "warning" } elseif ($tc001State -eq "confirmed") { "ok" } elseif ($tc001State -eq "error") { "error" } else { "warning" }
             $tc001Detail = if ($tc001AwaitingCurrentReading) {
-                "$tc001LastConfirmedText A leitura atual ainda aguarda envio."
+                (Get-UlanziText -Key '{0} A leitura atual ainda aguarda envio.' -Arguments @(($tc001LastConfirmedText)))
             } elseif ($tc001State -eq "confirmed") {
                 $tc001LastConfirmedText
             } else {
                 $tc001Error = [string](Get-UlanziPanelProperty -Object $tc001 -Name "lastError" -DefaultValue "")
                 $tc001CurrentText = switch ($tc001State) {
-                    "sending" { "Enviando a leitura atual." }
-                    "error" { if ([string]::IsNullOrWhiteSpace($tc001Error)) { "O ultimo envio falhou." } else { $tc001Error } }
-                    default { "Aguardando confirmacao do relogio." }
+                    "sending" { (Get-UlanziText -Key 'Enviando a leitura atual.') }
+                    "error" { if ([string]::IsNullOrWhiteSpace($tc001Error)) { (Get-UlanziText -Key 'O ultimo envio falhou.') } else { $tc001Error } }
+                    default { (Get-UlanziText -Key 'Aguardando confirmacao do relogio.') }
                 }
                 "$tc001CurrentText $tc001LastConfirmedText"
             }
@@ -1022,74 +1037,74 @@ function New-UlanziControlPanel {
             $sound = Get-UlanziPanelProperty -Object $runtimeStatus -Name "sound"
             $soundEnabled = (Get-UlanziPanelProperty -Object $sound -Name "enabled" -DefaultValue $false) -eq $true
             $soundState = [string](Get-UlanziPanelProperty -Object $sound -Name "state" -DefaultValue "idle")
-            $soundValue = if (-not $soundEnabled) { "Desligados" } elseif ($soundState -eq "error") { "Falha no ultimo envio" } elseif ($soundState -eq "pending") { "Aguardando confirmacao" } else { "Ligados" }
+            $soundValue = if (-not $soundEnabled) { (Get-UlanziText -Key 'Desligados') } elseif ($soundState -eq "error") { (Get-UlanziText -Key 'Falha no ultimo envio') } elseif ($soundState -eq "pending") { (Get-UlanziText -Key 'Aguardando confirmacao') } else { (Get-UlanziText -Key 'Ligados') }
             $soundLevel = if (-not $soundEnabled) { "warning" } elseif ($soundState -eq "error") { "error" } elseif ($soundState -eq "pending") { "warning" } else { "ok" }
             $lastSoundOrigin = [string](Get-UlanziPanelProperty -Object $sound -Name "lastOrigin" -DefaultValue "")
             $lastSoundKind = if ($lastSoundOrigin -eq "test") {
-                "teste de som"
+                (Get-UlanziText -Key 'teste de som')
             } else {
                 switch ([string](Get-UlanziPanelProperty -Object $sound -Name "lastKind" -DefaultValue "")) {
-                    "low" { "glicemia baixa" }
-                    "high" { "glicemia alta" }
-                    "up" { "subida" }
-                    "down" { "queda" }
-                    "double-up" { "subida rapida" }
-                    "no-data" { "sem dado" }
-                    "unavailable" { "sem dado" }
-                    default { "alerta" }
+                    "low" { (Get-UlanziText -Key 'glicemia baixa') }
+                    "high" { (Get-UlanziText -Key 'glicemia alta') }
+                    "up" { (Get-UlanziText -Key 'subida') }
+                    "down" { (Get-UlanziText -Key 'queda') }
+                    "double-up" { (Get-UlanziText -Key 'subida rapida') }
+                    "no-data" { (Get-UlanziText -Key 'sem dado') }
+                    "unavailable" { (Get-UlanziText -Key 'sem dado') }
+                    default { (Get-UlanziText -Key 'alerta') }
                 }
             }
             $lastSoundAt = Get-UlanziPanelProperty -Object $sound -Name "lastConfirmedAt"
             $lastSoundConfirmed = $null -ne (ConvertTo-UlanziPanelDate $lastSoundAt)
-            $lastSoundText = if ($lastSoundConfirmed) { "Ultimo som confirmado: $lastSoundKind, $(Format-UlanziPanelAge $lastSoundAt)." } else { "Nenhum som foi confirmado nesta execucao." }
+            $lastSoundText = if ($lastSoundConfirmed) { (Get-UlanziText -Key 'Ultimo som confirmado: {0}, {1}.' -Arguments @(($lastSoundKind), ($(Format-UlanziPanelAge $lastSoundAt)))) } else { (Get-UlanziText -Key 'Nenhum som foi confirmado nesta execucao.') }
             $soundDetail = if (-not $soundEnabled) {
-                "Alertas desligados. $lastSoundText"
+                (Get-UlanziText -Key 'Alertas desligados. {0}' -Arguments @(($lastSoundText)))
             } elseif ($soundState -eq "error") {
                 $soundError = [string](Get-UlanziPanelProperty -Object $sound -Name "lastError" -DefaultValue "")
-                $soundErrorText = if ([string]::IsNullOrWhiteSpace($soundError)) { "O TC001 nao confirmou o ultimo comando de som." } else { $soundError }
+                $soundErrorText = if ([string]::IsNullOrWhiteSpace($soundError)) { (Get-UlanziText -Key 'O TC001 nao confirmou o ultimo comando de som.') } else { $soundError }
                 "$soundErrorText $lastSoundText"
             } elseif ($soundState -eq "pending") {
-                "Um alerta aguarda confirmacao do TC001. $lastSoundText"
+                (Get-UlanziText -Key 'Um alerta aguarda confirmacao do TC001. {0}' -Arguments @(($lastSoundText)))
             } else {
                 $lastSoundText
             }
             & $state.SetCard $statusCards.alarms $soundValue $soundDetail $soundLevel
             if ($soundState -eq "pending" -and $overallState -eq "active") {
-                $overallLabel.Text = "Som aguardando confirmacao"
+                $overallLabel.Text = (Get-UlanziText -Key 'Som aguardando confirmacao')
                 $overallLabel.Tag = "Warning"
             }
 
             $deviceSound = Get-UlanziPanelProperty -Object $runtimeStatus -Name "deviceSound"
             $deviceState = [string](Get-UlanziPanelProperty -Object $deviceSound -Name "state" -DefaultValue "unknown")
             $volumeValue = switch ($deviceState) {
-                "confirmed" { "Ligado" }
-                "muted" { "Som desligado" }
-                "silent" { "Sem som" }
-                "unsupported" { "Controle no firmware" }
-                "error" { "Nao confirmado" }
-                "reading" { "Consultando..." }
-                "writing" { "Aplicando..." }
-                default { "Ainda nao consultado" }
+                "confirmed" { (Get-UlanziText -Key 'Ligado') }
+                "muted" { (Get-UlanziText -Key 'Som desligado') }
+                "silent" { (Get-UlanziText -Key 'Sem som') }
+                "unsupported" { (Get-UlanziText -Key 'Controle no firmware') }
+                "error" { (Get-UlanziText -Key 'Nao confirmado') }
+                "reading" { (Get-UlanziText -Key 'Consultando...') }
+                "writing" { (Get-UlanziText -Key 'Aplicando...') }
+                default { (Get-UlanziText -Key 'Ainda nao consultado') }
             }
             $volumeLevel = if ($deviceState -in @("muted", "silent", "error")) { "error" } elseif ($deviceState -eq "confirmed") { "ok" } else { "warning" }
             $deviceObservedAt = Get-UlanziPanelProperty -Object $deviceSound -Name "observedAt"
             $volumeDetail = if ($deviceState -in @("confirmed", "muted", "silent") -and $null -ne (ConvertTo-UlanziPanelDate $deviceObservedAt)) {
-                "Estado confirmado $(Format-UlanziPanelAge $deviceObservedAt)."
+                (Get-UlanziText -Key 'Estado confirmado {0}.' -Arguments @(($(Format-UlanziPanelAge $deviceObservedAt))))
             } elseif ($deviceState -eq "unsupported") {
-                [string](Get-UlanziPanelProperty -Object $deviceSound -Name "reason" -DefaultValue "O firmware nao oferece controle seguro pelo aplicativo.")
+                [string](Get-UlanziPanelProperty -Object $deviceSound -Name "reason" -DefaultValue (Get-UlanziText -Key 'O firmware nao oferece controle seguro pelo aplicativo.'))
             } elseif ($deviceState -eq "error") {
                 $deviceError = [string](Get-UlanziPanelProperty -Object $deviceSound -Name "lastRequestError" -DefaultValue "")
-                if ([string]::IsNullOrWhiteSpace($deviceError)) { "Nao foi possivel confirmar o estado do buzzer no TC001." } else { $deviceError }
+                if ([string]::IsNullOrWhiteSpace($deviceError)) { (Get-UlanziText -Key 'Nao foi possivel confirmar o estado do buzzer no TC001.') } else { $deviceError }
             } elseif ($deviceState -eq "reading") {
-                "Consultando o buzzer do TC001."
+                (Get-UlanziText -Key 'Consultando o buzzer do TC001.')
             } elseif ($deviceState -eq "writing") {
-                "Aguardando o TC001 confirmar o novo estado do buzzer."
+                (Get-UlanziText -Key 'Aguardando o TC001 confirmar o novo estado do buzzer.')
             } else {
-                "Abra Alertas e use Configurar som para consultar o estado real."
+                (Get-UlanziText -Key 'Abra Alertas e use Configurar som para consultar o estado real.')
             }
             & $state.SetCard $statusCards.volume $volumeValue $volumeDetail $volumeLevel
         } catch {
-            $overallLabel.Text = "Nao foi possivel atualizar o painel"
+            $overallLabel.Text = (Get-UlanziText -Key 'Nao foi possivel atualizar o painel')
             $overallLabel.Tag = "Error"
         } finally {
             if ($null -ne $state.Palette) {
@@ -1104,13 +1119,13 @@ function New-UlanziControlPanel {
             }
             if ($state.SetupState -cne "ready" -and $state.BusyDepth -eq 0) {
                 $setupFooterMessage = switch ($state.SetupState) {
-                    "checking" { "Verificando a configuracao inicial..." }
-                    "configuring" { "O assistente de configuracao esta aberto." }
-                    default { "Use Configurar agora para comecar." }
+                    "checking" { (Get-UlanziText -Key 'Verificando a configuracao inicial...') }
+                    "configuring" { (Get-UlanziText -Key 'O assistente de configuracao esta aberto.') }
+                    default { (Get-UlanziText -Key 'Use Configurar agora para comecar.') }
                 }
                 if ($footerStatus.Text -cne $setupFooterMessage) { $footerStatus.Text = $setupFooterMessage }
             } elseif (-not $state.RuntimeBusy -and $state.BusyDepth -eq 0 -and $state.ActivePage -in @("overview", "connections")) {
-                $liveMessage = "Status atualizado agora; atualizacao automatica ativa."
+                $liveMessage = (Get-UlanziText -Key 'Status atualizado agora; atualizacao automatica ativa.')
                 if ($footerStatus.Text -cne $liveMessage) { $footerStatus.Text = $liveMessage }
             }
             $state.TickBusy = $false
@@ -1140,7 +1155,7 @@ function New-UlanziControlPanel {
         if ($PageName -in @("overview", "connections")) {
             & $state.RefreshStatus
         } elseif ($state.BusyDepth -eq 0) {
-            $pausedMessage = "Pronto."
+            $pausedMessage = (Get-UlanziText -Key 'Pronto.')
             if ($footerStatus.Text -cne $pausedMessage) { $footerStatus.Text = $pausedMessage }
         }
     }).GetNewClosure()
@@ -1150,16 +1165,16 @@ function New-UlanziControlPanel {
         $navButtons[$pageName].add_Click(({ & $state.SelectPage $pageName }).GetNewClosure())
     }
 
-    $connectionsVerify.add_Click(({ & $state.InvokeAction $OpenDiagnostics @() "Preparando o diagnostico..." }).GetNewClosure())
+    $connectionsVerify.add_Click(({ & $state.InvokeAction $OpenDiagnostics @() (Get-UlanziText -Key 'Preparando o diagnostico...') }).GetNewClosure())
     $connectionsNightscout.add_Click(({ & $state.InvokeAction $OpenNightscout }).GetNewClosure())
     $connectionsReconfigure.add_Click(({
         if ($null -ne $StartSetup) {
-            & $state.InvokeAction $StartSetup @() "Abrindo o assistente unificado..."
+            & $state.InvokeAction $StartSetup @() (Get-UlanziText -Key 'Abrindo o assistente unificado...')
         }
     }).GetNewClosure())
     $startSetupButton.add_Click(({
         if ($null -ne $StartSetup) {
-            & $state.InvokeAction $StartSetup @() "Abrindo o assistente de configuracao..."
+            & $state.InvokeAction $StartSetup @() (Get-UlanziText -Key 'Abrindo o assistente de configuracao...')
         }
     }).GetNewClosure())
     $closeButton.add_Click(({ $form.Close() }).GetNewClosure())
@@ -1176,13 +1191,13 @@ function New-UlanziControlPanel {
             Apply-UlanziUiTheme -Control $form -Theme $state.Theme -PreferenceRoot $PreferenceRoot
             & $state.RefreshPalette
             & $state.RefreshStatus
-            $footerStatus.Text = "Preferencia de aparencia salva; a conexao nao foi reiniciada."
+            $footerStatus.Text = (Get-UlanziText -Key 'Preferencia de aparencia salva; a conexao nao foi reiniciada.')
         } catch {
             if (-not $state.Closing -and -not $form.IsDisposed -and -not $form.Disposing -and $form.IsHandleCreated) {
                 [void](Show-UlanziOwnedMessageBox `
                     -Owner $form `
                     -Text $_.Exception.Message `
-                    -Caption "Tema" `
+                    -Caption (Get-UlanziText -Key 'Tema') `
                     -Buttons ([Windows.Forms.MessageBoxButtons]::OK) `
                     -Icon ([Windows.Forms.MessageBoxIcon]::Error))
             }
@@ -1224,14 +1239,14 @@ function New-UlanziControlPanel {
     }).GetNewClosure())
 
     $form.add_Shown(({
-        & $state.BeginBusy "Carregando painel e configuracao..."
+        & $state.BeginBusy (Get-UlanziText -Key 'Carregando painel e configuracao...')
         try {
             & $state.RefreshConfiguration $true
             & $state.RefreshWidgetText
             & $state.SelectPage "overview"
             $timer.Start()
         } finally {
-            & $state.EndBusy "Status atualizado agora; atualizacao automatica ativa."
+            & $state.EndBusy (Get-UlanziText -Key 'Status atualizado agora; atualizacao automatica ativa.')
         }
     }).GetNewClosure())
     $form.add_Resize(({

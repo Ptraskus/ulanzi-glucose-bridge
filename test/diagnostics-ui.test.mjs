@@ -44,7 +44,7 @@ test("exportacao de diagnostico nao bloqueia a thread visual", () => {
 
 test("janela mostra progresso acessivel e proporcional ao tipo de espera", () => {
   assert.match(script, /\[Windows\.Forms\.ProgressBar\]::new\(\)/);
-  assert.match(script, /AccessibleName\s*=\s*"Progresso do diagnostico"/);
+  assert.match(script, /AccessibleName\s*=\s*\(Get-UlanziText -Key 'Progresso do diagnostico'\)/);
   assert.match(script, /AccessibleDescription/);
   assert.match(script, /ProgressBarStyle\]::Marquee/);
   assert.match(script, /ProgressBarStyle\]::Continuous/);
@@ -64,7 +64,7 @@ test("consulta de status desacelera em repouso e reaproveita a saude do bridge",
 
 test("estado do diagnostico nao depende somente de cor", () => {
   for (const status of ["OK", "ATENCAO", "PROBLEMA", "AGUARDANDO"]) {
-    assert.match(script, new RegExp(`"${status}"`));
+    assert.match(script, new RegExp(`(?:"${status}"|Get-UlanziText -Key '${status}')`));
   }
   assert.doesNotMatch(script, /itens em vermelho/i);
   assert.match(script, /Itens marcados como PROBLEMA precisam de atencao/);

@@ -1,3 +1,6 @@
+import { getAppLanguage, setAppLanguage, tr } from "./i18n.mjs";
+import { readFile } from "node:fs/promises";
+import { parseEnv } from "./env.mjs";
 import { dirname, join, resolve } from "node:path";
 import {
   createConfigSnapshot,
@@ -5,7 +8,7 @@ import {
   restoreConfigSnapshot,
 } from "./config-history.mjs";
 import { acquireConfigWriteLock } from "./config-write-lock.mjs";
-import { safeErrorMessage } from "./errors.mjs";
+import { BridgeError, safeErrorMessage } from "./errors.mjs";
 
 async function createSnapshotWithLock(options) {
   const releaseLock = await acquireConfigWriteLock(options.envPath);
@@ -20,6 +23,11 @@ async function main() {
   const [command, projectRootArgument, value] = process.argv.slice(2);
   const projectRoot = resolve(projectRootArgument || process.cwd());
   const envPath = join(projectRoot, ".env");
+  try {
+    setAppLanguage(getAppLanguage(parseEnv(await readFile(envPath, "utf8"))));
+  } catch {
+    setAppLanguage(getAppLanguage({}));
+  }
   const vaultPath = join(projectRoot, ".secrets", "vault.json");
   const historyDir = join(dirname(envPath), ".config-history");
   let result;
@@ -46,7 +54,7 @@ async function main() {
       })),
     };
   } else {
-    throw new Error("use list, create ou restore");
+    throw new BridgeError(tr("use list, create or restore", "use list, create ou restore"), { retryable: false });
   }
   process.stdout.write(`${JSON.stringify(result)}\n`);
 }

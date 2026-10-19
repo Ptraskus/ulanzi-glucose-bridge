@@ -4,6 +4,8 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { setAppLanguage } from "../src/i18n.mjs";
+setAppLanguage("pt-BR");
 import {
   checkForUpdate,
   compareVersions,

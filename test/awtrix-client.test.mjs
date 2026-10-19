@@ -297,7 +297,7 @@ test("cliente rejeita perfil sonoro desconhecido antes de acessar o relogio", as
     alarm: { soundProfile: "loud" },
     awtrix: { ...config.awtrix, api: "ng" },
   });
-  await assert.rejects(() => client.playGlucoseAlarm("low"), /perfil sonoro/);
+  await assert.rejects(() => client.playGlucoseAlarm("low"), /sound profile/);
   assert.equal(calls, 0);
 });
 
@@ -377,7 +377,7 @@ test("controle de volume informa firmware legado ou hardware sem buzzer sem escr
   assert.equal(calls.some((call) => call.options.method === "PATCH"), false);
   await assert.rejects(
     () => noBuzzer.writeDeviceSoundSettings({ soundEnabled: true, buzzerVolume: 50 }),
-    /exige AWTRIX NG com buzzer/,
+    /requires AWTRIX NG with a buzzer/,
   );
 });
 
@@ -394,12 +394,12 @@ test("controle de volume rejeita valores invalidos antes de acessar o TC001", as
   for (const buzzerVolume of [-1, 101, 25.5]) {
     await assert.rejects(
       () => client.writeDeviceSoundSettings({ soundEnabled: true, buzzerVolume }),
-      /invalidas/,
+      /invalid/,
     );
   }
   await assert.rejects(
     () => client.writeDeviceSoundSettings({ soundEnabled: "true", buzzerVolume: 25 }),
-    /invalidas/,
+    /invalid/,
   );
   assert.equal(calls, 0);
 });
@@ -428,11 +428,11 @@ test("controle de volume nao aceita numero serializado como texto pelo AWTRIX", 
 
   await assert.rejects(
     () => client.readDeviceSoundSettings(),
-    /nao informou um volume de buzzer valido/,
+    /did not report a valid buzzer volume/,
   );
   phase = "patch-invalid";
   await assert.rejects(
     () => client.writeDeviceSoundSettings({ soundEnabled: true, buzzerVolume: 35 }),
-    /nao confirmou o novo volume/,
+    /did not confirm the new volume/,
   );
 });

@@ -1,3 +1,5 @@
+import { getAppLanguage, setAppLanguage, tr } from "./i18n.mjs";
+import { parseEnv } from "./env.mjs";
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { validateConfigDocument } from "./config-editor.mjs";
@@ -15,7 +17,7 @@ async function optionalText(path) {
 
 async function main() {
   const [projectRootArgument, destinationArgument] = process.argv.slice(2);
-  if (!destinationArgument) throw new Error("o destino do diagnostico nao foi informado");
+  if (!destinationArgument) throw new Error(tr("the diagnostics destination was not provided", "o destino do diagnostico nao foi informado"));
   const projectRoot = resolve(projectRootArgument || process.cwd());
   const destinationPath = resolve(destinationArgument);
   let config = {};
@@ -23,6 +25,7 @@ async function main() {
   const extraWarnings = [];
   try {
     const envText = await readFile(join(projectRoot, ".env"), "utf8");
+    setAppLanguage(getAppLanguage(parseEnv(envText)));
     const vaultText = await optionalText(join(projectRoot, ".secrets", "vault.json"));
     config = validateConfigDocument(envText, vaultText);
     configurationState = { valid: true, issue: null };
@@ -50,7 +53,7 @@ async function main() {
 }
 
 main().catch((error) => {
-  const message = sanitizeDiagnosticText(error?.message ?? "erro", {
+  const message = sanitizeDiagnosticText(error?.message ?? tr("error", "erro"), {
     includeGlucose: false,
     maxLength: 300,
   });

@@ -136,6 +136,8 @@ export function runtimeStatus(state, reading, health, now = new Date()) {
     // Campos legados mantêm compatibilidade com versões anteriores da bandeja.
     status: available ? "active" : replaceSensor ? "replace-sensor" : "unavailable",
     text: state.text,
+    displayUnits: state.displayUnits === "mmol" ? "mmol" : "mgdl",
+    language: state.language === "pt-BR" ? "pt-BR" : "en",
     kind: state.kind,
     textColor: state.textColor,
     trend: available ? reading?.trend ?? "unknown" : null,
@@ -147,6 +149,7 @@ export function runtimeStatus(state, reading, health, now = new Date()) {
     source: { ...safeHealth.source },
     clock: { ...safeHealth.clock },
     reading: {
+      displayUnits: state.displayUnits === "mmol" ? "mmol" : "mgdl",
       timestamp: readingTimestamp,
       expiresAt,
     },

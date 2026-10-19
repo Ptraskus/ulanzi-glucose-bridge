@@ -20,6 +20,8 @@ public static class UlanziTrayNative {
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $bridgeScript = Join-Path $PSScriptRoot "iniciar.ps1"
 $envPath = Join-Path $projectRoot ".env"
+. (Join-Path $PSScriptRoot "ui-language.ps1")
+[void](Initialize-UlanziLanguage -EnvPath $envPath)
 $runtimePath = Join-Path $projectRoot ".runtime"
 $statusPath = Join-Path $runtimePath "status.json"
 $alarmStatePath = Join-Path $runtimePath "alarm-state.json"
@@ -33,22 +35,22 @@ $diagnosticsUiScript = Join-Path $PSScriptRoot "diagnosticos-ui.ps1"
 $maintenanceUiScript = Join-Path $PSScriptRoot "manutencao-ui.ps1"
 $panelUiScript = Join-Path $PSScriptRoot "painel-ui.ps1"
 if (-not (Test-Path -LiteralPath $themeUiScript)) {
-    throw "O modulo de aparencia nao foi encontrado."
+    throw (Get-UlanziText -Key 'O modulo de aparencia nao foi encontrado.')
 }
 if (-not (Test-Path -LiteralPath $configurationUiScript)) {
-    throw "O modulo da tela de configuracoes nao foi encontrado."
+    throw (Get-UlanziText -Key 'O modulo da tela de configuracoes nao foi encontrado.')
 }
 if (-not (Test-Path -LiteralPath $firstRunUiScript)) {
-    throw "O assistente de primeira configuracao nao foi encontrado."
+    throw (Get-UlanziText -Key 'O assistente de primeira configuracao nao foi encontrado.')
 }
 if (-not (Test-Path -LiteralPath $diagnosticsUiScript)) {
-    throw "O modulo da tela de diagnosticos nao foi encontrado."
+    throw (Get-UlanziText -Key 'O modulo da tela de diagnosticos nao foi encontrado.')
 }
 if (-not (Test-Path -LiteralPath $maintenanceUiScript)) {
-    throw "O modulo da tela de manutencao nao foi encontrado."
+    throw (Get-UlanziText -Key 'O modulo da tela de manutencao nao foi encontrado.')
 }
 if (-not (Test-Path -LiteralPath $panelUiScript)) {
-    throw "O modulo do painel nao foi encontrado."
+    throw (Get-UlanziText -Key 'O modulo do painel nao foi encontrado.')
 }
 . $themeUiScript
 . $configurationUiScript
@@ -94,7 +96,7 @@ $script:controlPanelController = $null
 $script:preferredDialogOwner = $null
 $script:preferredConfigurationTab = "alerts"
 $script:configurationState = "checking"
-$script:configurationMessage = "Verificando a configuracao inicial..."
+$script:configurationMessage = (Get-UlanziText -Key 'Verificando a configuracao inicial...')
 $script:configurationCheckOperation = $null
 $script:configurationCheckDeadline = [DateTime]::MinValue
 $script:configurationCheckReason = "startup"
@@ -133,7 +135,7 @@ function Get-EnvBoolean {
 
     $raw = (Get-EnvValue -Name $Name -DefaultValue ([string]$DefaultValue)).Trim()
     if ($raw -match '^(1|true|yes|sim)$') { return $true }
-    if ($raw -match '^(0|false|no|nao|não)$') { return $false }
+    if ($raw -match '^(0|false|no|nao|n\u00e3o)$') { return $false }
     return $DefaultValue
 }
 
@@ -163,14 +165,14 @@ function Write-StopBridgeRequest {
         [IO.File]::WriteAllText($temporaryPath, "$json`n", [Text.UTF8Encoding]::new($false))
         try {
             if ([IO.File]::Exists($stopRequestPath)) {
-                [IO.File]::Replace($temporaryPath, $stopRequestPath, $null)
+                [IO.File]::Replace($temporaryPath, $stopRequestPath, [NullString]::Value)
             } else {
                 [IO.File]::Move($temporaryPath, $stopRequestPath)
             }
         } catch {
             if (-not [IO.File]::Exists($temporaryPath)) { throw }
             if ([IO.File]::Exists($stopRequestPath)) {
-                [IO.File]::Replace($temporaryPath, $stopRequestPath, $null)
+                [IO.File]::Replace($temporaryPath, $stopRequestPath, [NullString]::Value)
             } else {
                 [IO.File]::Move($temporaryPath, $stopRequestPath)
             }
@@ -244,46 +246,46 @@ try {
 $requestTimeoutSeconds = [Math]::Max(2, [Math]::Min(60, $requestTimeoutSeconds))
 $testSoundTimeoutSeconds = [Math]::Max(120, ($requestTimeoutSeconds * 6) + 30)
 
-$panelItem = [Windows.Forms.ToolStripMenuItem]::new("Abrir painel")
+$panelItem = [Windows.Forms.ToolStripMenuItem]::new((Get-UlanziText -Key 'Abrir painel'))
 $panelItem.Font = [Drawing.Font]::new($panelItem.Font, [Drawing.FontStyle]::Bold)
-$firstRunItem = [Windows.Forms.ToolStripMenuItem]::new("Configurar agora...")
+$firstRunItem = [Windows.Forms.ToolStripMenuItem]::new((Get-UlanziText -Key 'Configurar agora...'))
 $firstRunItem.Font = [Drawing.Font]::new($firstRunItem.Font, [Drawing.FontStyle]::Bold)
 $firstRunItem.Visible = $false
-$statusItem = [Windows.Forms.ToolStripMenuItem]::new("Status: iniciando")
+$statusItem = [Windows.Forms.ToolStripMenuItem]::new((Get-UlanziText -Key 'Status: iniciando'))
 $statusItem.Enabled = $false
-$glucoseItem = [Windows.Forms.ToolStripMenuItem]::new("Glicemia: aguardando")
+$glucoseItem = [Windows.Forms.ToolStripMenuItem]::new((Get-UlanziText -Key 'Glicemia: aguardando'))
 $glucoseItem.Enabled = $false
-$sourceItem = [Windows.Forms.ToolStripMenuItem]::new("Fonte: aguardando")
+$sourceItem = [Windows.Forms.ToolStripMenuItem]::new((Get-UlanziText -Key 'Fonte: aguardando'))
 $sourceItem.Enabled = $false
-$readingItem = [Windows.Forms.ToolStripMenuItem]::new("Leitura: aguardando")
+$readingItem = [Windows.Forms.ToolStripMenuItem]::new((Get-UlanziText -Key 'Leitura: aguardando'))
 $readingItem.Enabled = $false
-$clockItem = [Windows.Forms.ToolStripMenuItem]::new("Horario: aguardando")
+$clockItem = [Windows.Forms.ToolStripMenuItem]::new((Get-UlanziText -Key 'Horario: aguardando'))
 $clockItem.Enabled = $false
-$tc001Item = [Windows.Forms.ToolStripMenuItem]::new("TC001: aguardando")
+$tc001Item = [Windows.Forms.ToolStripMenuItem]::new((Get-UlanziText -Key 'TC001: aguardando'))
 $tc001Item.Enabled = $false
-$soundItem = [Windows.Forms.ToolStripMenuItem]::new("Som: aguardando")
+$soundItem = [Windows.Forms.ToolStripMenuItem]::new((Get-UlanziText -Key 'Som: aguardando'))
 $soundItem.Enabled = $false
-$deviceSoundItem = [Windows.Forms.ToolStripMenuItem]::new("Buzzer geral: ainda nao consultado")
+$deviceSoundItem = [Windows.Forms.ToolStripMenuItem]::new((Get-UlanziText -Key 'Buzzer geral: ainda nao consultado'))
 $deviceSoundItem.Enabled = $false
-$intervalItem = [Windows.Forms.ToolStripMenuItem]::new("Atualizacao: a cada $script:pollInterval segundos")
+$intervalItem = [Windows.Forms.ToolStripMenuItem]::new((Get-UlanziText -Key 'Atualizacao: a cada {0} segundos' -Arguments @(($script:pollInterval))))
 $intervalItem.Enabled = $false
-$volumeControlItem = [Windows.Forms.ToolStripMenuItem]::new("Ligar ou desligar som do TC001...")
+$volumeControlItem = [Windows.Forms.ToolStripMenuItem]::new((Get-UlanziText -Key 'Ligar ou desligar som do TC001...'))
 $volumeControlItem.Enabled = $false
-$diagnosticsItem = [Windows.Forms.ToolStripMenuItem]::new("Verificar tudo...")
+$diagnosticsItem = [Windows.Forms.ToolStripMenuItem]::new((Get-UlanziText -Key 'Verificar tudo...'))
 $diagnosticsItem.Enabled = $true
-$maintenanceItem = [Windows.Forms.ToolStripMenuItem]::new("Atualizacoes e recuperacao...")
-$testSoundItem = [Windows.Forms.ToolStripMenuItem]::new("Testar som")
+$maintenanceItem = [Windows.Forms.ToolStripMenuItem]::new((Get-UlanziText -Key 'Atualizacoes e recuperacao...'))
+$testSoundItem = [Windows.Forms.ToolStripMenuItem]::new((Get-UlanziText -Key 'Testar som'))
 $testSoundItem.Enabled = $false
-$configureItem = [Windows.Forms.ToolStripMenuItem]::new("Configuracoes...")
-$openNightscoutItem = [Windows.Forms.ToolStripMenuItem]::new("Abrir Nightscout")
+$configureItem = [Windows.Forms.ToolStripMenuItem]::new((Get-UlanziText -Key 'Configuracoes...'))
+$openNightscoutItem = [Windows.Forms.ToolStripMenuItem]::new((Get-UlanziText -Key 'Abrir Nightscout'))
 if ([string]::IsNullOrWhiteSpace([string]$script:nightscoutUrl)) {
-    $openNightscoutItem.Text = "Nightscout nao configurado"
+    $openNightscoutItem.Text = (Get-UlanziText -Key 'Nightscout nao configurado')
     $openNightscoutItem.Enabled = $false
 }
-$openFolderItem = [Windows.Forms.ToolStripMenuItem]::new("Abrir pasta do projeto")
-$restartItem = [Windows.Forms.ToolStripMenuItem]::new("Reiniciar conexao")
-$toggleWidgetItem = [Windows.Forms.ToolStripMenuItem]::new("Ocultar mostrador")
-$exitItem = [Windows.Forms.ToolStripMenuItem]::new("Encerrar")
+$openFolderItem = [Windows.Forms.ToolStripMenuItem]::new((Get-UlanziText -Key 'Abrir pasta do projeto'))
+$restartItem = [Windows.Forms.ToolStripMenuItem]::new((Get-UlanziText -Key 'Reiniciar conexao'))
+$toggleWidgetItem = [Windows.Forms.ToolStripMenuItem]::new((Get-UlanziText -Key 'Ocultar mostrador'))
+$exitItem = [Windows.Forms.ToolStripMenuItem]::new((Get-UlanziText -Key 'Encerrar'))
 $statusSeparator = [Windows.Forms.ToolStripSeparator]::new()
 $actionsSeparator = [Windows.Forms.ToolStripSeparator]::new()
 $exitSeparator = [Windows.Forms.ToolStripSeparator]::new()
@@ -304,11 +306,11 @@ $menu.ShowImageMargin = $false
 $notifyIcon = [Windows.Forms.NotifyIcon]::new()
 $notifyIcon.Icon = if ($null -ne $script:applicationIcon) { $script:applicationIcon } else { [Drawing.SystemIcons]::Information }
 $notifyIcon.ContextMenuStrip = $menu
-$notifyIcon.Text = "Ulanzi Libre: iniciando"
+$notifyIcon.Text = (Get-UlanziText -Key 'Ulanzi Libre: iniciando')
 $notifyIcon.Visible = $true
 
 $widget = [Windows.Forms.Form]::new()
-$widget.Text = "Ulanzi Libre Glicemia"
+$widget.Text = (Get-UlanziText -Key 'Ulanzi Libre Glicemia')
 [void](Set-UlanziUiApplicationIcon -Form $widget -ProjectRoot $projectRoot)
 $widget.FormBorderStyle = [Windows.Forms.FormBorderStyle]::None
 $widget.ShowInTaskbar = $false
@@ -439,28 +441,28 @@ function Format-Age {
     param([Parameter(Mandatory = $false)][AllowNull()][object]$Timestamp)
 
     $date = ConvertTo-UtcDate -Value $Timestamp
-    if ($null -eq $date) { return "nunca" }
+    if ($null -eq $date) { return (Get-UlanziText -Key 'nunca') }
     $seconds = [Math]::Max(0, [Math]::Floor(([DateTime]::UtcNow - $date).TotalSeconds))
-    if ($seconds -lt 5) { return "agora" }
-    if ($seconds -lt 60) { return "ha $([int]$seconds) s" }
-    if ($seconds -lt 3600) { return "ha $([int][Math]::Floor($seconds / 60)) min" }
-    if ($seconds -lt 86400) { return "ha $([int][Math]::Floor($seconds / 3600)) h" }
-    return "ha $([int][Math]::Floor($seconds / 86400)) d"
+    if ($seconds -lt 5) { return (Get-UlanziText -Key 'agora') }
+    if ($seconds -lt 60) { return (Get-UlanziText -Key 'ha {0} s' -Arguments @(($([int]$seconds)))) }
+    if ($seconds -lt 3600) { return (Get-UlanziText -Key 'ha {0} min' -Arguments @(($([int][Math]::Floor($seconds / 60))))) }
+    if ($seconds -lt 86400) { return (Get-UlanziText -Key 'ha {0} h' -Arguments @(($([int][Math]::Floor($seconds / 3600))))) }
+    return (Get-UlanziText -Key 'ha {0} d' -Arguments @(($([int][Math]::Floor($seconds / 86400)))))
 }
 
 function Get-AlarmLabel {
     param([Parameter(Mandatory = $false)][AllowNull()][object]$Kind)
 
     switch ([string]$Kind) {
-        "low"         { return "glicemia baixa" }
-        "high"        { return "glicemia alta" }
-        "up"          { return "subida" }
-        "down"        { return "queda" }
-        "double-up"   { return "subida rapida" }
-        "no-data"     { return "sem dado" }
-        "unavailable" { return "sem dado" }
-        "test"        { return "teste" }
-        default         { return "alarme" }
+        "low"         { return (Get-UlanziText -Key 'glicemia baixa') }
+        "high"        { return (Get-UlanziText -Key 'glicemia alta') }
+        "up"          { return (Get-UlanziText -Key 'subida') }
+        "down"        { return (Get-UlanziText -Key 'queda') }
+        "double-up"   { return (Get-UlanziText -Key 'subida rapida') }
+        "no-data"     { return (Get-UlanziText -Key 'sem dado') }
+        "unavailable" { return (Get-UlanziText -Key 'sem dado') }
+        "test"        { return (Get-UlanziText -Key 'teste') }
+        default         { return (Get-UlanziText -Key 'alarme') }
     }
 }
 
@@ -537,11 +539,11 @@ function Set-GlucoseDisplay {
     } catch {
         $glucoseLabel.ForeColor = [Drawing.Color]::Gainsboro
     }
-    $glucoseItem.Text = "Glicemia: $Text"
+    $glucoseItem.Text = (Get-UlanziText -Key 'Glicemia: {0}' -Arguments @(($Text)))
 
-    $symbol = if ($Text -eq "SEM DADO") {
+    $symbol = if ($Text -eq (Get-UlanziText -Key 'SEM DADO')) {
         "!"
-    } elseif ($Text -eq "TROCAR") {
+    } elseif ($Text -eq (Get-UlanziText -Key 'TROCAR')) {
         "T"
     } elseif ($Text -eq "...") {
         "?"
@@ -612,7 +614,7 @@ function Update-GlucoseDisplay {
         $kind = [string](Get-StatusProperty -Object $Status -Name "kind" -DefaultValue "unavailable")
         if ($kind -eq "replace-sensor") {
             $replaceColor = [string](Get-StatusProperty -Object $Status -Name "textColor" -DefaultValue "#FF3131")
-            Set-GlucoseDisplay -Text "TROCAR" -Color $replaceColor
+            Set-GlucoseDisplay -Text (Get-UlanziText -Key 'TROCAR') -Color $replaceColor
             return
         }
         $reading = Get-StatusProperty -Object $Status -Name "reading"
@@ -625,12 +627,12 @@ function Update-GlucoseDisplay {
             [string](Get-StatusProperty -Object $Status -Name "status" -DefaultValue "unavailable") -ne "active" -or
             ($null -ne $expiresAt -and [DateTime]::UtcNow -ge $expiresAt)
         ) {
-            Set-GlucoseDisplay -Text "SEM DADO" -Color "#FF3131"
+            Set-GlucoseDisplay -Text (Get-UlanziText -Key 'SEM DADO') -Color "#FF3131"
             return
         }
         $value = ([string](Get-StatusProperty -Object $Status -Name "text" -DefaultValue "") -split ' ')[0]
         if ([string]::IsNullOrWhiteSpace($value)) {
-            Set-GlucoseDisplay -Text "SEM DADO" -Color "#FF3131"
+            Set-GlucoseDisplay -Text (Get-UlanziText -Key 'SEM DADO') -Color "#FF3131"
             return
         }
         $arrow = switch ([string](Get-StatusProperty -Object $Status -Name "trend" -DefaultValue "unknown")) {
@@ -659,12 +661,12 @@ function Update-StatusDetails {
     Set-ErrorToolTip -Item $soundItem -ErrorText ""
     Set-ErrorToolTip -Item $deviceSoundItem -ErrorText ""
     if ($null -eq $Status) {
-        $sourceItem.Text = "Fonte: aguardando"
-        $readingItem.Text = "Leitura: aguardando"
-        $clockItem.Text = "Horario: aguardando"
-        $tc001Item.Text = "TC001: aguardando"
-        $soundItem.Text = "Som: aguardando"
-        $deviceSoundItem.Text = "Buzzer geral: aguardando"
+        $sourceItem.Text = (Get-UlanziText -Key 'Fonte: aguardando')
+        $readingItem.Text = (Get-UlanziText -Key 'Leitura: aguardando')
+        $clockItem.Text = (Get-UlanziText -Key 'Horario: aguardando')
+        $tc001Item.Text = (Get-UlanziText -Key 'TC001: aguardando')
+        $soundItem.Text = (Get-UlanziText -Key 'Som: aguardando')
+        $deviceSoundItem.Text = (Get-UlanziText -Key 'Buzzer geral: aguardando')
         return
     }
 
@@ -677,19 +679,19 @@ function Update-StatusDetails {
     }
     $displayKind = [string](Get-StatusProperty -Object $Status -Name "kind" -DefaultValue "unavailable")
     if ($displayKind -eq "replace-sensor") {
-        $readingItem.Text = "Leitura: trocar sensor"
+        $readingItem.Text = (Get-UlanziText -Key 'Leitura: trocar sensor')
     } elseif ($null -eq (ConvertTo-UtcDate -Value $readingTimestamp)) {
-        $readingItem.Text = "Leitura: nenhuma recebida"
+        $readingItem.Text = (Get-UlanziText -Key 'Leitura: nenhuma recebida')
     } else {
-        $readingItem.Text = "Leitura: $(Format-Age -Timestamp $readingTimestamp)"
+        $readingItem.Text = (Get-UlanziText -Key 'Leitura: {0}' -Arguments @(($(Format-Age -Timestamp $readingTimestamp))))
     }
 
     if ($version -lt 2) {
-        $sourceItem.Text = "Fonte: nao informada pelo status basico"
-        $clockItem.Text = "Horario: nao informado pelo status basico"
-        $tc001Item.Text = "TC001: nao informado pelo status basico"
-        $soundItem.Text = "Som: nao informado pelo status basico"
-        $deviceSoundItem.Text = "Buzzer geral: nao informado pelo status basico"
+        $sourceItem.Text = (Get-UlanziText -Key 'Fonte: nao informada pelo status basico')
+        $clockItem.Text = (Get-UlanziText -Key 'Horario: nao informado pelo status basico')
+        $tc001Item.Text = (Get-UlanziText -Key 'TC001: nao informado pelo status basico')
+        $soundItem.Text = (Get-UlanziText -Key 'Som: nao informado pelo status basico')
+        $deviceSoundItem.Text = (Get-UlanziText -Key 'Buzzer geral: nao informado pelo status basico')
         return
     }
 
@@ -700,18 +702,18 @@ function Update-StatusDetails {
     $offsetMinutes = [Math]::Round([Math]::Abs($offsetSeconds) / 60, 1)
     switch ($clockState) {
         "ok" {
-            $clockItem.Text = "Horario: coerente com a leitura"
+            $clockItem.Text = (Get-UlanziText -Key 'Horario: coerente com a leitura')
         }
         "warning" {
-            $clockItem.Text = "Horario: leitura adiantada em cerca de $offsetMinutes min"
+            $clockItem.Text = (Get-UlanziText -Key 'Horario: leitura adiantada em cerca de {0} min' -Arguments @(($offsetMinutes)))
             Set-ErrorToolTip -Item $clockItem -ErrorText (Get-StatusProperty -Object $clock -Name "message")
         }
         "error" {
-            $clockItem.Text = "Horario: diferenca critica de cerca de $offsetMinutes min"
+            $clockItem.Text = (Get-UlanziText -Key 'Horario: diferenca critica de cerca de {0} min' -Arguments @(($offsetMinutes)))
             Set-ErrorToolTip -Item $clockItem -ErrorText (Get-StatusProperty -Object $clock -Name "message")
         }
         default {
-            $clockItem.Text = "Horario: aguardando uma leitura valida"
+            $clockItem.Text = (Get-UlanziText -Key 'Horario: aguardando uma leitura valida')
         }
     }
 
@@ -724,27 +726,27 @@ function Update-StatusDetails {
     switch ($sourceState) {
         "connecting" {
             $lastOk = if ($null -eq (ConvertTo-UtcDate -Value $sourceSuccess)) {
-                "primeira consulta"
+                (Get-UlanziText -Key 'primeira consulta')
             } else {
-                "ultimo OK $(Format-Age -Timestamp $sourceSuccess)"
+                (Get-UlanziText -Key 'ultimo OK {0}' -Arguments @(($(Format-Age -Timestamp $sourceSuccess))))
             }
-            $sourceItem.Text = "Fonte: consultando agora - $lastOk"
+            $sourceItem.Text = (Get-UlanziText -Key 'Fonte: consultando agora - {0}' -Arguments @(($lastOk)))
         }
         "connected" {
-            $sourceItem.Text = "Fonte: conectada - consulta OK $(Format-Age -Timestamp $sourceSuccess)"
+            $sourceItem.Text = (Get-UlanziText -Key 'Fonte: conectada - consulta OK {0}' -Arguments @(($(Format-Age -Timestamp $sourceSuccess))))
         }
         "error" {
             $lastOk = if ($null -eq (ConvertTo-UtcDate -Value $sourceSuccess)) {
-                "nenhuma consulta confirmada"
+                (Get-UlanziText -Key 'nenhuma consulta confirmada')
             } else {
-                "ultimo OK $(Format-Age -Timestamp $sourceSuccess)"
+                (Get-UlanziText -Key 'ultimo OK {0}' -Arguments @(($(Format-Age -Timestamp $sourceSuccess))))
             }
-            $failureLabel = if ($sourceFailures -eq 1) { "1 falha" } else { "$sourceFailures falhas" }
-            $sourceItem.Text = "Fonte: falhou $(Format-Age -Timestamp $sourceAttempt) - $lastOk ($failureLabel)"
+            $failureLabel = if ($sourceFailures -eq 1) { (Get-UlanziText -Key '1 falha') } else { (Get-UlanziText -Key '{0} falhas' -Arguments @(($sourceFailures))) }
+            $sourceItem.Text = (Get-UlanziText -Key 'Fonte: falhou {0} - {1} ({2})' -Arguments @(($(Format-Age -Timestamp $sourceAttempt)), ($lastOk), ($failureLabel)))
             Set-ErrorToolTip -Item $sourceItem -ErrorText (Get-StatusProperty -Object $source -Name "lastError")
         }
         default {
-            $sourceItem.Text = "Fonte: aguardando primeira consulta"
+            $sourceItem.Text = (Get-UlanziText -Key 'Fonte: aguardando primeira consulta')
         }
     }
 
@@ -756,22 +758,22 @@ function Update-StatusDetails {
     $modeLabel = if ([string]::IsNullOrWhiteSpace($tc001Mode)) { "" } elseif ($tc001Mode -eq "ng") { " (NG)" } else { " (AWTRIX 3)" }
     switch ($tc001State) {
         "sending" {
-            $tc001Item.Text = "TC001: enviando agora$modeLabel"
+            $tc001Item.Text = (Get-UlanziText -Key 'TC001: enviando agora{0}' -Arguments @(($modeLabel)))
         }
         "confirmed" {
-            $tc001Item.Text = "TC001: envio confirmado $(Format-Age -Timestamp $tc001Confirmed)$modeLabel"
+            $tc001Item.Text = (Get-UlanziText -Key 'TC001: envio confirmado {0}{1}' -Arguments @(($(Format-Age -Timestamp $tc001Confirmed)), ($modeLabel)))
         }
         "error" {
             $lastOk = if ($null -eq (ConvertTo-UtcDate -Value $tc001Confirmed)) {
-                "nenhum envio confirmado"
+                (Get-UlanziText -Key 'nenhum envio confirmado')
             } else {
-                "ultimo OK $(Format-Age -Timestamp $tc001Confirmed)"
+                (Get-UlanziText -Key 'ultimo OK {0}' -Arguments @(($(Format-Age -Timestamp $tc001Confirmed))))
             }
-            $tc001Item.Text = "TC001: falhou $(Format-Age -Timestamp $tc001Attempt) - $lastOk$modeLabel"
+            $tc001Item.Text = (Get-UlanziText -Key 'TC001: falhou {0} - {1}{2}' -Arguments @(($(Format-Age -Timestamp $tc001Attempt)), ($lastOk), ($modeLabel)))
             Set-ErrorToolTip -Item $tc001Item -ErrorText (Get-StatusProperty -Object $tc001 -Name "lastError")
         }
         default {
-            $tc001Item.Text = "TC001: aguardando primeiro envio"
+            $tc001Item.Text = (Get-UlanziText -Key 'TC001: aguardando primeiro envio')
         }
     }
 
@@ -782,7 +784,7 @@ function Update-StatusDetails {
     $soundConfirmed = Get-StatusProperty -Object $sound -Name "lastConfirmedAt"
     $soundKind = Get-StatusProperty -Object $sound -Name "lastKind"
     $soundOrigin = [string](Get-StatusProperty -Object $sound -Name "lastOrigin" -DefaultValue "automatic")
-    $soundLabel = if ($soundOrigin -eq "test") { "teste" } else { Get-AlarmLabel -Kind $soundKind }
+    $soundLabel = if ($soundOrigin -eq "test") { (Get-UlanziText -Key 'teste') } else { Get-AlarmLabel -Kind $soundKind }
     switch ($soundState) {
         "pending" {
             $pendingKind = Get-AlarmLabel -Kind (Get-StatusProperty -Object $sound -Name "pendingKind")
@@ -791,29 +793,29 @@ function Update-StatusDetails {
             try { $attempts = [int](Get-StatusProperty -Object $sound -Name "pendingAttempts" -DefaultValue 0) } catch { $attempts = 0 }
             try { $maxAttempts = [int](Get-StatusProperty -Object $sound -Name "pendingMaxAttempts" -DefaultValue 0) } catch { $maxAttempts = 0 }
             $attemptLabel = if ($maxAttempts -gt 0) { " ($attempts/$maxAttempts)" } else { "" }
-            $soundItem.Text = "Som: aguardando confirmacao - $pendingKind$attemptLabel"
+            $soundItem.Text = (Get-UlanziText -Key 'Som: aguardando confirmacao - {0}{1}' -Arguments @(($pendingKind), ($attemptLabel)))
         }
         "confirmed" {
-            $prefix = if ($soundEnabled) { "Som" } else { "Som desativado; ultimo comando" }
-            $soundItem.Text = "$prefix`: aceito $(Format-Age -Timestamp $soundConfirmed) ($soundLabel)"
+            $prefix = if ($soundEnabled) { (Get-UlanziText -Key 'Som') } else { (Get-UlanziText -Key 'Som desativado; ultimo comando') }
+            $soundItem.Text = (Get-UlanziText -Key '{0}: aceito {1} ({2})' -Arguments @(($prefix), ($(Format-Age -Timestamp $soundConfirmed)), ($soundLabel)))
         }
         "error" {
             $lastOk = if ($null -eq (ConvertTo-UtcDate -Value $soundConfirmed)) {
-                "nenhum comando confirmado"
+                (Get-UlanziText -Key 'nenhum comando confirmado')
             } else {
-                "ultimo aceito $(Format-Age -Timestamp $soundConfirmed) ($soundLabel)"
+                (Get-UlanziText -Key 'ultimo aceito {0} ({1})' -Arguments @(($(Format-Age -Timestamp $soundConfirmed)), ($soundLabel)))
             }
-            $soundItem.Text = "Som: falhou $(Format-Age -Timestamp $soundAttempt) - $lastOk"
+            $soundItem.Text = (Get-UlanziText -Key 'Som: falhou {0} - {1}' -Arguments @(($(Format-Age -Timestamp $soundAttempt)), ($lastOk)))
             Set-ErrorToolTip -Item $soundItem -ErrorText (Get-StatusProperty -Object $sound -Name "lastError")
         }
         default {
             if ($null -ne (ConvertTo-UtcDate -Value $soundConfirmed)) {
-                $prefix = if ($soundEnabled) { "Som" } else { "Som desativado; ultimo comando" }
-                $soundItem.Text = "$prefix`: aceito $(Format-Age -Timestamp $soundConfirmed) ($soundLabel)"
+                $prefix = if ($soundEnabled) { (Get-UlanziText -Key 'Som') } else { (Get-UlanziText -Key 'Som desativado; ultimo comando') }
+                $soundItem.Text = (Get-UlanziText -Key '{0}: aceito {1} ({2})' -Arguments @(($prefix), ($(Format-Age -Timestamp $soundConfirmed)), ($soundLabel)))
             } elseif ($soundEnabled) {
-                $soundItem.Text = "Som: nenhum comando confirmado"
+                $soundItem.Text = (Get-UlanziText -Key 'Som: nenhum comando confirmado')
             } else {
-                $soundItem.Text = "Som: desativado - nenhum comando confirmado"
+                $soundItem.Text = (Get-UlanziText -Key 'Som: desativado - nenhum comando confirmado')
             }
         }
     }
@@ -825,33 +827,33 @@ function Update-StatusDetails {
     $volumeLabel = if ($null -eq $deviceSoundVolume) { "?" } else { "$deviceSoundVolume%" }
     switch ($deviceSoundState) {
         "reading" {
-            $deviceSoundItem.Text = "Buzzer geral: consultando..."
+            $deviceSoundItem.Text = (Get-UlanziText -Key 'Buzzer geral: consultando...')
         }
         "writing" {
-            $deviceSoundItem.Text = "Buzzer geral: aplicando..."
+            $deviceSoundItem.Text = (Get-UlanziText -Key 'Buzzer geral: aplicando...')
         }
         "confirmed" {
-            $deviceSoundItem.Text = "Buzzer geral: ligado (nivel tecnico $volumeLabel)"
+            $deviceSoundItem.Text = (Get-UlanziText -Key 'Buzzer geral: ligado (nivel tecnico {0})' -Arguments @(($volumeLabel)))
         }
         "muted" {
-            $deviceSoundItem.Text = "Buzzer geral: desligado (nivel tecnico $volumeLabel)"
+            $deviceSoundItem.Text = (Get-UlanziText -Key 'Buzzer geral: desligado (nivel tecnico {0})' -Arguments @(($volumeLabel)))
         }
         "silent" {
-            $deviceSoundItem.Text = "Buzzer geral: sem som"
+            $deviceSoundItem.Text = (Get-UlanziText -Key 'Buzzer geral: sem som')
         }
         "unsupported" {
             if ($deviceSoundMode -eq "3") {
-                $deviceSoundItem.Text = "Buzzer geral: controlado pelo AWTRIX 3"
+                $deviceSoundItem.Text = (Get-UlanziText -Key 'Buzzer geral: controlado pelo AWTRIX 3')
             } else {
-                $deviceSoundItem.Text = "Buzzer geral: indisponivel neste TC001"
+                $deviceSoundItem.Text = (Get-UlanziText -Key 'Buzzer geral: indisponivel neste TC001')
             }
         }
         "error" {
-            $deviceSoundItem.Text = "Buzzer geral: nao confirmado"
+            $deviceSoundItem.Text = (Get-UlanziText -Key 'Buzzer geral: nao confirmado')
             Set-ErrorToolTip -Item $deviceSoundItem -ErrorText (Get-StatusProperty -Object $deviceSound -Name "lastRequestError")
         }
         default {
-            $deviceSoundItem.Text = "Buzzer geral: abra o controle para consultar"
+            $deviceSoundItem.Text = (Get-UlanziText -Key 'Buzzer geral: abra o controle para consultar')
         }
     }
 }
@@ -867,16 +869,16 @@ function Get-BridgeResponsiveness {
         }
     }
     if (-not (Test-BridgeRunning)) {
-        return [pscustomobject]@{ Responsive = $false; Busy = $false; Text = "aplicativo parado" }
+        return [pscustomobject]@{ Responsive = $false; Busy = $false; Text = (Get-UlanziText -Key 'aplicativo parado') }
     }
     if ($null -eq $Status) {
-        return [pscustomobject]@{ Responsive = $false; Busy = $false; Text = "aguardando status recente" }
+        return [pscustomobject]@{ Responsive = $false; Busy = $false; Text = (Get-UlanziText -Key 'aguardando status recente') }
     }
 
     $version = 1
     try { $version = [int](Get-StatusProperty -Object $Status -Name "version" -DefaultValue 1) } catch { $version = 1 }
     if ($version -lt 2) {
-        return [pscustomobject]@{ Responsive = $true; Busy = $false; Text = "status basico recebido" }
+        return [pscustomobject]@{ Responsive = $true; Busy = $false; Text = (Get-UlanziText -Key 'status basico recebido') }
     }
 
     $bridge = Get-StatusProperty -Object $Status -Name "bridge"
@@ -890,13 +892,13 @@ function Get-BridgeResponsiveness {
         [DateTime]::UtcNow -gt $nextCycleAt.AddSeconds($overdueGrace) -and
         [DateTime]::UtcNow -gt $writtenAt.AddSeconds($overdueGrace)
     ) {
-        return [pscustomobject]@{ Responsive = $false; Busy = $false; Text = "bridge sem resposta" }
+        return [pscustomobject]@{ Responsive = $false; Busy = $false; Text = (Get-UlanziText -Key 'bridge sem resposta') }
     }
     if ($null -ne $cycleDeadlineAt -and [DateTime]::UtcNow -gt $cycleDeadlineAt) {
-        return [pscustomobject]@{ Responsive = $false; Busy = $false; Text = "ciclo do bridge excedeu o prazo" }
+        return [pscustomobject]@{ Responsive = $false; Busy = $false; Text = (Get-UlanziText -Key 'ciclo do bridge excedeu o prazo') }
     }
 
-    return [pscustomobject]@{ Responsive = $true; Busy = $false; Text = "status recente recebido" }
+    return [pscustomobject]@{ Responsive = $true; Busy = $false; Text = (Get-UlanziText -Key 'status recente recebido') }
 }
 
 function Get-OverallTrayStatus {
@@ -914,7 +916,7 @@ function Get-OverallTrayStatus {
             [string](Get-StatusProperty -Object $Status -Name "status" -DefaultValue "unavailable") -eq "active" -and
             ($null -eq $legacyExpiresAt -or [DateTime]::UtcNow -lt $legacyExpiresAt)
         return [pscustomobject]@{
-            Text = if ($active) { "ativo (status basico)" } else { "sem dado (status basico)" }
+            Text = if ($active) { (Get-UlanziText -Key 'ativo (status basico)') } else { (Get-UlanziText -Key 'sem dado (status basico)') }
             Healthy = $active
         }
     }
@@ -939,15 +941,15 @@ function Get-OverallTrayStatus {
     }
     $expiresAt = ConvertTo-UtcDate -Value $readingExpiresAt
     if ($clockState -eq "error" -or $clockState -eq "warning") {
-        return [pscustomobject]@{ Text = "diferenca de horario detectada"; Healthy = $false }
+        return [pscustomobject]@{ Text = (Get-UlanziText -Key 'diferenca de horario detectada'); Healthy = $false }
     }
-    if ($sourceState -eq "error") { return [pscustomobject]@{ Text = "fonte com erro"; Healthy = $false } }
-    if ($tc001State -eq "error") { return [pscustomobject]@{ Text = "TC001 com erro"; Healthy = $false } }
+    if ($sourceState -eq "error") { return [pscustomobject]@{ Text = (Get-UlanziText -Key 'fonte com erro'); Healthy = $false } }
+    if ($tc001State -eq "error") { return [pscustomobject]@{ Text = (Get-UlanziText -Key 'TC001 com erro'); Healthy = $false } }
     if ($displayKind -eq "replace-sensor") {
-        return [pscustomobject]@{ Text = "trocar sensor"; Healthy = $false }
+        return [pscustomobject]@{ Text = (Get-UlanziText -Key 'trocar sensor'); Healthy = $false }
     }
     if ($displayState -ne "active" -or ($null -ne $expiresAt -and [DateTime]::UtcNow -ge $expiresAt)) {
-        return [pscustomobject]@{ Text = "sem dado recente"; Healthy = $false }
+        return [pscustomobject]@{ Text = (Get-UlanziText -Key 'sem dado recente'); Healthy = $false }
     }
     if ($tc001State -eq "confirmed") {
         $readingTimestamp = ConvertTo-UtcDate -Value (Get-StatusProperty -Object $reading -Name "timestamp")
@@ -956,20 +958,20 @@ function Get-OverallTrayStatus {
             $null -ne $readingTimestamp -and
             ($null -eq $confirmedReadingTimestamp -or $readingTimestamp -ne $confirmedReadingTimestamp)
         ) {
-            return [pscustomobject]@{ Text = "leitura aguardando envio ao TC001"; Healthy = $false }
+            return [pscustomobject]@{ Text = (Get-UlanziText -Key 'leitura aguardando envio ao TC001'); Healthy = $false }
         }
     }
-    if ($soundState -eq "error") { return [pscustomobject]@{ Text = "comando de som com erro"; Healthy = $false } }
+    if ($soundState -eq "error") { return [pscustomobject]@{ Text = (Get-UlanziText -Key 'comando de som com erro'); Healthy = $false } }
     if ($automaticSoundEnabled -and ($deviceSoundState -eq "muted" -or $deviceSoundState -eq "silent")) {
-        return [pscustomobject]@{ Text = "alertas sonoros silenciados no TC001"; Healthy = $false }
+        return [pscustomobject]@{ Text = (Get-UlanziText -Key 'alertas sonoros silenciados no TC001'); Healthy = $false }
     }
     if ($sourceState -eq "waiting" -or $tc001State -eq "waiting") {
-        return [pscustomobject]@{ Text = "iniciando"; Healthy = $false }
+        return [pscustomobject]@{ Text = (Get-UlanziText -Key 'iniciando'); Healthy = $false }
     }
-    if ($sourceState -eq "connecting") { return [pscustomobject]@{ Text = "consultando fonte"; Healthy = $true } }
-    if ($tc001State -eq "sending") { return [pscustomobject]@{ Text = "atualizando TC001"; Healthy = $true } }
-    if ($soundState -eq "pending") { return [pscustomobject]@{ Text = "alarme pendente"; Healthy = $false } }
-    return [pscustomobject]@{ Text = "operando normalmente"; Healthy = $true }
+    if ($sourceState -eq "connecting") { return [pscustomobject]@{ Text = (Get-UlanziText -Key 'consultando fonte'); Healthy = $true } }
+    if ($tc001State -eq "sending") { return [pscustomobject]@{ Text = (Get-UlanziText -Key 'atualizando TC001'); Healthy = $true } }
+    if ($soundState -eq "pending") { return [pscustomobject]@{ Text = (Get-UlanziText -Key 'alarme pendente'); Healthy = $false } }
+    return [pscustomobject]@{ Text = (Get-UlanziText -Key 'operando normalmente'); Healthy = $true }
 }
 
 function Set-TrayStatus {
@@ -1027,7 +1029,7 @@ function Update-WindowsFallbackNotifications {
         [pscustomobject]@{
             Key = "bridge"
             Failed = (-not $bridgeResponsive)
-            Label = "aplicativo"
+            Label = (Get-UlanziText -Key 'aplicativo')
         }
     )
     if ($bridgeResponsive) {
@@ -1038,7 +1040,7 @@ function Update-WindowsFallbackNotifications {
             [pscustomobject]@{
             Key = "source"
             Failed = ([string](Get-StatusProperty -Object $source -Name "state" -DefaultValue "waiting") -eq "error")
-            Label = "fonte de glicemia"
+            Label = (Get-UlanziText -Key 'fonte de glicemia')
             },
             [pscustomobject]@{
                 Key = "tc001"
@@ -1048,7 +1050,7 @@ function Update-WindowsFallbackNotifications {
             [pscustomobject]@{
                 Key = "clock"
                 Failed = ([string](Get-StatusProperty -Object $clock -Name "state" -DefaultValue "unknown") -in @("warning", "error"))
-                Label = "horario da fonte ou do computador"
+                Label = (Get-UlanziText -Key 'horario da fonte ou do computador')
             }
         )
     }
@@ -1079,9 +1081,9 @@ function Update-WindowsFallbackNotifications {
 
     if ($newFailures.Count -gt 0) {
         Invoke-WindowsFallbackSound
-        Show-TrayBalloon -Text "Falha persistente em: $($newFailures -join ', '). Abra Verificar tudo para obter orientacao." -Icon ([Windows.Forms.ToolTipIcon]::Warning)
+        Show-TrayBalloon -Text (Get-UlanziText -Key 'Falha persistente em: {0}. Abra Verificar tudo para obter orientacao.' -Arguments @(($($newFailures -join ', ')))) -Icon ([Windows.Forms.ToolTipIcon]::Warning)
     } elseif ($recoveries.Count -gt 0) {
-        Show-TrayBalloon -Text "Conexao recuperada: $($recoveries -join ', ')." -Icon ([Windows.Forms.ToolTipIcon]::Info)
+        Show-TrayBalloon -Text (Get-UlanziText -Key 'Conexao recuperada: {0}.' -Arguments @(($($recoveries -join ', ')))) -Icon ([Windows.Forms.ToolTipIcon]::Info)
     }
 
     if (-not $bridgeResponsive) { return }
@@ -1095,11 +1097,11 @@ function Update-WindowsFallbackNotifications {
             $script:lastFallbackAlarmFingerprint = $fingerprint
             Invoke-WindowsFallbackSound
             $fallbackText = switch ($pendingKind) {
-                "low" { "Alerta de glicemia baixa nao confirmado pelo TC001. Confira a fonte agora." }
-                "high" { "Alerta de glicemia alta nao confirmado pelo TC001. Confira a fonte agora." }
-                "up" { "Alerta de subida nao confirmado pelo TC001. Confira a fonte agora." }
-                "down" { "Alerta de queda nao confirmado pelo TC001. Confira a fonte agora." }
-                default { "Aviso de ausencia de dados nao confirmado pelo TC001. Confira a fonte." }
+                "low" { (Get-UlanziText -Key 'Alerta de glicemia baixa nao confirmado pelo TC001. Confira a fonte agora.') }
+                "high" { (Get-UlanziText -Key 'Alerta de glicemia alta nao confirmado pelo TC001. Confira a fonte agora.') }
+                "up" { (Get-UlanziText -Key 'Alerta de subida nao confirmado pelo TC001. Confira a fonte agora.') }
+                "down" { (Get-UlanziText -Key 'Alerta de queda nao confirmado pelo TC001. Confira a fonte agora.') }
+                default { (Get-UlanziText -Key 'Aviso de ausencia de dados nao confirmado pelo TC001. Confira a fonte.') }
             }
             Show-TrayBalloon -Text $fallbackText -Icon ([Windows.Forms.ToolTipIcon]::Error)
         }
@@ -1134,9 +1136,9 @@ function Write-RuntimeCommand {
         createdAt = [DateTime]::UtcNow.ToString("o", [Globalization.CultureInfo]::InvariantCulture)
     }
     if ($Command -eq "write-device-sound") {
-        if ($null -eq $Payload) { throw "Os ajustes de volume nao foram informados." }
+        if ($null -eq $Payload) { throw (Get-UlanziText -Key 'Os ajustes de volume nao foram informados.') }
         $soundEnabled = Get-StatusProperty -Object $Payload -Name "soundEnabled"
-        if ($soundEnabled -isnot [bool]) { throw "O estado geral do som e invalido." }
+        if ($soundEnabled -isnot [bool]) { throw (Get-UlanziText -Key 'O estado geral do som e invalido.') }
         $buzzerVolumeRaw = Get-StatusProperty -Object $Payload -Name "buzzerVolume"
         $buzzerVolume = 0
         if (
@@ -1144,7 +1146,7 @@ function Write-RuntimeCommand {
             $buzzerVolume -lt 0 -or
             $buzzerVolume -gt 100
         ) {
-            throw "O volume precisa estar entre 0 e 100."
+            throw (Get-UlanziText -Key 'O volume precisa estar entre 0 e 100.')
         }
         $request["soundEnabled"] = $soundEnabled
         $request["buzzerVolume"] = $buzzerVolume
@@ -1154,7 +1156,7 @@ function Write-RuntimeCommand {
         [IO.File]::WriteAllText($temporaryPath, "$json`n", [Text.UTF8Encoding]::new($false))
         try {
             if ([IO.File]::Exists($commandPath)) {
-                [IO.File]::Replace($temporaryPath, $commandPath, $null)
+                [IO.File]::Replace($temporaryPath, $commandPath, [NullString]::Value)
             } else {
                 [IO.File]::Move($temporaryPath, $commandPath)
             }
@@ -1163,7 +1165,7 @@ function Write-RuntimeCommand {
             # uma vez escolhendo a operacao correta para o estado mais recente.
             if (-not [IO.File]::Exists($temporaryPath)) { throw }
             if ([IO.File]::Exists($commandPath)) {
-                [IO.File]::Replace($temporaryPath, $commandPath, $null)
+                [IO.File]::Replace($temporaryPath, $commandPath, [NullString]::Value)
             } else {
                 [IO.File]::Move($temporaryPath, $commandPath)
             }
@@ -1183,7 +1185,7 @@ function Complete-SoundTest {
 
     $script:pendingSoundRequestId = $null
     $script:pendingSoundDeadline = [DateTime]::MinValue
-    $testSoundItem.Text = "Testar som"
+    $testSoundItem.Text = (Get-UlanziText -Key 'Testar som')
     $testSoundItem.Enabled = ((Test-BridgeRunning) -and -not $script:configurationDialogOpen -and -not $script:volumeDialogOpen -and -not $script:diagnosticsDialogOpen -and -not $script:maintenanceDialogOpen)
     $icon = if ($Succeeded) { [Windows.Forms.ToolTipIcon]::Info } else { [Windows.Forms.ToolTipIcon]::Error }
     Show-TrayBalloon -Text $Message -Icon $icon
@@ -1208,14 +1210,14 @@ function Update-SoundTestRequest {
         }
         if ($requestId -ceq [string]$script:pendingSoundRequestId) {
             if ($state -eq "confirmed") {
-                Complete-SoundTest -Succeeded $true -Message "O TC001 aceitou o comando de teste de som."
+                Complete-SoundTest -Succeeded $true -Message (Get-UlanziText -Key 'O TC001 aceitou o comando de teste de som.')
                 return
             }
             if ($state -eq "error") {
                 $message = if ([string]::IsNullOrWhiteSpace($lastError)) {
-                    "O TC001 nao confirmou o teste de som."
+                    (Get-UlanziText -Key 'O TC001 nao confirmou o teste de som.')
                 } else {
-                    "O teste de som falhou: $lastError"
+                    (Get-UlanziText -Key 'O teste de som falhou: {0}' -Arguments @(($lastError)))
                 }
                 Complete-SoundTest -Succeeded $false -Message $message
                 return
@@ -1223,7 +1225,7 @@ function Update-SoundTestRequest {
         }
     }
     if ([DateTime]::UtcNow -ge $script:pendingSoundDeadline) {
-        Complete-SoundTest -Succeeded $false -Message "O bridge nao confirmou o teste de som dentro do prazo."
+        Complete-SoundTest -Succeeded $false -Message (Get-UlanziText -Key 'O bridge nao confirmou o teste de som dentro do prazo.')
     }
 }
 
@@ -1235,15 +1237,39 @@ function Get-UlanziSetupState {
 }
 
 function Update-ConfigurationDependentValues {
+    $previousLanguage = Get-UlanziLanguage
+    [void](Initialize-UlanziLanguage -EnvPath $envPath)
+    if ((Get-UlanziLanguage) -cne $previousLanguage) {
+        $panelItem.Text = Get-UlanziText -Key 'Abrir painel'
+        $firstRunItem.Text = Get-UlanziText -Key 'Configurar agora...'
+        $volumeControlItem.Text = Get-UlanziText -Key 'Ligar ou desligar som do TC001...'
+        $diagnosticsItem.Text = Get-UlanziText -Key 'Verificar tudo...'
+        $maintenanceItem.Text = Get-UlanziText -Key 'Atualizacoes e recuperacao...'
+        $testSoundItem.Text = Get-UlanziText -Key 'Testar som'
+        $configureItem.Text = Get-UlanziText -Key 'Configuracoes...'
+        $openFolderItem.Text = Get-UlanziText -Key 'Abrir pasta do projeto'
+        $restartItem.Text = Get-UlanziText -Key 'Reiniciar conexao'
+        $toggleWidgetItem.Text = if ($script:widgetVisible) { Get-UlanziText -Key 'Ocultar mostrador' } else { Get-UlanziText -Key 'Mostrar mostrador' }
+        $exitItem.Text = Get-UlanziText -Key 'Encerrar'
+        $reopenPanel = $null -ne $script:controlPanelController -and -not $script:controlPanelController.Form.IsDisposed -and $script:controlPanelController.Form.Visible
+        if ($reopenPanel) {
+            # Recreate after the settings callback unwinds, keeping its owner
+            # alive until the dialog and action handlers have finished.
+            [void]$script:controlPanelController.Form.BeginInvoke([Action]{
+                Close-UlanziControlPanel
+                Show-UlanziControlPanel
+            })
+        } else { Close-UlanziControlPanel }
+    }
     $script:pollInterval = Get-EnvValue -Name "POLL_INTERVAL_SECONDS" -DefaultValue "60"
     $script:nightscoutUrl = Get-EnvValue -Name "NIGHTSCOUT_URL" -DefaultValue ""
     Update-TrayPreferences
-    $intervalItem.Text = "Atualizacao: a cada $script:pollInterval segundos"
+    $intervalItem.Text = (Get-UlanziText -Key 'Atualizacao: a cada {0} segundos' -Arguments @(($script:pollInterval)))
     if ([string]::IsNullOrWhiteSpace([string]$script:nightscoutUrl)) {
-        $openNightscoutItem.Text = "Nightscout nao configurado"
+        $openNightscoutItem.Text = (Get-UlanziText -Key 'Nightscout nao configurado')
         $openNightscoutItem.Enabled = $false
     } else {
-        $openNightscoutItem.Text = "Abrir Nightscout"
+        $openNightscoutItem.Text = (Get-UlanziText -Key 'Abrir Nightscout')
         $openNightscoutItem.Enabled = $true
     }
 }
@@ -1258,13 +1284,13 @@ function Set-UlanziConfigurationRequired {
     $firstRunItem.Enabled = -not $script:configurationDialogOpen
     $restartItem.Enabled = $false
     Set-GlucoseDisplay -Text "CONFIG" -Color "#F4B942"
-    $glucoseItem.Text = "Glicemia: aguardando configuracao"
-    $sourceItem.Text = "Fonte: configure para conectar"
-    $readingItem.Text = "Leitura: indisponivel ate configurar"
-    $tc001Item.Text = "TC001: configure para conectar"
-    $soundItem.Text = "Som: disponivel depois da configuracao"
-    $deviceSoundItem.Text = "Buzzer geral: disponivel depois da configuracao"
-    Set-TrayStatus -Status "configuracao necessaria" -Healthy $false
+    $glucoseItem.Text = (Get-UlanziText -Key 'Glicemia: aguardando configuracao')
+    $sourceItem.Text = (Get-UlanziText -Key 'Fonte: configure para conectar')
+    $readingItem.Text = (Get-UlanziText -Key 'Leitura: indisponivel ate configurar')
+    $tc001Item.Text = (Get-UlanziText -Key 'TC001: configure para conectar')
+    $soundItem.Text = (Get-UlanziText -Key 'Som: disponivel depois da configuracao')
+    $deviceSoundItem.Text = (Get-UlanziText -Key 'Buzzer geral: disponivel depois da configuracao')
+    Set-TrayStatus -Status (Get-UlanziText -Key 'configuracao necessaria') -Healthy $false
     if ($null -ne $script:applicationIcon) { $notifyIcon.Icon = $script:applicationIcon }
 }
 
@@ -1276,9 +1302,9 @@ function Start-UlanziConfigurationCheck {
     if ($null -ne $script:configurationCheckOperation) { return $false }
     $script:configurationState = "checking"
     $script:configurationMessage = switch ($Reason) {
-        "first-run" { "Conferindo a configuracao que acabou de ser salva..." }
-        "recovery" { "Conferindo a configuracao antes de recuperar a conexao..." }
-        default { "Verificando a configuracao inicial..." }
+        "first-run" { (Get-UlanziText -Key 'Conferindo a configuracao que acabou de ser salva...') }
+        "recovery" { (Get-UlanziText -Key 'Conferindo a configuracao antes de recuperar a conexao...') }
+        default { (Get-UlanziText -Key 'Verificando a configuracao inicial...') }
     }
     $script:configurationCheckReason = $Reason
     $firstRunItem.Visible = $false
@@ -1292,9 +1318,9 @@ function Start-UlanziConfigurationCheck {
         return $true
     } catch {
         $message = if (Test-Path -LiteralPath $envPath) {
-            "A configuracao salva precisa ser corrigida antes de iniciar."
+            (Get-UlanziText -Key 'A configuracao salva precisa ser corrigida antes de iniciar.')
         } else {
-            "A configuracao inicial ainda nao foi concluida."
+            (Get-UlanziText -Key 'A configuracao inicial ainda nao foi concluida.')
         }
         Set-UlanziConfigurationRequired -Message $message
         return $false
@@ -1316,7 +1342,7 @@ function Complete-UlanziConfigurationCheck {
         if ($timedOut -and -not $operation.Process.HasExited) {
             Stop-UlanziConfigEditorOperation -Operation $operation
             $operation = $null
-            throw "A verificacao da configuracao excedeu o tempo limite."
+            throw (Get-UlanziText -Key 'A verificacao da configuracao excedeu o tempo limite.')
         }
         try {
             [void](Complete-UlanziConfigEditorOperation -Operation $operation)
@@ -1326,9 +1352,9 @@ function Complete-UlanziConfigurationCheck {
         $configurationReady = $true
     } catch {
         $message = if (Test-Path -LiteralPath $envPath) {
-            "A configuracao salva precisa ser corrigida antes de iniciar."
+            (Get-UlanziText -Key 'A configuracao salva precisa ser corrigida antes de iniciar.')
         } else {
-            "A configuracao inicial ainda nao foi concluida."
+            (Get-UlanziText -Key 'A configuracao inicial ainda nao foi concluida.')
         }
         Set-UlanziConfigurationRequired -Message $message
     } finally {
@@ -1338,13 +1364,13 @@ function Complete-UlanziConfigurationCheck {
     if (-not $configurationReady) {
         switch ($reason) {
             "first-run" {
-                Show-TrayBalloon -Text "A configuracao nao foi concluida. O aplicativo permanecera parado ate voce escolher Configurar agora." -Icon ([Windows.Forms.ToolTipIcon]::Info)
+                Show-TrayBalloon -Text (Get-UlanziText -Key 'A configuracao nao foi concluida. O aplicativo permanecera parado ate voce escolher Configurar agora.') -Icon ([Windows.Forms.ToolTipIcon]::Info)
             }
             "recovery" {
-                Show-TrayBalloon -Text "A configuracao foi removida ou deixou de ser valida. A conexao nao sera reiniciada ate voce corrigir a configuracao." -Icon ([Windows.Forms.ToolTipIcon]::Warning)
+                Show-TrayBalloon -Text (Get-UlanziText -Key 'A configuracao foi removida ou deixou de ser valida. A conexao nao sera reiniciada ate voce corrigir a configuracao.') -Icon ([Windows.Forms.ToolTipIcon]::Warning)
             }
             default {
-                Show-TrayBalloon -Text "Antes de usar o Ulanzi Libre, conclua a configuracao da fonte de glicemia e do TC001." -Icon ([Windows.Forms.ToolTipIcon]::Info)
+                Show-TrayBalloon -Text (Get-UlanziText -Key 'Antes de usar o Ulanzi Libre, conclua a configuracao da fonte de glicemia e do TC001.') -Icon ([Windows.Forms.ToolTipIcon]::Info)
             }
         }
         Show-UlanziControlPanel
@@ -1352,7 +1378,7 @@ function Complete-UlanziConfigurationCheck {
     }
 
     $script:configurationState = "ready"
-    $script:configurationMessage = "Configuracao pronta."
+    $script:configurationMessage = (Get-UlanziText -Key 'Configuracao pronta.')
     $firstRunItem.Visible = $false
     Update-ConfigurationDependentValues
     $restartReason = switch ($reason) {
@@ -1361,7 +1387,7 @@ function Complete-UlanziConfigurationCheck {
         default { "startup" }
     }
     $completionMessage = if ($reason -eq "first-run") {
-        "Configuracao concluida. A conexao foi iniciada e sera confirmada automaticamente."
+        (Get-UlanziText -Key 'Configuracao concluida. A conexao foi iniciada e sera confirmada automaticamente.')
     } else {
         ""
     }
@@ -1378,13 +1404,13 @@ function Complete-UlanziConfigurationCheck {
 function Start-UlanziFirstRunConfiguration {
     if ($script:closing -or $null -ne $script:firstRunProcess) { return $false }
     if ($null -ne $script:configurationCheckOperation) {
-        Show-TrayBalloon -Text "Aguarde a verificacao da configuracao terminar." -Icon ([Windows.Forms.ToolTipIcon]::Info)
+        Show-TrayBalloon -Text (Get-UlanziText -Key 'Aguarde a verificacao da configuracao terminar.') -Icon ([Windows.Forms.ToolTipIcon]::Info)
         return $false
     }
 
     $script:configurationDialogOpen = $true
     $script:configurationState = "configuring"
-    $script:configurationMessage = "O assistente esta aberto. Conclua as etapas ou feche para continuar depois."
+    $script:configurationMessage = (Get-UlanziText -Key 'O assistente esta aberto. Conclua as etapas ou feche para continuar depois.')
     $firstRunItem.Enabled = $false
     $configureItem.Enabled = $false
     $restartItem.Enabled = $false
@@ -1412,7 +1438,7 @@ function Start-UlanziFirstRunConfiguration {
         $script:firstRunOutputTask = $null
         $script:firstRunErrorTask = $null
         $script:configurationDialogOpen = $false
-        Set-UlanziConfigurationRequired -Message "Nao foi possivel abrir o assistente. Tente novamente pelo painel."
+        Set-UlanziConfigurationRequired -Message (Get-UlanziText -Key 'Nao foi possivel abrir o assistente. Tente novamente pelo painel.')
         Show-TrayBalloon -Text $script:configurationMessage -Icon ([Windows.Forms.ToolTipIcon]::Error)
         return $false
     }
@@ -1456,9 +1482,9 @@ function Stop-UlanziFirstRunConfiguration {
 function Start-Bridge {
     if ($script:closing) { return $false }
     if ($script:configurationState -cne "ready") {
-        throw "A configuracao precisa estar valida antes de iniciar o bridge."
+        throw (Get-UlanziText -Key 'A configuracao precisa estar valida antes de iniciar o bridge.')
     }
-    if (Test-BridgeRunning) { throw "O bridge anterior ainda esta em execucao." }
+    if (Test-BridgeRunning) { throw (Get-UlanziText -Key 'O bridge anterior ainda esta em execucao.') }
     if ($null -ne $script:bridgeProcess) {
         try { $script:bridgeProcess.Dispose() } catch { }
         $script:bridgeProcess = $null
@@ -1475,7 +1501,7 @@ function Start-Bridge {
     $script:lastRuntimeStatusFileStamp = "<invalidated>"
     $script:pendingSoundRequestId = $null
     $script:pendingSoundDeadline = [DateTime]::MinValue
-    $testSoundItem.Text = "Testar som"
+    $testSoundItem.Text = (Get-UlanziText -Key 'Testar som')
 
     $startInfo = [Diagnostics.ProcessStartInfo]::new()
     $startInfo.FileName = $powershellExe
@@ -1490,7 +1516,7 @@ function Start-Bridge {
     $startInfo.EnvironmentVariables["ULANZI_STOP_FILE"] = $stopRequestPath
     $script:bridgeProcess = [Diagnostics.Process]::Start($startInfo)
     $script:nextRestart = [DateTime]::UtcNow.AddSeconds(10)
-    Set-TrayStatus -Status "iniciando; aguardando status" -Healthy $false
+    Set-TrayStatus -Status (Get-UlanziText -Key 'iniciando; aguardando status') -Healthy $false
     return $true
 }
 
@@ -1500,18 +1526,18 @@ function Test-BridgeRestartBusy {
 
 function Get-BridgeRestartText {
     $operation = switch ([string]$script:bridgeRestartReason) {
-        "startup" { "iniciando" }
-        "recovery" { "recuperando a conexao" }
-        "configuration" { "aplicando configuracoes" }
-        "restoration" { "aplicando restauracao" }
-        default { "reiniciando" }
+        "startup" { (Get-UlanziText -Key 'iniciando') }
+        "recovery" { (Get-UlanziText -Key 'recuperando a conexao') }
+        "configuration" { (Get-UlanziText -Key 'aplicando configuracoes') }
+        "restoration" { (Get-UlanziText -Key 'aplicando restauracao') }
+        default { (Get-UlanziText -Key 'reiniciando') }
     }
     switch ([string]$script:bridgeRestartPhase) {
-        "stopping" { return "${operation}: encerrando conexao anterior" }
-        "forcing-stop" { return "${operation}: finalizando conexao anterior" }
-        "starting" { return "${operation}: iniciando nova conexao" }
-        "awaiting-status" { return "${operation}: aguardando status da nova conexao" }
-        default { return "reinicio nao esta em andamento" }
+        "stopping" { return (Get-UlanziText -Key '{0}: encerrando conexao anterior' -Arguments @((${operation}))) }
+        "forcing-stop" { return (Get-UlanziText -Key '{0}: finalizando conexao anterior' -Arguments @((${operation}))) }
+        "starting" { return (Get-UlanziText -Key '{0}: iniciando nova conexao' -Arguments @((${operation}))) }
+        "awaiting-status" { return (Get-UlanziText -Key '{0}: aguardando status da nova conexao' -Arguments @((${operation}))) }
+        default { return (Get-UlanziText -Key 'reinicio nao esta em andamento') }
     }
 }
 
@@ -1566,7 +1592,7 @@ function Request-BridgeRestart {
 
     if ($script:closing) { return $false }
     if (Test-BridgeRestartBusy) {
-        Show-TrayBalloon -Text "Um reinicio ja esta em andamento: $(Get-BridgeRestartText)." -Icon ([Windows.Forms.ToolTipIcon]::Info)
+        Show-TrayBalloon -Text (Get-UlanziText -Key 'Um reinicio ja esta em andamento: {0}.' -Arguments @(($(Get-BridgeRestartText)))) -Icon ([Windows.Forms.ToolTipIcon]::Info)
         return $false
     }
 
@@ -1575,7 +1601,7 @@ function Request-BridgeRestart {
     $script:bridgeRestartRequiresConfigConfirmation = $ConfirmConfigurationLoad
     $script:pendingSoundRequestId = $null
     $script:pendingSoundDeadline = [DateTime]::MinValue
-    $testSoundItem.Text = "Testar som"
+    $testSoundItem.Text = (Get-UlanziText -Key 'Testar som')
     $script:lastRuntimeStatus = $null
     $script:lastRuntimeStatusFileStamp = "<invalidated>"
     $timer.Interval = 250
@@ -1642,7 +1668,7 @@ function Update-BridgeRestart {
                 try {
                     Start-BridgeForcedStop
                 } catch {
-                    Fail-BridgeRestart -Message "Nao foi possivel encerrar a conexao anterior; ela foi mantida."
+                    Fail-BridgeRestart -Message (Get-UlanziText -Key 'Nao foi possivel encerrar a conexao anterior; ela foi mantida.')
                 }
             }
             return
@@ -1659,7 +1685,7 @@ function Update-BridgeRestart {
                 return
             }
             if ([DateTime]::UtcNow -ge $script:bridgeRestartDeadline) {
-                Fail-BridgeRestart -Message "A conexao anterior nao encerrou dentro do prazo; o reinicio foi cancelado."
+                Fail-BridgeRestart -Message (Get-UlanziText -Key 'A conexao anterior nao encerrou dentro do prazo; o reinicio foi cancelado.')
             }
             return
         }
@@ -1674,7 +1700,7 @@ function Update-BridgeRestart {
                 $script:bridgeRestartDeadline = [DateTime]::UtcNow.AddSeconds(45)
                 Set-TrayStatus -Status (Get-BridgeRestartText) -Healthy $false
             } catch {
-                Fail-BridgeRestart -Message "A conexao anterior encerrou, mas a nova nao pode ser iniciada."
+                Fail-BridgeRestart -Message (Get-UlanziText -Key 'A conexao anterior encerrou, mas a nova nao pode ser iniciada.')
             }
             return
         }
@@ -1689,13 +1715,13 @@ function Update-BridgeRestart {
             }
             if (-not (Test-BridgeRunning)) {
                 [void](Clear-ExitedBridgeProcess)
-                Fail-BridgeRestart -Message "A nova conexao encerrou antes de publicar o primeiro status."
+                Fail-BridgeRestart -Message (Get-UlanziText -Key 'A nova conexao encerrou antes de publicar o primeiro status.')
                 return
             }
             if ([DateTime]::UtcNow -ge $script:bridgeRestartDeadline) {
                 Reset-BridgeRestartState
-                Set-TrayStatus -Status "nova conexao iniciada; aguardando status" -Healthy $false
-                Show-TrayBalloon -Text "A nova conexao foi iniciada, mas ainda nao publicou um status valido." -Icon ([Windows.Forms.ToolTipIcon]::Warning)
+                Set-TrayStatus -Status (Get-UlanziText -Key 'nova conexao iniciada; aguardando status') -Healthy $false
+                Show-TrayBalloon -Text (Get-UlanziText -Key 'A nova conexao foi iniciada, mas ainda nao publicou um status valido.') -Icon ([Windows.Forms.ToolTipIcon]::Warning)
             }
         }
     }
@@ -1721,31 +1747,31 @@ function Show-UlanziControlPanel {
         )
         $script:preferredConfigurationTab = $InitialTab
         try {
-            Invoke-PanelMenuAction -Item $configureItem -Owner $Owner -UnavailableMessage "Conclua a operacao atual antes de editar os ajustes."
+            Invoke-PanelMenuAction -Item $configureItem -Owner $Owner -UnavailableMessage (Get-UlanziText -Key 'Conclua a operacao atual antes de editar os ajustes.')
         } finally {
             $script:preferredConfigurationTab = "alerts"
         }
     }).GetNewClosure()
     $openVolume = ({
         param([AllowNull()][Windows.Forms.IWin32Window]$Owner)
-        Invoke-PanelMenuAction -Item $volumeControlItem -Owner $Owner -UnavailableMessage "O controle do buzzer estara disponivel quando a conexao estiver pronta e nenhum comando de som estiver pendente."
+        Invoke-PanelMenuAction -Item $volumeControlItem -Owner $Owner -UnavailableMessage (Get-UlanziText -Key 'O controle do buzzer estara disponivel quando a conexao estiver pronta e nenhum comando de som estiver pendente.')
     }).GetNewClosure()
     $requestSoundTest = ({
         param([AllowNull()][Windows.Forms.IWin32Window]$Owner)
-        Invoke-PanelMenuAction -Item $testSoundItem -Owner $Owner -UnavailableMessage "O teste de som estara disponivel quando a conexao estiver pronta e nenhum comando de som estiver pendente."
+        Invoke-PanelMenuAction -Item $testSoundItem -Owner $Owner -UnavailableMessage (Get-UlanziText -Key 'O teste de som estara disponivel quando a conexao estiver pronta e nenhum comando de som estiver pendente.')
     }).GetNewClosure()
     $openDiagnostics = ({
         param([AllowNull()][Windows.Forms.IWin32Window]$Owner)
-        Invoke-PanelMenuAction -Item $diagnosticsItem -Owner $Owner -UnavailableMessage "Conclua a operacao atual antes de executar o teste completo."
+        Invoke-PanelMenuAction -Item $diagnosticsItem -Owner $Owner -UnavailableMessage (Get-UlanziText -Key 'Conclua a operacao atual antes de executar o teste completo.')
     }).GetNewClosure()
     $openMaintenance = ({
         param([AllowNull()][Windows.Forms.IWin32Window]$Owner)
-        Invoke-PanelMenuAction -Item $maintenanceItem -Owner $Owner -UnavailableMessage "Conclua a operacao atual antes de abrir a manutencao."
+        Invoke-PanelMenuAction -Item $maintenanceItem -Owner $Owner -UnavailableMessage (Get-UlanziText -Key 'Conclua a operacao atual antes de abrir a manutencao.')
     }).GetNewClosure()
     $openNightscout = ({
         param([AllowNull()][Windows.Forms.IWin32Window]$Owner)
         if ([string]::IsNullOrWhiteSpace([string]$script:nightscoutUrl)) {
-            throw "O endereco do Nightscout ainda nao foi configurado."
+            throw (Get-UlanziText -Key 'O endereco do Nightscout ainda nao foi configurado.')
         }
         $openNightscoutItem.PerformClick()
     }).GetNewClosure()
@@ -1755,7 +1781,7 @@ function Show-UlanziControlPanel {
     }).GetNewClosure()
     $restartBridge = ({
         param([AllowNull()][Windows.Forms.IWin32Window]$Owner)
-        Invoke-PanelMenuAction -Item $restartItem -Owner $Owner -UnavailableMessage "Conclua a janela aberta antes de reiniciar a conexao."
+        Invoke-PanelMenuAction -Item $restartItem -Owner $Owner -UnavailableMessage (Get-UlanziText -Key 'Conclua a janela aberta antes de reiniciar a conexao.')
     }).GetNewClosure()
     $toggleWidget = ({
         param([AllowNull()][Windows.Forms.IWin32Window]$Owner)
@@ -1766,7 +1792,7 @@ function Show-UlanziControlPanel {
         param([AllowNull()][Windows.Forms.IWin32Window]$Owner)
         if (-not (Start-UlanziFirstRunConfiguration)) {
             if ($script:configurationState -eq "ready") {
-                throw "A configuracao inicial ja foi concluida."
+                throw (Get-UlanziText -Key 'A configuracao inicial ja foi concluida.')
             }
         }
     }).GetNewClosure()
@@ -1810,18 +1836,18 @@ function Show-UlanziControlPanel {
 
 $testSoundItem.add_Click({
     if ($script:configurationDialogOpen -or $script:volumeDialogOpen -or $script:diagnosticsDialogOpen -or $script:maintenanceDialogOpen) {
-        Show-TrayBalloon -Text "Feche a janela aberta antes de testar o som." -Icon ([Windows.Forms.ToolTipIcon]::Warning)
+        Show-TrayBalloon -Text (Get-UlanziText -Key 'Feche a janela aberta antes de testar o som.') -Icon ([Windows.Forms.ToolTipIcon]::Warning)
         return
     }
     if (-not [string]::IsNullOrWhiteSpace([string]$script:pendingSoundRequestId)) { return }
     if (-not (Test-BridgeRunning) -or [string]::IsNullOrWhiteSpace([string]$script:bridgeInstanceId)) {
-        Show-TrayBalloon -Text "O bridge precisa estar em execucao para testar o som." -Icon ([Windows.Forms.ToolTipIcon]::Warning)
+        Show-TrayBalloon -Text (Get-UlanziText -Key 'O bridge precisa estar em execucao para testar o som.') -Icon ([Windows.Forms.ToolTipIcon]::Warning)
         return
     }
     $knownDeviceSound = Get-StatusProperty -Object $script:lastRuntimeStatus -Name "deviceSound"
     $knownDeviceSoundState = [string](Get-StatusProperty -Object $knownDeviceSound -Name "state" -DefaultValue "unknown")
     if ($knownDeviceSoundState -eq "muted" -or $knownDeviceSoundState -eq "silent") {
-        Show-TrayBalloon -Text "O buzzer geral do TC001 esta desligado. Abra Ligar ou desligar som antes de testar." -Icon ([Windows.Forms.ToolTipIcon]::Warning)
+        Show-TrayBalloon -Text (Get-UlanziText -Key 'O buzzer geral do TC001 esta desligado. Abra Ligar ou desligar som antes de testar.') -Icon ([Windows.Forms.ToolTipIcon]::Warning)
         return
     }
     $requestId = [Guid]::NewGuid().ToString("D")
@@ -1829,20 +1855,20 @@ $testSoundItem.add_Click({
         Write-RuntimeCommand -Command "test-sound" -RequestId $requestId -TargetInstanceId $script:bridgeInstanceId
         $script:pendingSoundRequestId = $requestId
         $script:pendingSoundDeadline = [DateTime]::UtcNow.AddSeconds($testSoundTimeoutSeconds)
-        $testSoundItem.Text = "Testando som..."
+        $testSoundItem.Text = (Get-UlanziText -Key 'Testando som...')
         $testSoundItem.Enabled = $false
     } catch {
-        Show-TrayBalloon -Text "Nao foi possivel solicitar o teste de som: $($_.Exception.Message)" -Icon ([Windows.Forms.ToolTipIcon]::Error)
+        Show-TrayBalloon -Text (Get-UlanziText -Key 'Nao foi possivel solicitar o teste de som: {0}' -Arguments @(($($_.Exception.Message)))) -Icon ([Windows.Forms.ToolTipIcon]::Error)
     }
 })
 $volumeControlItem.add_Click({
     if ($script:configurationDialogOpen -or $script:volumeDialogOpen -or $script:diagnosticsDialogOpen -or $script:maintenanceDialogOpen) { return }
     if (-not [string]::IsNullOrWhiteSpace([string]$script:pendingSoundRequestId)) {
-        Show-TrayBalloon -Text "Aguarde o teste de som terminar antes de abrir o controle do buzzer." -Icon ([Windows.Forms.ToolTipIcon]::Warning)
+        Show-TrayBalloon -Text (Get-UlanziText -Key 'Aguarde o teste de som terminar antes de abrir o controle do buzzer.') -Icon ([Windows.Forms.ToolTipIcon]::Warning)
         return
     }
     if (-not (Test-BridgeRunning) -or [string]::IsNullOrWhiteSpace([string]$script:bridgeInstanceId)) {
-        Show-TrayBalloon -Text "O bridge precisa estar em execucao para controlar o buzzer." -Icon ([Windows.Forms.ToolTipIcon]::Warning)
+        Show-TrayBalloon -Text (Get-UlanziText -Key 'O bridge precisa estar em execucao para controlar o buzzer.') -Icon ([Windows.Forms.ToolTipIcon]::Warning)
         return
     }
 
@@ -1861,7 +1887,7 @@ $volumeControlItem.add_Click({
             )
 
             if (-not (Test-BridgeRunning) -or [string]::IsNullOrWhiteSpace([string]$script:bridgeInstanceId)) {
-                throw "O bridge nao esta em execucao."
+                throw (Get-UlanziText -Key 'O bridge nao esta em execucao.')
             }
             $requestId = [Guid]::NewGuid().ToString("D")
             Write-RuntimeCommand `
@@ -1887,7 +1913,7 @@ $volumeControlItem.add_Click({
             -CommandTimeoutSeconds 30 `
             -ProjectRoot $projectRoot)
     } catch {
-        Show-TrayBalloon -Text "Nao foi possivel abrir ou usar o controle do buzzer: $($_.Exception.Message)" -Icon ([Windows.Forms.ToolTipIcon]::Error)
+        Show-TrayBalloon -Text (Get-UlanziText -Key 'Nao foi possivel abrir ou usar o controle do buzzer: {0}' -Arguments @(($($_.Exception.Message)))) -Icon ([Windows.Forms.ToolTipIcon]::Error)
     } finally {
         $script:volumeDialogOpen = $false
     }
@@ -1895,7 +1921,7 @@ $volumeControlItem.add_Click({
 $diagnosticsItem.add_Click({
     if ($script:configurationDialogOpen -or $script:volumeDialogOpen -or $script:diagnosticsDialogOpen -or $script:maintenanceDialogOpen) { return }
     if (-not [string]::IsNullOrWhiteSpace([string]$script:pendingSoundRequestId)) {
-        Show-TrayBalloon -Text "Aguarde o teste de som terminar antes de abrir o diagnostico." -Icon ([Windows.Forms.ToolTipIcon]::Warning)
+        Show-TrayBalloon -Text (Get-UlanziText -Key 'Aguarde o teste de som terminar antes de abrir o diagnostico.') -Icon ([Windows.Forms.ToolTipIcon]::Warning)
         return
     }
     $script:diagnosticsDialogOpen = $true
@@ -1909,7 +1935,7 @@ $diagnosticsItem.add_Click({
         $sendDiagnosticCommand = {
             param([string]$Command, [AllowNull()][object]$Payload = $null)
             if (-not (Test-BridgeRunning) -or [string]::IsNullOrWhiteSpace([string]$script:bridgeInstanceId)) {
-                throw "O bridge nao esta em execucao."
+                throw (Get-UlanziText -Key 'O bridge nao esta em execucao.')
             }
             $requestId = [Guid]::NewGuid().ToString("D")
             Write-RuntimeCommand -Command $Command -RequestId $requestId -TargetInstanceId $script:bridgeInstanceId -Payload $Payload
@@ -1931,7 +1957,7 @@ $diagnosticsItem.add_Click({
             -ProjectRoot $projectRoot `
             -CommandTimeoutSeconds 30
     } catch {
-        Show-TrayBalloon -Text "Nao foi possivel abrir o diagnostico: $($_.Exception.Message)" -Icon ([Windows.Forms.ToolTipIcon]::Error)
+        Show-TrayBalloon -Text (Get-UlanziText -Key 'Nao foi possivel abrir o diagnostico: {0}' -Arguments @(($($_.Exception.Message)))) -Icon ([Windows.Forms.ToolTipIcon]::Error)
     } finally {
         $script:diagnosticsDialogOpen = $false
     }
@@ -1947,7 +1973,7 @@ $configureItem.add_Click({
         return
     }
     if (-not [string]::IsNullOrWhiteSpace([string]$script:pendingSoundRequestId)) {
-        Show-TrayBalloon -Text "Aguarde o teste de som terminar antes de alterar as configuracoes." -Icon ([Windows.Forms.ToolTipIcon]::Warning)
+        Show-TrayBalloon -Text (Get-UlanziText -Key 'Aguarde o teste de som terminar antes de alterar as configuracoes.') -Icon ([Windows.Forms.ToolTipIcon]::Warning)
         return
     }
     $script:configurationDialogOpen = $true
@@ -1962,7 +1988,7 @@ $configureItem.add_Click({
         $result = Show-UlanziConfigurationDialog -Owner $dialogOwner -ProjectRoot $projectRoot -EnvPath $envPath -InitialTab $script:preferredConfigurationTab
         if ($result.Saved -ne $true) { return }
         if ($result.Changed -ne $true) {
-            Show-TrayBalloon -Text "Nenhuma configuracao foi alterada." -Icon ([Windows.Forms.ToolTipIcon]::Info)
+            Show-TrayBalloon -Text (Get-UlanziText -Key 'Nenhuma configuracao foi alterada.') -Icon ([Windows.Forms.ToolTipIcon]::Info)
             return
         }
         Update-ConfigurationDependentValues
@@ -1979,10 +2005,10 @@ $configureItem.add_Click({
             -Reason "configuration" `
             -ConfirmConfigurationLoad $true
         if ($restartRequested) {
-            Show-TrayBalloon -Text "Configuracoes salvas e conferidas. Duracao do toque: $($result.SoundProfileLabel). O reinicio foi solicitado e sera confirmado pelo novo status." -Icon ([Windows.Forms.ToolTipIcon]::Info)
+            Show-TrayBalloon -Text (Get-UlanziText -Key 'Configuracoes salvas e conferidas. Duracao do toque: {0}. O reinicio foi solicitado e sera confirmado pelo novo status.' -Arguments @(($($result.SoundProfileLabel)))) -Icon ([Windows.Forms.ToolTipIcon]::Info)
         }
     } catch {
-        Show-TrayBalloon -Text "Nao foi possivel abrir ou aplicar as configuracoes: $($_.Exception.Message)" -Icon ([Windows.Forms.ToolTipIcon]::Error)
+        Show-TrayBalloon -Text (Get-UlanziText -Key 'Nao foi possivel abrir ou aplicar as configuracoes: {0}' -Arguments @(($($_.Exception.Message)))) -Icon ([Windows.Forms.ToolTipIcon]::Error)
     } finally {
         $script:configurationDialogOpen = $false
         $configureItem.Enabled = ($script:configurationState -eq "ready" -and -not (Test-BridgeRestartBusy))
@@ -1992,7 +2018,7 @@ $configureItem.add_Click({
 $maintenanceItem.add_Click({
     if ($script:configurationDialogOpen -or $script:volumeDialogOpen -or $script:diagnosticsDialogOpen -or $script:maintenanceDialogOpen) { return }
     if (-not [string]::IsNullOrWhiteSpace([string]$script:pendingSoundRequestId)) {
-        Show-TrayBalloon -Text "Aguarde o teste de som terminar antes de abrir a manutencao." -Icon ([Windows.Forms.ToolTipIcon]::Warning)
+        Show-TrayBalloon -Text (Get-UlanziText -Key 'Aguarde o teste de som terminar antes de abrir a manutencao.') -Icon ([Windows.Forms.ToolTipIcon]::Warning)
         return
     }
     $script:maintenanceDialogOpen = $true
@@ -2014,26 +2040,27 @@ $maintenanceItem.add_Click({
             return
         }
         if ($result.ConfigurationRestored -eq $true) {
+            Update-ConfigurationDependentValues
             $script:pollInterval = Get-EnvValue -Name "POLL_INTERVAL_SECONDS" -DefaultValue "60"
             $script:nightscoutUrl = Get-EnvValue -Name "NIGHTSCOUT_URL" -DefaultValue ""
             if ([string]::IsNullOrWhiteSpace([string]$script:nightscoutUrl)) {
-                $openNightscoutItem.Text = "Nightscout nao configurado"
+                $openNightscoutItem.Text = (Get-UlanziText -Key 'Nightscout nao configurado')
                 $openNightscoutItem.Enabled = $false
             } else {
-                $openNightscoutItem.Text = "Abrir Nightscout"
+                $openNightscoutItem.Text = (Get-UlanziText -Key 'Abrir Nightscout')
                 $openNightscoutItem.Enabled = $true
             }
             Update-TrayPreferences
-            $intervalItem.Text = "Atualizacao: a cada $script:pollInterval segundos"
+            $intervalItem.Text = (Get-UlanziText -Key 'Atualizacao: a cada {0} segundos' -Arguments @(($script:pollInterval)))
             $restartRequested = Request-BridgeRestart `
                 -Reason "restoration" `
                 -ConfirmConfigurationLoad $true
             if ($restartRequested) {
-                Show-TrayBalloon -Text "Configuracao anterior restaurada. O reinicio foi solicitado e sera confirmado pelo novo status." -Icon ([Windows.Forms.ToolTipIcon]::Info)
+                Show-TrayBalloon -Text (Get-UlanziText -Key 'Configuracao anterior restaurada. O reinicio foi solicitado e sera confirmado pelo novo status.') -Icon ([Windows.Forms.ToolTipIcon]::Info)
             }
         }
     } catch {
-        Show-TrayBalloon -Text "Nao foi possivel abrir ou usar a manutencao: $($_.Exception.Message)" -Icon ([Windows.Forms.ToolTipIcon]::Error)
+        Show-TrayBalloon -Text (Get-UlanziText -Key 'Nao foi possivel abrir ou usar a manutencao: {0}' -Arguments @(($($_.Exception.Message)))) -Icon ([Windows.Forms.ToolTipIcon]::Error)
     } finally {
         $script:maintenanceDialogOpen = $false
     }
@@ -2046,11 +2073,11 @@ $openNightscoutItem.add_Click({
 $openFolderItem.add_Click({ Start-Process explorer.exe -ArgumentList $projectRoot })
 $restartItem.add_Click({
     if ($script:configurationDialogOpen -or $script:volumeDialogOpen -or $script:diagnosticsDialogOpen -or $script:maintenanceDialogOpen) {
-        Show-TrayBalloon -Text "Feche a janela aberta antes de reiniciar o bridge." -Icon ([Windows.Forms.ToolTipIcon]::Warning)
+        Show-TrayBalloon -Text (Get-UlanziText -Key 'Feche a janela aberta antes de reiniciar o bridge.') -Icon ([Windows.Forms.ToolTipIcon]::Warning)
         return
     }
-    if (Request-BridgeRestart -Reason "manual" -CompletionMessage "Conexao reiniciada e confirmada por um novo status.") {
-        Show-TrayBalloon -Text "Reinicio solicitado. A conexao anterior sera encerrada antes de uma nova ser iniciada." -Icon ([Windows.Forms.ToolTipIcon]::Info)
+    if (Request-BridgeRestart -Reason "manual" -CompletionMessage (Get-UlanziText -Key 'Conexao reiniciada e confirmada por um novo status.')) {
+        Show-TrayBalloon -Text (Get-UlanziText -Key 'Reinicio solicitado. A conexao anterior sera encerrada antes de uma nova ser iniciada.') -Icon ([Windows.Forms.ToolTipIcon]::Info)
     }
 })
 $toggleWidgetItem.add_Click({
@@ -2058,17 +2085,17 @@ $toggleWidgetItem.add_Click({
     if ($script:widgetVisible) {
         Set-WidgetPosition
         $widget.Show()
-        $toggleWidgetItem.Text = "Ocultar mostrador"
+        $toggleWidgetItem.Text = (Get-UlanziText -Key 'Ocultar mostrador')
     } else {
         $widget.Hide()
-        $toggleWidgetItem.Text = "Mostrar mostrador"
+        $toggleWidgetItem.Text = (Get-UlanziText -Key 'Mostrar mostrador')
     }
 })
 $panelItem.add_Click({
     try {
         Show-UlanziControlPanel
     } catch {
-        Show-TrayBalloon -Text "Nao foi possivel abrir o painel: $($_.Exception.Message)" -Icon ([Windows.Forms.ToolTipIcon]::Error)
+        Show-TrayBalloon -Text (Get-UlanziText -Key 'Nao foi possivel abrir o painel: {0}' -Arguments @(($($_.Exception.Message)))) -Icon ([Windows.Forms.ToolTipIcon]::Error)
     }
 })
 $exitItem.add_Click({
@@ -2078,7 +2105,7 @@ $exitItem.add_Click({
         $script:diagnosticsDialogOpen -or
         $script:maintenanceDialogOpen
     ) {
-        Show-TrayBalloon -Text "Feche a janela aberta antes de encerrar o Ulanzi Libre." -Icon ([Windows.Forms.ToolTipIcon]::Warning)
+        Show-TrayBalloon -Text (Get-UlanziText -Key 'Feche a janela aberta antes de encerrar o Ulanzi Libre.') -Icon ([Windows.Forms.ToolTipIcon]::Warning)
         return
     }
     $script:closing = $true
@@ -2125,13 +2152,13 @@ $timer.add_Tick({
         $restartItem.Enabled = $false
         $firstRunItem.Visible = $true
         $firstRunItem.Enabled = ($script:configurationState -eq "required" -and -not $script:configurationDialogOpen)
-        $firstRunItem.Text = if ($script:configurationState -eq "configuring") { "Assistente de configuracao aberto" } else { "Configurar agora..." }
+        $firstRunItem.Text = if ($script:configurationState -eq "configuring") { (Get-UlanziText -Key 'Assistente de configuracao aberto') } else { (Get-UlanziText -Key 'Configurar agora...') }
         Set-GlucoseDisplay -Text "CONFIG" -Color "#F4B942"
-        $glucoseItem.Text = "Glicemia: aguardando configuracao"
+        $glucoseItem.Text = (Get-UlanziText -Key 'Glicemia: aguardando configuracao')
         $setupStatus = switch ([string]$script:configurationState) {
-            "checking" { "verificando configuracao" }
-            "configuring" { "assistente de configuracao aberto" }
-            default { "configuracao necessaria" }
+            "checking" { (Get-UlanziText -Key 'verificando configuracao') }
+            "configuring" { (Get-UlanziText -Key 'assistente de configuracao aberto') }
+            default { (Get-UlanziText -Key 'configuracao necessaria') }
         }
         Set-TrayStatus -Status $setupStatus -Healthy $false
         if ($null -ne $script:applicationIcon) { $notifyIcon.Icon = $script:applicationIcon }
@@ -2150,11 +2177,11 @@ $timer.add_Tick({
         if ($null -ne $status) {
             $script:pendingConfigApplyInstanceId = $null
             $script:pendingConfigApplyDeadline = [DateTime]::MinValue
-            Show-TrayBalloon -Text "A nova configuracao foi carregada pelo bridge." -Icon ([Windows.Forms.ToolTipIcon]::Info)
+            Show-TrayBalloon -Text (Get-UlanziText -Key 'A nova configuracao foi carregada pelo bridge.') -Icon ([Windows.Forms.ToolTipIcon]::Info)
         } elseif ([DateTime]::UtcNow -ge $script:pendingConfigApplyDeadline) {
             $script:pendingConfigApplyInstanceId = $null
             $script:pendingConfigApplyDeadline = [DateTime]::MinValue
-            Show-TrayBalloon -Text "As configuracoes foram salvas, mas o bridge ainda nao confirmou que conseguiu carrega-las." -Icon ([Windows.Forms.ToolTipIcon]::Warning)
+            Show-TrayBalloon -Text (Get-UlanziText -Key 'As configuracoes foram salvas, mas o bridge ainda nao confirmou que conseguiu carrega-las.') -Icon ([Windows.Forms.ToolTipIcon]::Warning)
         }
     }
     $bridgeRunning = Test-BridgeRunning
@@ -2205,7 +2232,7 @@ $timer.add_Tick({
         -not $script:maintenanceDialogOpen -and
         [string]::IsNullOrWhiteSpace([string]$script:pendingSoundRequestId)
     )
-    Set-TrayStatus -Status "parado; aguardando verificacao para reconectar" -Healthy $false
+    Set-TrayStatus -Status (Get-UlanziText -Key 'parado; aguardando verificacao para reconectar') -Healthy $false
     if ([DateTime]::UtcNow -ge $script:nextRestart) {
         [void](Start-UlanziConfigurationCheck -Reason "recovery")
     }

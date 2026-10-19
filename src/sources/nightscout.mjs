@@ -1,3 +1,4 @@
+import { tr } from "../i18n.mjs";
 import { createHash } from "node:crypto";
 import { BridgeError } from "../errors.mjs";
 import { fetchJson } from "../http.mjs";
@@ -71,7 +72,7 @@ export class NightscoutSource {
     });
     const entry = Array.isArray(data) ? data[0] : null;
     if (!entry) {
-      throw new BridgeError("o Nightscout não retornou leituras", { code: "NO_READING" });
+      throw new BridgeError(tr("Nightscout returned no readings", "o Nightscout não retornou leituras"), { code: "NO_READING" });
     }
     return normalizeReading(
       {
@@ -85,7 +86,7 @@ export class NightscoutSource {
 
   async getSensorSession(now = new Date(), signal) {
     const nowMs = now instanceof Date ? now.getTime() : new Date(now).getTime();
-    if (!Number.isFinite(nowMs)) throw new TypeError("horario de consulta do sensor invalido");
+    if (!Number.isFinite(nowMs)) throw new TypeError(tr("invalid sensor query time", "horario de consulta do sensor invalido"));
     if (nowMs < this.nextSensorRefreshAtMs) return this.sensorSession;
 
     const since = new Date(nowMs - SENSOR_HISTORY_MS).toISOString();
@@ -100,7 +101,7 @@ export class NightscoutSource {
         signal,
       });
       if (!Array.isArray(data)) {
-        throw new BridgeError("o Nightscout retornou tratamentos em formato invalido", {
+        throw new BridgeError(tr("Nightscout returned treatments in an invalid format", "o Nightscout retornou tratamentos em formato invalido"), {
           code: "INVALID_SENSOR_TREATMENTS",
         });
       }

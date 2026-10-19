@@ -1,3 +1,4 @@
+import { tr } from "./i18n.mjs";
 import { BridgeError, HttpError } from "./errors.mjs";
 import { fetchJson, fetchOk, fetchResponse } from "./http.mjs";
 
@@ -234,7 +235,7 @@ export class AwtrixClient {
       signal,
     });
     if (ngResponse.status === 401) {
-      throw new HttpError("o AWTRIX exige usuário e senha", {
+      throw new HttpError(tr("AWTRIX requires a username and password", "o AWTRIX exige usuário e senha"), {
         status: 401,
         code: "AWTRIX_UNAUTHORIZED",
         retryable: false,
@@ -251,7 +252,7 @@ export class AwtrixClient {
       signal,
     });
     if (legacyResponse.status === 401) {
-      throw new HttpError("o AWTRIX exige usuário e senha", {
+      throw new HttpError(tr("AWTRIX requires a username and password", "o AWTRIX exige usuário e senha"), {
         status: 401,
         code: "AWTRIX_UNAUTHORIZED",
         retryable: false,
@@ -261,7 +262,7 @@ export class AwtrixClient {
       this.mode = "3";
       return this.mode;
     }
-    throw new BridgeError("o endereço configurado não respondeu como AWTRIX NG nem AWTRIX 3", {
+    throw new BridgeError(tr("the configured device did not respond as AWTRIX NG or AWTRIX 3", "o endereço configurado não respondeu como AWTRIX NG nem AWTRIX 3"), {
       code: "AWTRIX_NOT_FOUND",
     });
   }
@@ -335,7 +336,7 @@ export class AwtrixClient {
       typeof settings?.soundEnabled !== "boolean" ||
       !isValidBuzzerVolume(buzzerVolume)
     ) {
-      throw new BridgeError("o AWTRIX NG nao informou um volume de buzzer valido", {
+      throw new BridgeError(tr("AWTRIX NG did not report a valid buzzer volume", "o AWTRIX NG nao informou um volume de buzzer valido"), {
         code: "AWTRIX_VOLUME_SETTINGS_INVALID",
         retryable: false,
       });
@@ -353,14 +354,14 @@ export class AwtrixClient {
       typeof soundEnabled !== "boolean" ||
       !isValidBuzzerVolume(buzzerVolume)
     ) {
-      throw new BridgeError("as configuracoes de volume informadas sao invalidas", {
+      throw new BridgeError(tr("the supplied volume settings are invalid", "as configuracoes de volume informadas sao invalidas"), {
         code: "INVALID_AWTRIX_VOLUME",
         retryable: false,
       });
     }
     const current = await this.readDeviceSoundSettings(signal);
     if (!current.supported) {
-      throw new BridgeError("o controle seguro de volume exige AWTRIX NG com buzzer", {
+      throw new BridgeError(tr("safe volume control requires AWTRIX NG with a buzzer", "o controle seguro de volume exige AWTRIX NG com buzzer"), {
         code: "AWTRIX_VOLUME_UNSUPPORTED",
         retryable: false,
       });
@@ -384,7 +385,7 @@ export class AwtrixClient {
       !isValidBuzzerVolume(appliedVolume) ||
       appliedVolume !== buzzerVolume
     ) {
-      throw new BridgeError("o AWTRIX NG nao confirmou o novo volume", {
+      throw new BridgeError(tr("AWTRIX NG did not confirm the new volume", "o AWTRIX NG nao confirmou o novo volume"), {
         code: "AWTRIX_VOLUME_NOT_CONFIRMED",
       });
     }
@@ -401,14 +402,14 @@ export class AwtrixClient {
     const soundProfile = this.config.alarm?.soundProfile ?? "normal";
     const profileRtttl = ALARM_RTTTL[soundProfile];
     if (!profileRtttl) {
-      throw new BridgeError("perfil sonoro de alarme inválido", {
+      throw new BridgeError(tr("invalid alarm sound profile", "perfil sonoro de alarme inválido"), {
         code: "INVALID_ALARM_SOUND_PROFILE",
         retryable: false,
       });
     }
     const rtttl = profileRtttl[kind];
     if (!rtttl) {
-      throw new BridgeError("tipo de alarme de glicemia invalido", {
+      throw new BridgeError(tr("invalid glucose alarm type", "tipo de alarme de glicemia invalido"), {
         code: "INVALID_ALARM_KIND",
         retryable: false,
       });

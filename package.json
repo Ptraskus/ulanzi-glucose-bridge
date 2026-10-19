@@ -1,9 +1,9 @@
 {
   "name": "ulanzi-libre-bridge",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
-  "description": "Ponte local e segura entre uma fonte de glicemia e um Ulanzi TC001 com AWTRIX NG/3.",
+  "description": "Local Windows bridge from Nightscout or an authorized glucose source to Ulanzi TC001 with AWTRIX NG/3.",
   "engines": {
     "node": ">=22"
   },

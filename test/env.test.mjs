@@ -34,14 +34,14 @@ test("URLs de fontes exigem esquema seguro e rejeitam credenciais ou ambiguidade
     }),
     "https://example.test/reading/",
   );
-  assert.throws(() => normalizeHttpUrl("SOURCE", "example.test", secureOptions), /URL válida/);
+  assert.throws(() => normalizeHttpUrl("SOURCE", "example.test", secureOptions), /valid URL/);
   assert.throws(
     () => normalizeHttpUrl("SOURCE", "http://example.test", secureOptions),
     /https/,
   );
   assert.throws(
     () => normalizeHttpUrl("SOURCE", "https://user:pass@example.test", secureOptions),
-    /usuário ou senha/,
+    /username or password/,
   );
   assert.throws(
     () => normalizeHttpUrl("SOURCE", "https://example.test/base?token=x", secureOptions),
@@ -49,6 +49,6 @@ test("URLs de fontes exigem esquema seguro e rejeitam credenciais ou ambiguidade
   );
   assert.throws(
     () => normalizeHttpUrl("AWTRIX_HOST", "http://clock.test/base", { allowPath: false }),
-    /caminho/,
+    /path/,
   );
 });

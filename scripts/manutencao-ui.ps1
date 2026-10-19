@@ -1,4 +1,5 @@
 Set-StrictMode -Version Latest
+. (Join-Path $PSScriptRoot "ui-language.ps1")
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
@@ -7,7 +8,7 @@ function ConvertTo-UlanziProcessArgument {
     param([Parameter(Mandatory = $true)][string]$Value)
 
     if ($Value.IndexOf('"') -ge 0 -or $Value.IndexOf("`r") -ge 0 -or $Value.IndexOf("`n") -ge 0) {
-        throw "Um caminho local contem caracteres que nao podem ser usados com seguranca."
+        throw (Get-UlanziText -Key 'Um caminho local contem caracteres que nao podem ser usados com seguranca.')
     }
     return '"' + $Value + '"'
 }
@@ -23,14 +24,14 @@ function Start-UlanziMaintenanceCli {
 
     foreach ($path in @($NodePath, $ScriptPath, $ProjectRoot)) {
         if ($path.IndexOf('"') -ge 0 -or $path.IndexOf("`r") -ge 0 -or $path.IndexOf("`n") -ge 0) {
-            throw "Um caminho local contem caracteres que nao podem ser usados com seguranca."
+            throw (Get-UlanziText -Key 'Um caminho local contem caracteres que nao podem ser usados com seguranca.')
         }
     }
     if ($Command -notin @("check", "download", "list", "restore")) {
-        throw "A operacao de manutencao solicitada nao e permitida."
+        throw (Get-UlanziText -Key 'A operacao de manutencao solicitada nao e permitida.')
     }
     if ($Command -eq "restore" -and $Value -notmatch '^\d{8}T\d{9}Z-[0-9a-f-]{36}$') {
-        throw "O identificador da copia de seguranca e invalido."
+        throw (Get-UlanziText -Key 'O identificador da copia de seguranca e invalido.')
     }
 
     $arguments = @(
@@ -68,37 +69,37 @@ function Start-UlanziInstallerValidationCli {
 
     foreach ($path in @($PowerShellPath, $ProjectRoot)) {
         if ($path.IndexOf('"') -ge 0 -or $path.IndexOf("`r") -ge 0 -or $path.IndexOf("`n") -ge 0) {
-            throw "Um caminho local contem caracteres que nao podem ser usados com seguranca."
+            throw (Get-UlanziText -Key 'Um caminho local contem caracteres que nao podem ser usados com seguranca.')
         }
     }
 
     $updatesDirectory = [IO.Path]::GetFullPath((Join-Path $ProjectRoot ".updates"))
     $installerFileName = [string]$Manifest.installer.fileName
     if ($installerFileName -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]{0,119}\.exe$') {
-        throw "O nome do instalador no manifesto e invalido."
+        throw (Get-UlanziText -Key 'O nome do instalador no manifesto e invalido.')
     }
     $expectedHash = [string]$Manifest.installer.sha256
     if ($expectedHash -notmatch '^[0-9a-fA-F]{64}$') {
-        throw "O manifesto nao contem um SHA-256 valido."
+        throw (Get-UlanziText -Key 'O manifesto nao contem um SHA-256 valido.')
     }
     $expectedPublisher = ([string]$Manifest.installer.publisher).Trim()
     if ([string]::IsNullOrWhiteSpace($expectedPublisher) -or $expectedPublisher.Length -gt 200 -or $expectedPublisher -match '[\x00-\x1f\x7f]') {
-        throw "O manifesto nao informa um publicador valido."
+        throw (Get-UlanziText -Key 'O manifesto nao informa um publicador valido.')
     }
     if ([bool]$Manifest.installer.requireAuthenticode -ne $true) {
-        throw "O manifesto precisa exigir assinatura Authenticode."
+        throw (Get-UlanziText -Key 'O manifesto precisa exigir assinatura Authenticode.')
     }
     $expectedPath = [IO.Path]::GetFullPath((Join-Path $updatesDirectory $installerFileName))
     $updatesPrefix = $updatesDirectory + [IO.Path]::DirectorySeparatorChar
     if (-not $expectedPath.StartsWith($updatesPrefix, [StringComparison]::OrdinalIgnoreCase)) {
-        throw "O instalador baixado esta fora da pasta de atualizacoes permitida."
+        throw (Get-UlanziText -Key 'O instalador baixado esta fora da pasta de atualizacoes permitida.')
     }
     $downloadedPath = [IO.Path]::GetFullPath([string]$Download.path)
     if (-not [string]::Equals($expectedPath, $downloadedPath, [StringComparison]::OrdinalIgnoreCase)) {
-        throw "O instalador baixado esta fora da pasta de atualizacoes permitida."
+        throw (Get-UlanziText -Key 'O instalador baixado esta fora da pasta de atualizacoes permitida.')
     }
     if (-not (Test-Path -LiteralPath $downloadedPath -PathType Leaf)) {
-        throw "O instalador baixado nao foi encontrado."
+        throw (Get-UlanziText -Key 'O instalador baixado nao foi encontrado.')
     }
 
     # A verificacao pode ler um instalador grande e consultar a cadeia Authenticode.
@@ -106,24 +107,25 @@ function Start-UlanziInstallerValidationCli {
     $validationScript = @'
 $ErrorActionPreference = "Stop"
 try {
+    . ([Environment]::GetEnvironmentVariable("ULANZI_VALIDATION_LANGUAGE_HELPER"))
     $installerPath = [Environment]::GetEnvironmentVariable("ULANZI_VALIDATION_PATH")
     $expectedHash = [Environment]::GetEnvironmentVariable("ULANZI_VALIDATION_SHA256")
     $expectedPublisher = [Environment]::GetEnvironmentVariable("ULANZI_VALIDATION_PUBLISHER")
     $requireAuthenticode = [Environment]::GetEnvironmentVariable("ULANZI_VALIDATION_REQUIRE_AUTHENTICODE") -eq "true"
     if ([string]::IsNullOrWhiteSpace($installerPath) -or -not (Test-Path -LiteralPath $installerPath -PathType Leaf)) {
-        throw "O instalador baixado nao foi encontrado."
+        throw (Get-UlanziText -Key 'O instalador baixado nao foi encontrado.')
     }
     $actualHash = (Get-FileHash -LiteralPath $installerPath -Algorithm SHA256 -ErrorAction Stop).Hash
     if (-not [string]::Equals($actualHash, $expectedHash, [StringComparison]::OrdinalIgnoreCase)) {
-        throw "O instalador mudou depois do download. A instalacao foi bloqueada."
+        throw (Get-UlanziText -Key 'O instalador mudou depois do download. A instalacao foi bloqueada.')
     }
     $signature = Get-AuthenticodeSignature -LiteralPath $installerPath -ErrorAction Stop
     if ($requireAuthenticode -and [string]$signature.Status -ne "Valid") {
-        throw "A assinatura digital do instalador nao e valida. A instalacao foi bloqueada."
+        throw (Get-UlanziText -Key 'A assinatura digital do instalador nao e valida. A instalacao foi bloqueada.')
     }
     if (-not [string]::IsNullOrWhiteSpace($expectedPublisher)) {
         if ($null -eq $signature.SignerCertificate) {
-            throw "Nao foi possivel confirmar o publicador do instalador. A instalacao foi bloqueada."
+            throw (Get-UlanziText -Key 'Nao foi possivel confirmar o publicador do instalador. A instalacao foi bloqueada.')
         }
         $simpleName = $signature.SignerCertificate.GetNameInfo(
             [Security.Cryptography.X509Certificates.X509NameType]::SimpleName,
@@ -133,7 +135,7 @@ try {
         $matchesSimpleName = [string]::Equals($simpleName, $expectedPublisher, [StringComparison]::OrdinalIgnoreCase)
         $matchesSubject = [string]::Equals($subject, $expectedPublisher, [StringComparison]::OrdinalIgnoreCase)
         if (-not $matchesSimpleName -and -not $matchesSubject) {
-            throw "O publicador da assinatura digital nao corresponde ao canal de atualizacao. A instalacao foi bloqueada."
+            throw (Get-UlanziText -Key 'O publicador da assinatura digital nao corresponde ao canal de atualizacao. A instalacao foi bloqueada.')
         }
     }
     [Console]::Out.WriteLine(([ordered]@{ ok = $true; path = $installerPath } | ConvertTo-Json -Compress))
@@ -155,6 +157,8 @@ try {
     $startInfo.EnvironmentVariables["ULANZI_VALIDATION_SHA256"] = $expectedHash
     $startInfo.EnvironmentVariables["ULANZI_VALIDATION_PUBLISHER"] = $expectedPublisher
     $startInfo.EnvironmentVariables["ULANZI_VALIDATION_REQUIRE_AUTHENTICODE"] = "true"
+    $startInfo.EnvironmentVariables["ULANZI_VALIDATION_LANGUAGE_HELPER"] = Join-Path $PSScriptRoot "ui-language.ps1"
+    $startInfo.EnvironmentVariables["ULANZI_UI_LANGUAGE"] = Get-UlanziLanguage
     $process = [Diagnostics.Process]::Start($startInfo)
     $standardOutputTask = $process.StandardOutput.ReadToEndAsync()
     $standardErrorTask = $process.StandardError.ReadToEndAsync()
@@ -166,7 +170,7 @@ try {
 function Complete-UlanziMaintenanceCli {
     param([Parameter(Mandatory = $true)][Diagnostics.Process]$Process)
 
-    if (-not $Process.HasExited) { throw "A operacao de manutencao ainda nao terminou." }
+    if (-not $Process.HasExited) { throw (Get-UlanziText -Key 'A operacao de manutencao ainda nao terminou.') }
     $Process.WaitForExit()
     $standardOutput = $Process.UlanziStandardOutputTask.GetAwaiter().GetResult()
     $standardError = $Process.UlanziStandardErrorTask.GetAwaiter().GetResult()
@@ -183,7 +187,7 @@ function Complete-UlanziMaintenanceCli {
         $safeMessage = if ($null -ne $payload -and -not [string]::IsNullOrWhiteSpace([string]$payload.message)) {
             [string]$payload.message
         } else {
-            "A operacao local nao foi concluida."
+            (Get-UlanziText -Key 'A operacao local nao foi concluida.')
         }
         throw $safeMessage
     }
@@ -217,11 +221,11 @@ function Test-UlanziInstallerAuthenticode {
 
     $signature = Get-AuthenticodeSignature -LiteralPath $InstallerPath -ErrorAction Stop
     if ($RequireAuthenticode -and [string]$signature.Status -ne "Valid") {
-        throw "A assinatura digital do instalador nao e valida. A instalacao foi bloqueada."
+        throw (Get-UlanziText -Key 'A assinatura digital do instalador nao e valida. A instalacao foi bloqueada.')
     }
     if (-not [string]::IsNullOrWhiteSpace($ExpectedPublisher)) {
         if ($null -eq $signature.SignerCertificate) {
-            throw "Nao foi possivel confirmar o publicador do instalador. A instalacao foi bloqueada."
+            throw (Get-UlanziText -Key 'Nao foi possivel confirmar o publicador do instalador. A instalacao foi bloqueada.')
         }
         $simpleName = $signature.SignerCertificate.GetNameInfo(
             [Security.Cryptography.X509Certificates.X509NameType]::SimpleName,
@@ -232,7 +236,7 @@ function Test-UlanziInstallerAuthenticode {
         $matchesSimpleName = [string]::Equals($simpleName, $expected, [StringComparison]::OrdinalIgnoreCase)
         $matchesSubject = [string]::Equals($subject, $expected, [StringComparison]::OrdinalIgnoreCase)
         if (-not $matchesSimpleName -and -not $matchesSubject) {
-            throw "O publicador da assinatura digital nao corresponde ao canal de atualizacao. A instalacao foi bloqueada."
+            throw (Get-UlanziText -Key 'O publicador da assinatura digital nao corresponde ao canal de atualizacao. A instalacao foi bloqueada.')
         }
     }
     return $true
@@ -249,14 +253,14 @@ function Confirm-UlanziDownloadedInstaller {
     $expectedPath = [IO.Path]::GetFullPath((Join-Path $updatesDirectory ([string]$Manifest.installer.fileName)))
     $downloadedPath = [IO.Path]::GetFullPath([string]$Download.path)
     if (-not [string]::Equals($expectedPath, $downloadedPath, [StringComparison]::OrdinalIgnoreCase)) {
-        throw "O instalador baixado esta fora da pasta de atualizacoes permitida."
+        throw (Get-UlanziText -Key 'O instalador baixado esta fora da pasta de atualizacoes permitida.')
     }
     if (-not (Test-Path -LiteralPath $downloadedPath -PathType Leaf)) {
-        throw "O instalador baixado nao foi encontrado."
+        throw (Get-UlanziText -Key 'O instalador baixado nao foi encontrado.')
     }
     $actualHash = (Get-FileHash -LiteralPath $downloadedPath -Algorithm SHA256 -ErrorAction Stop).Hash
     if (-not [string]::Equals($actualHash, [string]$Manifest.installer.sha256, [StringComparison]::OrdinalIgnoreCase)) {
-        throw "O instalador mudou depois do download. A instalacao foi bloqueada."
+        throw (Get-UlanziText -Key 'O instalador mudou depois do download. A instalacao foi bloqueada.')
     }
     [void](Test-UlanziInstallerAuthenticode `
         -InstallerPath $downloadedPath `
@@ -282,7 +286,7 @@ function Show-UlanziMaintenanceDialog {
     $historyCli = Join-Path $resolvedProjectRoot "src\config-history-cli.mjs"
     foreach ($requiredFile in @($updateCli, $historyCli)) {
         if (-not (Test-Path -LiteralPath $requiredFile -PathType Leaf)) {
-            throw "Um componente local de manutencao nao foi encontrado."
+            throw (Get-UlanziText -Key 'Um componente local de manutencao nao foi encontrado.')
         }
     }
 
@@ -304,7 +308,7 @@ function Show-UlanziMaintenanceDialog {
     }
 
     $form = [Windows.Forms.Form]::new()
-    $form.Text = "Atualizacoes e recuperacao - Ulanzi Libre"
+    $form.Text = (Get-UlanziText -Key 'Atualizacoes e recuperacao - Ulanzi Libre')
     $form.ClientSize = [Drawing.Size]::new(690, 510)
     $form.MinimumSize = [Drawing.Size]::new(690, 510)
     $form.StartPosition = if ($null -ne $Owner) { [Windows.Forms.FormStartPosition]::CenterParent } else { [Windows.Forms.FormStartPosition]::CenterScreen }
@@ -327,14 +331,14 @@ function Show-UlanziMaintenanceDialog {
     $header.BackColor = [Drawing.ColorTranslator]::FromHtml("#173A4D")
     $header.Tag = "Header"
     $title = [Windows.Forms.Label]::new()
-    $title.Text = "Atualizacoes e recuperacao"
+    $title.Text = (Get-UlanziText -Key 'Atualizacoes e recuperacao')
     $title.AutoSize = $true
     $title.Location = [Drawing.Point]::new(20, 12)
     $title.Font = [Drawing.Font]::new("Segoe UI", 17, [Drawing.FontStyle]::Bold)
     $title.ForeColor = [Drawing.Color]::White
     $title.Tag = "Text"
     $subtitle = [Windows.Forms.Label]::new()
-    $subtitle.Text = "Atualize com verificacao de seguranca ou recupere uma configuracao anterior."
+    $subtitle.Text = (Get-UlanziText -Key 'Atualize com verificacao de seguranca ou recupere uma configuracao anterior.')
     $subtitle.AutoSize = $true
     $subtitle.Location = [Drawing.Point]::new(22, 48)
     $subtitle.ForeColor = [Drawing.ColorTranslator]::FromHtml("#D4E7EF")
@@ -346,8 +350,8 @@ function Show-UlanziMaintenanceDialog {
     $tabs.Location = [Drawing.Point]::new(18, 92)
     $tabs.Size = [Drawing.Size]::new(654, 352)
     $tabs.Anchor = [Windows.Forms.AnchorStyles]::Top -bor [Windows.Forms.AnchorStyles]::Bottom -bor [Windows.Forms.AnchorStyles]::Left -bor [Windows.Forms.AnchorStyles]::Right
-    $updatesTab = [Windows.Forms.TabPage]::new("Atualizacoes")
-    $recoveryTab = [Windows.Forms.TabPage]::new("Recuperacao")
+    $updatesTab = [Windows.Forms.TabPage]::new((Get-UlanziText -Key 'Atualizacoes'))
+    $recoveryTab = [Windows.Forms.TabPage]::new((Get-UlanziText -Key 'Recuperacao'))
     $updatesTab.BackColor = [Drawing.Color]::White
     $recoveryTab.BackColor = [Drawing.Color]::White
     $updatesTab.Tag = "Surface"
@@ -357,13 +361,13 @@ function Show-UlanziMaintenanceDialog {
     [void]$tabs.TabPages.Add($recoveryTab)
 
     $updateHeading = [Windows.Forms.Label]::new()
-    $updateHeading.Text = "Versao do aplicativo"
+    $updateHeading.Text = (Get-UlanziText -Key 'Versao do aplicativo')
     $updateHeading.Location = [Drawing.Point]::new(18, 20)
     $updateHeading.AutoSize = $true
     $updateHeading.Font = [Drawing.Font]::new("Segoe UI", 11, [Drawing.FontStyle]::Bold)
     $updateHeading.Tag = "Text"
     $updateStatus = [Windows.Forms.Label]::new()
-    $updateStatus.Text = "Verificando o canal de atualizacoes..."
+    $updateStatus.Text = (Get-UlanziText -Key 'Verificando o canal de atualizacoes...')
     $updateStatus.Location = [Drawing.Point]::new(20, 54)
     $updateStatus.Size = [Drawing.Size]::new(590, 48)
     $updateStatus.ForeColor = [Drawing.ColorTranslator]::FromHtml("#1D5D7A")
@@ -377,18 +381,18 @@ function Show-UlanziMaintenanceDialog {
     $releaseNotes.ScrollBars = [Windows.Forms.ScrollBars]::Vertical
     $releaseNotes.BackColor = [Drawing.ColorTranslator]::FromHtml("#F7F9FA")
     $releaseNotes.Tag = "Input"
-    $releaseNotes.Text = "As notas da versao aparecerao aqui quando houver uma atualizacao."
+    $releaseNotes.Text = (Get-UlanziText -Key 'As notas da versao aparecerao aqui quando houver uma atualizacao.')
     $checkButton = [Windows.Forms.Button]::new()
-    $checkButton.Text = "Verificar novamente"
+    $checkButton.Text = (Get-UlanziText -Key 'Verificar novamente')
     $checkButton.Location = [Drawing.Point]::new(20, 248)
     $checkButton.Size = [Drawing.Size]::new(132, 34)
     $downloadButton = [Windows.Forms.Button]::new()
-    $downloadButton.Text = "Baixar atualizacao"
+    $downloadButton.Text = (Get-UlanziText -Key 'Baixar atualizacao')
     $downloadButton.Location = [Drawing.Point]::new(162, 248)
     $downloadButton.Size = [Drawing.Size]::new(132, 34)
     $downloadButton.Enabled = $false
     $installButton = [Windows.Forms.Button]::new()
-    $installButton.Text = "Instalar agora"
+    $installButton.Text = (Get-UlanziText -Key 'Instalar agora')
     $installButton.Location = [Drawing.Point]::new(304, 248)
     $installButton.Size = [Drawing.Size]::new(112, 34)
     $installButton.Enabled = $false
@@ -405,13 +409,13 @@ function Show-UlanziMaintenanceDialog {
     $updatesTab.Controls.Add($installButton)
 
     $recoveryHeading = [Windows.Forms.Label]::new()
-    $recoveryHeading.Text = "Copias automaticas da configuracao"
+    $recoveryHeading.Text = (Get-UlanziText -Key 'Copias automaticas da configuracao')
     $recoveryHeading.Location = [Drawing.Point]::new(18, 18)
     $recoveryHeading.AutoSize = $true
     $recoveryHeading.Font = [Drawing.Font]::new("Segoe UI", 11, [Drawing.FontStyle]::Bold)
     $recoveryHeading.Tag = "Text"
     $recoveryHelp = [Windows.Forms.Label]::new()
-    $recoveryHelp.Text = "Mostramos apenas copias validas. Senhas e tokens nunca aparecem nesta tela."
+    $recoveryHelp.Text = (Get-UlanziText -Key 'Mostramos apenas copias validas. Senhas e tokens nunca aparecem nesta tela.')
     $recoveryHelp.Location = [Drawing.Point]::new(20, 48)
     $recoveryHelp.Size = [Drawing.Size]::new(590, 36)
     $recoveryHelp.Tag = "Muted"
@@ -424,19 +428,19 @@ function Show-UlanziMaintenanceDialog {
     $snapshotList.HideSelection = $false
     $snapshotList.MultiSelect = $false
     $snapshotList.Tag = "Input"
-    [void]$snapshotList.Columns.Add("Data e hora", 180)
-    [void]$snapshotList.Columns.Add("Origem", 380)
+    [void]$snapshotList.Columns.Add((Get-UlanziText -Key 'Data e hora'), 180)
+    [void]$snapshotList.Columns.Add((Get-UlanziText -Key 'Origem'), 380)
     $refreshSnapshotsButton = [Windows.Forms.Button]::new()
-    $refreshSnapshotsButton.Text = "Atualizar lista"
+    $refreshSnapshotsButton.Text = (Get-UlanziText -Key 'Atualizar lista')
     $refreshSnapshotsButton.Location = [Drawing.Point]::new(20, 246)
     $refreshSnapshotsButton.Size = [Drawing.Size]::new(112, 34)
     $restoreButton = [Windows.Forms.Button]::new()
-    $restoreButton.Text = "Restaurar selecionada"
+    $restoreButton.Text = (Get-UlanziText -Key 'Restaurar selecionada')
     $restoreButton.Location = [Drawing.Point]::new(142, 246)
     $restoreButton.Size = [Drawing.Size]::new(148, 34)
     $restoreButton.Enabled = $false
     $recoveryStatus = [Windows.Forms.Label]::new()
-    $recoveryStatus.Text = "Selecione uma copia para habilitar a restauracao."
+    $recoveryStatus.Text = (Get-UlanziText -Key 'Selecione uma copia para habilitar a restauracao.')
     $recoveryStatus.Location = [Drawing.Point]::new(306, 244)
     $recoveryStatus.Size = [Drawing.Size]::new(304, 44)
     $recoveryStatus.ForeColor = [Drawing.ColorTranslator]::FromHtml("#1D5D7A")
@@ -455,7 +459,7 @@ function Show-UlanziMaintenanceDialog {
     $footer.BackColor = [Drawing.Color]::White
     $footer.Tag = "Surface"
     $operationStatus = [Windows.Forms.Label]::new()
-    $operationStatus.Text = "Pronto."
+    $operationStatus.Text = (Get-UlanziText -Key 'Pronto.')
     $operationStatus.Location = [Drawing.Point]::new(18, 15)
     $operationStatus.Size = [Drawing.Size]::new(540, 32)
     $operationStatus.Anchor = [Windows.Forms.AnchorStyles]::Left -bor [Windows.Forms.AnchorStyles]::Right -bor [Windows.Forms.AnchorStyles]::Bottom
@@ -463,7 +467,7 @@ function Show-UlanziMaintenanceDialog {
     $operationStatus.Tag = "Muted"
     $operationStatus.AutoEllipsis = $true
     $closeButton = [Windows.Forms.Button]::new()
-    $closeButton.Text = "Fechar"
+    $closeButton.Text = (Get-UlanziText -Key 'Fechar')
     $closeButton.Size = [Drawing.Size]::new(88, 32)
     $closeButton.Location = [Drawing.Point]::new(584, 10)
     $closeButton.Anchor = [Windows.Forms.AnchorStyles]::Right -bor [Windows.Forms.AnchorStyles]::Bottom
@@ -478,8 +482,8 @@ function Show-UlanziMaintenanceDialog {
     $progressBar.Style = [Windows.Forms.ProgressBarStyle]::Marquee
     $progressBar.MarqueeAnimationSpeed = 24
     $progressBar.Visible = $false
-    $progressBar.AccessibleName = "Progresso da manutencao"
-    $progressBar.AccessibleDescription = "Nenhuma operacao de manutencao em andamento."
+    $progressBar.AccessibleName = (Get-UlanziText -Key 'Progresso da manutencao')
+    $progressBar.AccessibleDescription = (Get-UlanziText -Key 'Nenhuma operacao de manutencao em andamento.')
     $footer.Controls.Add($operationStatus)
     $footer.Controls.Add($closeButton)
     $footer.Controls.Add($progressBar)
@@ -521,14 +525,14 @@ function Show-UlanziMaintenanceDialog {
         $form.UseWaitCursor = $Busy
         if ($Busy) {
             $progressBar.MarqueeAnimationSpeed = 24
-            $progressBar.AccessibleDescription = if ([string]::IsNullOrWhiteSpace($Phase)) { "Operacao de manutencao em andamento." } else { $Phase }
+            $progressBar.AccessibleDescription = if ([string]::IsNullOrWhiteSpace($Phase)) { (Get-UlanziText -Key 'Operacao de manutencao em andamento.') } else { $Phase }
             $progressBar.Visible = $true
-            $operationStatus.Text = if ([string]::IsNullOrWhiteSpace($Phase)) { "Processando..." } else { $Phase }
+            $operationStatus.Text = if ([string]::IsNullOrWhiteSpace($Phase)) { (Get-UlanziText -Key 'Processando...') } else { $Phase }
         } else {
             $progressBar.Visible = $false
             $progressBar.MarqueeAnimationSpeed = 0
-            $progressBar.AccessibleDescription = "Nenhuma operacao de manutencao em andamento."
-            $operationStatus.Text = if ([string]::IsNullOrWhiteSpace($Phase)) { "Pronto." } else { $Phase }
+            $progressBar.AccessibleDescription = (Get-UlanziText -Key 'Nenhuma operacao de manutencao em andamento.')
+            $operationStatus.Text = if ([string]::IsNullOrWhiteSpace($Phase)) { (Get-UlanziText -Key 'Pronto.') } else { $Phase }
         }
         & $setSemanticRole $operationStatus "Muted"
     }
@@ -546,10 +550,10 @@ function Show-UlanziMaintenanceDialog {
             default { 30 }
         }
         $phase = switch ($Operation) {
-            "check" { "Consultando o canal de atualizacoes..." }
-            "download" { "Baixando o instalador e verificando o SHA-256..." }
-            "list" { "Carregando copias validas da configuracao..." }
-            "restore" { "Validando a copia e restaurando a configuracao..." }
+            "check" { (Get-UlanziText -Key 'Consultando o canal de atualizacoes...') }
+            "download" { (Get-UlanziText -Key 'Baixando o instalador e verificando o SHA-256...') }
+            "list" { (Get-UlanziText -Key 'Carregando copias validas da configuracao...') }
+            "restore" { (Get-UlanziText -Key 'Validando a copia e restaurando a configuracao...') }
         }
         $process = Start-UlanziMaintenanceCli `
             -NodePath $nodePath `
@@ -579,12 +583,12 @@ function Show-UlanziMaintenanceDialog {
         param([ValidateSet("validate-download", "validate-install")][string]$Operation)
         if ($null -ne $state.PendingProcess) { return $false }
         if ($null -eq $state.UpdateManifest -or $null -eq $state.CandidateDownload) {
-            throw "Nao ha um instalador para validar."
+            throw (Get-UlanziText -Key 'Nao ha um instalador para validar.')
         }
         $phase = if ($Operation -eq "validate-install") {
-            "Revalidando o instalador antes de abrir..."
+            (Get-UlanziText -Key 'Revalidando o instalador antes de abrir...')
         } else {
-            "Confirmando assinatura digital e publicador..."
+            (Get-UlanziText -Key 'Confirmando assinatura digital e publicador...')
         }
         $process = Start-UlanziInstallerValidationCli `
             -PowerShellPath $powerShellPath `
@@ -603,12 +607,12 @@ function Show-UlanziMaintenanceDialog {
     $friendlyUpdateError = {
         param([string]$Message)
         if ($Message -match 'canal de atualizacao.+nao foi configurado') {
-            return "O canal de atualizacoes ainda nao foi configurado pelo distribuidor. O aplicativo pode continuar sendo usado normalmente."
+            return (Get-UlanziText -Key 'O canal de atualizacoes ainda nao foi configurado pelo distribuidor. O aplicativo pode continuar sendo usado normalmente.')
         }
         if ($Message -match 'identidade do publicador.+nao foi configurada') {
-            return "A identidade do publicador ainda nao foi configurada pelo distribuidor. A verificacao foi mantida desativada por seguranca."
+            return (Get-UlanziText -Key 'A identidade do publicador ainda nao foi configurada pelo distribuidor. A verificacao foi mantida desativada por seguranca.')
         }
-        return "Nao foi possivel concluir a verificacao: $Message"
+        return (Get-UlanziText -Key 'Nao foi possivel concluir a verificacao: {0}' -Arguments @(($Message)))
     }
 
     $renderSnapshots = {
@@ -621,13 +625,13 @@ function Show-UlanziMaintenanceDialog {
                 $createdAt = [DateTime]::Parse([string]$snapshot.createdAt).ToLocalTime().ToString("dd/MM/yyyy HH:mm")
                 $reason = [string]$snapshot.reason
                 $reasonLabel = if ($reason -eq "before-ui-change") {
-                    "Antes de salvar configuracoes"
+                    (Get-UlanziText -Key 'Antes de salvar configuracoes')
                 } elseif ($reason -like "before-restore-*") {
-                    "Antes de uma restauracao"
+                    (Get-UlanziText -Key 'Antes de uma restauracao')
                 } elseif ($reason -eq "manual") {
-                    "Copia criada manualmente"
+                    (Get-UlanziText -Key 'Copia criada manualmente')
                 } else {
-                    "Alteracao anterior da configuracao"
+                    (Get-UlanziText -Key 'Alteracao anterior da configuracao')
                 }
                 $item = [Windows.Forms.ListViewItem]::new($createdAt)
                 [void]$item.SubItems.Add($reasonLabel)
@@ -635,9 +639,9 @@ function Show-UlanziMaintenanceDialog {
                 [void]$snapshotList.Items.Add($item)
             }
             if ($snapshots.Count -eq 0) {
-                $recoveryStatus.Text = "Ainda nao ha copias de configuracao disponiveis."
+                $recoveryStatus.Text = (Get-UlanziText -Key 'Ainda nao ha copias de configuracao disponiveis.')
             } else {
-                $recoveryStatus.Text = "Selecione uma copia para habilitar a restauracao."
+                $recoveryStatus.Text = (Get-UlanziText -Key 'Selecione uma copia para habilitar a restauracao.')
             }
             & $setSemanticRole $recoveryStatus "Muted"
         } finally {
@@ -664,12 +668,12 @@ function Show-UlanziMaintenanceDialog {
             $state.Download = $null
             $state.CandidateDownload = $null
             $result.UpdateVersion = $null
-            $releaseNotes.Text = "Consultando o canal de atualizacoes..."
+            $releaseNotes.Text = (Get-UlanziText -Key 'Consultando o canal de atualizacoes...')
             [void](& $startCliOperation "check")
         } catch {
             $updateStatus.Text = & $friendlyUpdateError $_.Exception.Message
             & $setSemanticRole $updateStatus "Error"
-            & $setBusy $false "Verificacao interrompida."
+            & $setBusy $false (Get-UlanziText -Key 'Verificacao interrompida.')
         }
     })
 
@@ -681,7 +685,7 @@ function Show-UlanziMaintenanceDialog {
         } catch {
             $updateStatus.Text = & $friendlyUpdateError $_.Exception.Message
             & $setSemanticRole $updateStatus "Error"
-            & $setBusy $false "Download interrompido."
+            & $setBusy $false (Get-UlanziText -Key 'Download interrompido.')
         }
     })
 
@@ -694,9 +698,9 @@ function Show-UlanziMaintenanceDialog {
             $state.CandidateDownload = $null
             $state.Download = $null
             $installButton.Enabled = $false
-            $updateStatus.Text = "A instalacao foi bloqueada: $($_.Exception.Message)"
+            $updateStatus.Text = (Get-UlanziText -Key 'A instalacao foi bloqueada: {0}' -Arguments @(($($_.Exception.Message))))
             & $setSemanticRole $updateStatus "Error"
-            & $setBusy $false "Validacao interrompida."
+            & $setBusy $false (Get-UlanziText -Key 'Validacao interrompida.')
         }
     })
 
@@ -708,9 +712,9 @@ function Show-UlanziMaintenanceDialog {
         try {
             [void](& $startCliOperation "list")
         } catch {
-            $recoveryStatus.Text = "Nao foi possivel listar as copias validas."
+            $recoveryStatus.Text = (Get-UlanziText -Key 'Nao foi possivel listar as copias validas.')
             & $setSemanticRole $recoveryStatus "Error"
-            & $setBusy $false "Leitura interrompida."
+            & $setBusy $false (Get-UlanziText -Key 'Leitura interrompida.')
         }
     })
     $restoreButton.add_Click({
@@ -718,14 +722,14 @@ function Show-UlanziMaintenanceDialog {
         $selected = $snapshotList.SelectedItems[0]
         $snapshotName = [string]$selected.Tag
         if ($snapshotName -notmatch '^\d{8}T\d{9}Z-[0-9a-f-]{36}$') {
-            $recoveryStatus.Text = "A copia selecionada nao possui um identificador valido."
+            $recoveryStatus.Text = (Get-UlanziText -Key 'A copia selecionada nao possui um identificador valido.')
             & $setSemanticRole $recoveryStatus "Error"
             return
         }
         $answer = Show-UlanziOwnedMessageBox `
             -Owner $form `
-            -Text "A configuracao atual sera substituida pela copia de $($selected.Text).`r`n`r`nAntes disso, uma copia de seguranca da configuracao atual sera criada automaticamente. O aplicativo precisara ser reiniciado para aplicar a restauracao.`r`n`r`nDeseja continuar?" `
-            -Caption "Confirmar restauracao" `
+            -Text (Get-UlanziText -Key 'Maintenance.RestoreConfirm' -Arguments @($($selected.Text))) `
+            -Caption (Get-UlanziText -Key 'Confirmar restauracao') `
             -Buttons ([Windows.Forms.MessageBoxButtons]::YesNo) `
             -Icon ([Windows.Forms.MessageBoxIcon]::Warning)
         if ($state.Closing -or $form.IsDisposed -or $form.Disposing) { return }
@@ -733,9 +737,9 @@ function Show-UlanziMaintenanceDialog {
         try {
             [void](& $startCliOperation "restore" $snapshotName)
         } catch {
-            $recoveryStatus.Text = "Nao foi possivel restaurar: $($_.Exception.Message)"
+            $recoveryStatus.Text = (Get-UlanziText -Key 'Nao foi possivel restaurar: {0}' -Arguments @(($($_.Exception.Message))))
             & $setSemanticRole $recoveryStatus "Error"
-            & $setBusy $false "Restauracao interrompida."
+            & $setBusy $false (Get-UlanziText -Key 'Restauracao interrompida.')
         }
     })
 
@@ -754,7 +758,7 @@ function Show-UlanziMaintenanceDialog {
                 $state.PendingDeadline = [DateTime]::MinValue
                 $expiredProcess.Dispose()
                 if ($expiredOperation -in @("list", "restore")) {
-                    $recoveryStatus.Text = "A operacao excedeu o tempo limite de seguranca. Tente novamente mais tarde."
+                    $recoveryStatus.Text = (Get-UlanziText -Key 'A operacao excedeu o tempo limite de seguranca. Tente novamente mais tarde.')
                     & $setSemanticRole $recoveryStatus "Error"
                 } else {
                     if ($expiredOperation -in @("download", "validate-download", "validate-install")) {
@@ -762,7 +766,7 @@ function Show-UlanziMaintenanceDialog {
                         $state.CandidateDownload = $null
                         $state.Download = $null
                     }
-                    $updateStatus.Text = "A operacao excedeu o tempo limite de seguranca. Tente novamente mais tarde."
+                    $updateStatus.Text = (Get-UlanziText -Key 'A operacao excedeu o tempo limite de seguranca. Tente novamente mais tarde.')
                     & $setSemanticRole $updateStatus "Error"
                 }
                 $continueWithCheck = ($expiredOperation -eq "list" -and $state.QueueUpdateCheck)
@@ -773,10 +777,10 @@ function Show-UlanziMaintenanceDialog {
                     } catch {
                         $updateStatus.Text = & $friendlyUpdateError $_.Exception.Message
                         & $setSemanticRole $updateStatus "Error"
-                        & $setBusy $false "Verificacao interrompida."
+                        & $setBusy $false (Get-UlanziText -Key 'Verificacao interrompida.')
                     }
                 } else {
-                    & $setBusy $false "Tempo limite excedido."
+                    & $setBusy $false (Get-UlanziText -Key 'Tempo limite excedido.')
                 }
             }
             return
@@ -797,12 +801,12 @@ function Show-UlanziMaintenanceDialog {
                     if ($response.updateAvailable -eq $true) {
                         $state.UpdateManifest = $response.manifest
                         $result.UpdateVersion = [string]$response.manifest.version
-                        $releaseNotes.Text = if ([string]::IsNullOrWhiteSpace([string]$response.manifest.notes)) { "Esta versao nao possui notas adicionais." } else { [string]$response.manifest.notes }
-                        $updateStatus.Text = "Nova versao $($response.manifest.version) disponivel. Confira as notas e clique em Baixar atualizacao."
+                        $releaseNotes.Text = if ([string]::IsNullOrWhiteSpace([string]$response.manifest.notes)) { (Get-UlanziText -Key 'Esta versao nao possui notas adicionais.') } else { [string]$response.manifest.notes }
+                        $updateStatus.Text = (Get-UlanziText -Key 'Nova versao {0} disponivel. Confira as notas e clique em Baixar atualizacao.' -Arguments @(($($response.manifest.version))))
                     } else {
                         $state.UpdateManifest = $null
-                        $releaseNotes.Text = "Nenhuma atualizacao nova foi encontrada."
-                        $updateStatus.Text = "Voce ja esta usando a versao mais recente ($($response.currentVersion))."
+                        $releaseNotes.Text = (Get-UlanziText -Key 'Nenhuma atualizacao nova foi encontrada.')
+                        $updateStatus.Text = (Get-UlanziText -Key 'Voce ja esta usando a versao mais recente ({0}).' -Arguments @(($($response.currentVersion))))
                     }
                     & $setSemanticRole $updateStatus "Success"
                 }
@@ -811,7 +815,7 @@ function Show-UlanziMaintenanceDialog {
                         $state.UpdateManifest = $null
                         $state.CandidateDownload = $null
                         $state.Download = $null
-                        $updateStatus.Text = "A atualizacao nao esta mais disponivel. Verifique novamente."
+                        $updateStatus.Text = (Get-UlanziText -Key 'A atualizacao nao esta mais disponivel. Verifique novamente.')
                     } else {
                         $state.UpdateManifest = $response.manifest
                         $state.CandidateDownload = $response.download
@@ -822,37 +826,37 @@ function Show-UlanziMaintenanceDialog {
                     & $renderSnapshots $response
                 }
                 "restore" {
-                    if ($response.restored -ne $true) { throw "A restauracao nao foi confirmada." }
+                    if ($response.restored -ne $true) { throw (Get-UlanziText -Key 'A restauracao nao foi confirmada.') }
                     $result.ConfigurationRestored = $true
                     $result.RestoredSnapshot = [string]$response.name
-                    $recoveryStatus.Text = "Configuracao restaurada com seguranca."
+                    $recoveryStatus.Text = (Get-UlanziText -Key 'Configuracao restaurada com seguranca.')
                     & $setSemanticRole $recoveryStatus "Success"
                     $restorationCompleted = $true
                 }
                 "validate-download" {
                     if (-not [string]::Equals([string]$response.path, [string]$state.CandidateDownload.path, [StringComparison]::OrdinalIgnoreCase)) {
-                        throw "A validacao retornou um instalador inesperado."
+                        throw (Get-UlanziText -Key 'A validacao retornou um instalador inesperado.')
                     }
                     $state.Download = $state.CandidateDownload
-                    $updateStatus.Text = "Download concluido. Assinatura digital, publicador e SHA-256 confirmados; o instalador esta pronto."
+                    $updateStatus.Text = (Get-UlanziText -Key 'Download concluido. Assinatura digital, publicador e SHA-256 confirmados; o instalador esta pronto.')
                     & $setSemanticRole $updateStatus "Success"
                 }
                 "validate-install" {
                     if (-not [string]::Equals([string]$response.path, [string]$state.CandidateDownload.path, [StringComparison]::OrdinalIgnoreCase)) {
-                        throw "A validacao retornou um instalador inesperado."
+                        throw (Get-UlanziText -Key 'A validacao retornou um instalador inesperado.')
                     }
                     $state.Download = $state.CandidateDownload
                     $installerPathToOffer = [string]$response.path
                 }
-                default { throw "A operacao de manutencao concluida nao e reconhecida." }
+                default { throw (Get-UlanziText -Key 'A operacao de manutencao concluida nao e reconhecida.') }
             }
         } catch {
             $operationFailed = $true
             if ($operation -eq "list") {
-                $recoveryStatus.Text = "Nao foi possivel listar as copias validas."
+                $recoveryStatus.Text = (Get-UlanziText -Key 'Nao foi possivel listar as copias validas.')
                 & $setSemanticRole $recoveryStatus "Error"
             } elseif ($operation -eq "restore") {
-                $recoveryStatus.Text = "Nao foi possivel restaurar: $($_.Exception.Message)"
+                $recoveryStatus.Text = (Get-UlanziText -Key 'Nao foi possivel restaurar: {0}' -Arguments @(($($_.Exception.Message))))
                 & $setSemanticRole $recoveryStatus "Error"
             } else {
                 if ($operation -in @("download", "validate-download", "validate-install")) {
@@ -861,7 +865,7 @@ function Show-UlanziMaintenanceDialog {
                 }
                 $state.Download = $null
                 $updateStatus.Text = if ($operation -eq "validate-install") {
-                    "A instalacao foi bloqueada: $($_.Exception.Message)"
+                    (Get-UlanziText -Key 'A instalacao foi bloqueada: {0}' -Arguments @(($($_.Exception.Message))))
                 } else {
                     & $friendlyUpdateError $_.Exception.Message
                 }
@@ -879,9 +883,9 @@ function Show-UlanziMaintenanceDialog {
                 & $removeCandidateDownload $state.CandidateDownload
                 $state.CandidateDownload = $null
                 $state.Download = $null
-                $updateStatus.Text = "Nao foi possivel validar o instalador: $($_.Exception.Message)"
+                $updateStatus.Text = (Get-UlanziText -Key 'Nao foi possivel validar o instalador: {0}' -Arguments @(($($_.Exception.Message))))
                 & $setSemanticRole $updateStatus "Error"
-                & $setBusy $false "Validacao interrompida."
+                & $setBusy $false (Get-UlanziText -Key 'Validacao interrompida.')
             }
             return
         }
@@ -894,24 +898,24 @@ function Show-UlanziMaintenanceDialog {
             } catch {
                 $updateStatus.Text = & $friendlyUpdateError $_.Exception.Message
                 & $setSemanticRole $updateStatus "Error"
-                & $setBusy $false "Verificacao interrompida."
+                & $setBusy $false (Get-UlanziText -Key 'Verificacao interrompida.')
             }
             return
         }
 
-        & $setBusy $false $(if ($operationFailed) { "Operacao interrompida." } else { "Operacao concluida." })
+        & $setBusy $false $(if ($operationFailed) { (Get-UlanziText -Key 'Operacao interrompida.') } else { (Get-UlanziText -Key 'Operacao concluida.') })
         if ($restorationCompleted) {
             try {
                 [void](Show-UlanziOwnedMessageBox `
                     -Owner $form `
-                    -Text "Configuracao restaurada com seguranca. Clique em OK para reiniciar o aplicativo e aplicar as mudancas." `
-                    -Caption "Restauracao concluida" `
+                    -Text (Get-UlanziText -Key 'Configuracao restaurada com seguranca. Clique em OK para reiniciar o aplicativo e aplicar as mudancas.') `
+                    -Caption (Get-UlanziText -Key 'Restauracao concluida') `
                     -Buttons ([Windows.Forms.MessageBoxButtons]::OK) `
                     -Icon ([Windows.Forms.MessageBoxIcon]::Information))
                 if ($state.Closing -or $form.IsDisposed -or $form.Disposing) { return }
                 $form.Close()
             } catch {
-                $recoveryStatus.Text = "A configuracao foi restaurada, mas a janela nao conseguiu concluir: $($_.Exception.Message)"
+                $recoveryStatus.Text = (Get-UlanziText -Key 'A configuracao foi restaurada, mas a janela nao conseguiu concluir: {0}' -Arguments @(($($_.Exception.Message))))
                 & $setSemanticRole $recoveryStatus "Error"
             }
             return
@@ -920,8 +924,8 @@ function Show-UlanziMaintenanceDialog {
             try {
                 $answer = Show-UlanziOwnedMessageBox `
                     -Owner $form `
-                    -Text "A assinatura digital, o publicador e o SHA-256 foram confirmados.`r`n`r`nO instalador pode fechar e reiniciar o aplicativo. Deseja iniciar agora?" `
-                    -Caption "Instalar atualizacao" `
+                    -Text (Get-UlanziText -Key 'Maintenance.InstallConfirm') `
+                    -Caption (Get-UlanziText -Key 'Instalar atualizacao') `
                     -Buttons ([Windows.Forms.MessageBoxButtons]::YesNo) `
                     -Icon ([Windows.Forms.MessageBoxIcon]::Question)
                 if ($state.Closing -or $form.IsDisposed -or $form.Disposing) { return }
@@ -932,7 +936,7 @@ function Show-UlanziMaintenanceDialog {
             } catch {
                 $state.Download = $null
                 $installButton.Enabled = $false
-                $updateStatus.Text = "A instalacao foi bloqueada: $($_.Exception.Message)"
+                $updateStatus.Text = (Get-UlanziText -Key 'A instalacao foi bloqueada: {0}' -Arguments @(($($_.Exception.Message))))
                 & $setSemanticRole $updateStatus "Error"
             }
         }
@@ -945,14 +949,14 @@ function Show-UlanziMaintenanceDialog {
             [void](& $startCliOperation "list")
         } catch {
             $state.QueueUpdateCheck = $false
-            $recoveryStatus.Text = "Nao foi possivel listar as copias validas."
+            $recoveryStatus.Text = (Get-UlanziText -Key 'Nao foi possivel listar as copias validas.')
             & $setSemanticRole $recoveryStatus "Error"
             try {
                 [void](& $startCliOperation "check")
             } catch {
                 $updateStatus.Text = & $friendlyUpdateError $_.Exception.Message
                 & $setSemanticRole $updateStatus "Error"
-                & $setBusy $false "Inicializacao interrompida."
+                & $setBusy $false (Get-UlanziText -Key 'Inicializacao interrompida.')
             }
         }
     })
@@ -960,7 +964,7 @@ function Show-UlanziMaintenanceDialog {
         param($sender, $eventArgs)
         if ($eventArgs.CloseReason -eq [Windows.Forms.CloseReason]::UserClosing -and $null -ne $state.PendingProcess) {
             $eventArgs.Cancel = $true
-            $operationStatus.Text = "Aguarde a etapa atual terminar antes de fechar."
+            $operationStatus.Text = (Get-UlanziText -Key 'Aguarde a etapa atual terminar antes de fechar.')
             & $setSemanticRole $operationStatus "Warning"
             return
         }

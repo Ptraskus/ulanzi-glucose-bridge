@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
     [ValidatePattern('^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$')]
@@ -95,7 +95,7 @@ function Assert-SafeRelativePackagePath {
     if ([IO.Path]::GetExtension($leaf) -match '(?i)^\.(bak|backup|bin|dmp|log|tmp|zip)$') {
         throw "O caminho '$RelativePath' parece ser um artefato ou dado local e foi recusado."
     }
-    if ([IO.Path]::GetExtension($leaf) -ieq ".json" -and $normalized -ine "package.json") {
+    if ([IO.Path]::GetExtension($leaf) -ieq ".json" -and $normalized -inotmatch '^(package\.json|locales\\(en|pt-BR)\.json)$') {
         throw "Arquivos JSON locais não entram no payload pela allowlist: '$RelativePath'."
     }
 
@@ -249,7 +249,15 @@ function Add-PortableNodeRuntime {
 
     $runtimeDestination = Join-Path $payloadDirectory "runtime\node"
     [void](New-Item -ItemType Directory -Force -Path $runtimeDestination)
-    Get-ChildItem -LiteralPath $nodeRoot -Force | Copy-Item -Destination $runtimeDestination -Recurse
+    # The app has no npm runtime dependencies. Shipping npm/corepack would add
+    # thousands of unused files and conflict with the installer's data guard.
+    foreach ($runtimeFileName in @("node.exe", "LICENSE")) {
+        $runtimeFilePath = Join-Path $nodeRoot $runtimeFileName
+        if (-not (Test-Path -LiteralPath $runtimeFilePath -PathType Leaf)) {
+            throw "Required Node.js runtime file is missing: $runtimeFileName"
+        }
+        Copy-Item -LiteralPath $runtimeFilePath -Destination (Join-Path $runtimeDestination $runtimeFileName)
+    }
 
     return [ordered]@{
         version = $reportedVersion.TrimStart('v')

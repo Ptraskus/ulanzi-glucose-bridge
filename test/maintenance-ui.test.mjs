@@ -6,6 +6,8 @@ import test from "node:test";
 
 const projectRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 const script = await readFile(join(projectRoot, "scripts", "manutencao-ui.ps1"), "utf8");
+const english = JSON.parse(await readFile(join(projectRoot, "locales", "en.json"), "utf8"));
+const portuguese = JSON.parse(await readFile(join(projectRoot, "locales", "pt-BR.json"), "utf8"));
 
 test("janela expoe contrato simples para a bandeja reiniciar apos restauracao", () => {
   assert.match(script, /function Show-UlanziMaintenanceDialog/);
@@ -33,7 +35,9 @@ test("instalador e oferecido apenas depois de hash e Authenticode validos", () =
   assert.match(script, /GetNameInfo\(/);
   assert.match(script, /OrdinalIgnoreCase/);
   assert.match(script, /Confirm-UlanziDownloadedInstaller[\s\S]*Start-Process -FilePath \$installerPath/);
-  assert.match(script, /Deseja iniciar agora\?/);
+  assert.match(script, /Get-UlanziText -Key 'Maintenance\.InstallConfirm'/);
+  assert.match(english["Maintenance.InstallConfirm"], /start now\?/i);
+  assert.match(portuguese["Maintenance.InstallConfirm"], /Deseja iniciar agora\?/);
 });
 
 test("recuperacao lista no maximo tres copias e exige confirmacao clara", () => {
@@ -41,9 +45,11 @@ test("recuperacao lista no maximo tres copias e exige confirmacao clara", () => 
   assert.match(script, /\$startCliOperation "list"/);
   assert.match(script, /Select-Object -First 3/);
   assert.match(script, /\$startCliOperation "restore" \$snapshotName/);
-  assert.match(script, /A configuracao atual sera substituida/);
-  assert.match(script, /uma copia de seguranca da configuracao atual sera criada automaticamente/);
-  assert.match(script, /Deseja continuar\?/);
+  assert.match(script, /Get-UlanziText -Key 'Maintenance\.RestoreConfirm' -Arguments/);
+  assert.match(english["Maintenance.RestoreConfirm"], /replaced[\s\S]*backup[\s\S]*automatically[\s\S]*continue\?/i);
+  assert.match(portuguese["Maintenance.RestoreConfirm"], /A configuracao atual sera substituida/);
+  assert.match(portuguese["Maintenance.RestoreConfirm"], /uma copia de seguranca da configuracao atual sera criada automaticamente/);
+  assert.match(portuguese["Maintenance.RestoreConfirm"], /Deseja continuar\?/);
 });
 
 test("tela declara que nao exibe credenciais", () => {
@@ -66,7 +72,7 @@ test("operacoes demoradas mostram progresso indeterminado e mensagens de fase", 
   assert.match(script, /\$progressBar = \[Windows\.Forms\.ProgressBar\]::new\(\)/);
   assert.match(script, /ProgressBarStyle\]::Marquee/);
   assert.match(script, /MarqueeAnimationSpeed = 24/);
-  assert.match(script, /AccessibleName = "Progresso da manutencao"/);
+  assert.match(script, /AccessibleName = \(Get-UlanziText -Key 'Progresso da manutencao'\)/);
   assert.match(script, /Baixando o instalador e verificando o SHA-256/);
   assert.match(script, /Carregando copias validas da configuracao/);
   assert.match(script, /Validando a copia e restaurando a configuracao/);

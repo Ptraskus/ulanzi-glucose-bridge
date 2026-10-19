@@ -102,7 +102,7 @@ test("assistente roda sem console e cancelamento volta ao estado estavel", () =>
 });
 
 test("painel e bandeja oferecem uma unica acao principal quando falta configuracao", () => {
-  assert.match(trayScript, /ToolStripMenuItem\]::new\("Configurar agora\.\.\."\)/);
+  assert.match(trayScript, /ToolStripMenuItem\]::new\(\(Get-UlanziText -Key 'Configurar agora\.\.\.'\)\)/);
   assert.match(trayScript, /\$firstRunItem\.Visible = \$false/);
   assert.match(panelScript, /\[scriptblock\]\$GetSetupState/);
   assert.match(panelScript, /\[scriptblock\]\$StartSetup/);
@@ -116,6 +116,6 @@ test("painel e bandeja oferecem uma unica acao principal quando falta configurac
   const runSection = installerScript.split("[Run]")[1] ?? "";
   const postInstallActions = runSection.match(/Flags: postinstall/g) ?? [];
   assert.equal(postInstallActions.length, 1);
-  assert.match(runSection, /Description: "Abrir o Ulanzi Libre Bridge"/);
+  assert.match(runSection, /Description: "\{cm:OpenApp\}"/);
   assert.doesNotMatch(runSection, /configurar-instalado\.vbs/);
 });

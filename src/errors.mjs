@@ -1,3 +1,4 @@
+import { tr } from "./i18n.mjs";
 export class BridgeError extends Error {
   constructor(message, { code = "BRIDGE_ERROR", retryable = true, cause } = {}) {
     super(message, { cause });
@@ -22,10 +23,10 @@ export class HttpError extends BridgeError {
 export function safeErrorMessage(error) {
   if (error instanceof BridgeError) return error.message;
   if (error?.name === "AbortError" || error?.name === "TimeoutError") {
-    return "tempo limite de rede excedido";
+    return tr("network request timed out", "tempo limite de rede excedido");
   }
   if (error instanceof TypeError && /fetch|network|socket|connect/i.test(error.message)) {
-    return "falha de conexão de rede";
+    return tr("network connection failed", "falha de conexão de rede");
   }
-  return "erro inesperado (consulte o diagnóstico local)";
+  return tr("unexpected error (check local diagnostics)", "erro inesperado (consulte o diagnóstico local)");
 }

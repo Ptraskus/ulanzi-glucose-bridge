@@ -1,4 +1,5 @@
 Set-StrictMode -Version Latest
+. (Join-Path $PSScriptRoot "ui-language.ps1")
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
@@ -19,21 +20,21 @@ function Test-UlanziWizardUrl {
         -not [Uri]::TryCreate($candidate, [UriKind]::Absolute, [ref]$uri) -or
         $uri.Scheme -notin @("http", "https")
     ) {
-        throw "$Label deve comecar com http:// ou https:// e conter um endereco valido."
+        throw (Get-UlanziText -Key '{0} deve comecar com http:// ou https:// e conter um endereco valido.' -Arguments @(($Label)))
     }
     if (-not [string]::IsNullOrEmpty($uri.UserInfo) -or -not [string]::IsNullOrEmpty($uri.Fragment)) {
-        throw "$Label nao deve conter usuario, senha ou fragmento no endereco."
+        throw (Get-UlanziText -Key '{0} nao deve conter usuario, senha ou fragmento no endereco.' -Arguments @(($Label)))
     }
     if ($DisallowPath -and $uri.AbsolutePath -ne "/") {
-        throw "$Label nao deve conter um caminho depois do nome ou IP."
+        throw (Get-UlanziText -Key '{0} nao deve conter um caminho depois do nome ou IP.' -Arguments @(($Label)))
     }
     if (-not [string]::IsNullOrEmpty($uri.Query)) {
-        throw "$Label nao deve conter parametros depois de um ponto de interrogacao."
+        throw (Get-UlanziText -Key '{0} nao deve conter parametros depois de um ponto de interrogacao.' -Arguments @(($Label)))
     }
     if ($RequireHttpsOutsideLocalhost -and $uri.Scheme -ne "https") {
         $hostName = $uri.DnsSafeHost.ToLowerInvariant()
         $isLocal = $hostName -eq "localhost" -or $hostName -eq "::1" -or $hostName -match '^127(?:\.[0-9]{1,3}){3}$'
-        if (-not $isLocal) { throw "$Label deve usar https:// para proteger os dados." }
+        if (-not $isLocal) { throw (Get-UlanziText -Key '{0} deve usar https:// para proteger os dados.' -Arguments @(($Label))) }
     }
     return $uri
 }
@@ -70,7 +71,7 @@ function Invoke-UlanziWizardGet {
         [Parameter(Mandatory = $true)][Uri]$Uri,
         [hashtable]$Headers = @{},
         [int]$TimeoutMilliseconds = 5000,
-        [string]$EndpointLabel = "o servico",
+        [string]$EndpointLabel = (Get-UlanziText -Key 'o servico'),
         [Threading.CancellationToken]$CancellationToken = [Threading.CancellationToken]::None
     )
 
@@ -99,16 +100,16 @@ function Invoke-UlanziWizardGet {
         }
     } catch [Threading.Tasks.TaskCanceledException] {
         if ($CancellationToken.IsCancellationRequested) {
-            throw [OperationCanceledException]::new("Operacao cancelada.", $_.Exception, $CancellationToken)
+            throw [OperationCanceledException]::new((Get-UlanziText -Key 'Operacao cancelada.'), $_.Exception, $CancellationToken)
         }
         $timeoutSeconds = [Math]::Max(1, [Math]::Ceiling($TimeoutMilliseconds / 1000))
-        throw "A conexao com $EndpointLabel demorou mais de $timeoutSeconds segundos. Confira o endereco, a rede e tente novamente."
+        throw (Get-UlanziText -Key 'A conexao com {0} demorou mais de {1} segundos. Confira o endereco, a rede e tente novamente.' -Arguments @(($EndpointLabel), ($timeoutSeconds)))
     } catch [OperationCanceledException] {
         throw
     } catch {
         # Never include the request URL or a server-provided body here: the URL
         # can contain a Nightscout token and error bodies can echo credentials.
-        throw "Nao foi possivel conectar com $EndpointLabel. Verifique o endereco e a rede."
+        throw (Get-UlanziText -Key 'Nao foi possivel conectar com {0}. Verifique o endereco e a rede.' -Arguments @(($EndpointLabel)))
     } finally {
         $request.Dispose()
         $client.Dispose()
@@ -135,9 +136,9 @@ function Test-UlanziNightscoutConnection {
         [Threading.CancellationToken]$CancellationToken = [Threading.CancellationToken]::None
     )
 
-    $baseUri = Test-UlanziWizardUrl -Value $BaseUrl -Label "A URL do Nightscout" -RequireHttpsOutsideLocalhost
+    $baseUri = Test-UlanziWizardUrl -Value $BaseUrl -Label (Get-UlanziText -Key 'A URL do Nightscout') -RequireHttpsOutsideLocalhost
     if ($Authentication -ne "public" -and [string]::IsNullOrWhiteSpace($Secret)) {
-        throw "Informe a credencial do Nightscout antes de testar."
+        throw (Get-UlanziText -Key 'Informe a credencial do Nightscout antes de testar.')
     }
     $queryParts = [Collections.Generic.List[string]]::new()
     $queryParts.Add("count=1")
@@ -148,23 +149,23 @@ function Test-UlanziNightscoutConnection {
         $headers["api-secret"] = Get-UlanziSha1Hex -Value $Secret
     }
     $uri = Join-UlanziApiUrl -BaseUri $baseUri -ApiPath "/api/v1/entries/sgv.json" -Query ($queryParts -join "&")
-    $response = Invoke-UlanziWizardGet -Uri $uri -Headers $headers -EndpointLabel "o Nightscout" -CancellationToken $CancellationToken
+    $response = Invoke-UlanziWizardGet -Uri $uri -Headers $headers -EndpointLabel (Get-UlanziText -Key 'o Nightscout') -CancellationToken $CancellationToken
     if ($response.StatusCode -in @(301, 302, 307, 308)) {
-        throw "O Nightscout redirecionou a conexao. Informe a URL HTTPS final."
+        throw (Get-UlanziText -Key 'O Nightscout redirecionou a conexao. Informe a URL HTTPS final.')
     }
-    if ($response.StatusCode -in @(401, 403)) { throw "O Nightscout recusou a credencial informada." }
-    if (-not $response.IsSuccess) { throw "O Nightscout respondeu com erro HTTP $($response.StatusCode)." }
+    if ($response.StatusCode -in @(401, 403)) { throw (Get-UlanziText -Key 'O Nightscout recusou a credencial informada.') }
+    if (-not $response.IsSuccess) { throw (Get-UlanziText -Key 'O Nightscout respondeu com erro HTTP {0}.' -Arguments @(($($response.StatusCode)))) }
     try {
         $entries = @($response.Body | ConvertFrom-Json)
     } catch {
-        throw "O Nightscout respondeu em um formato inesperado."
+        throw (Get-UlanziText -Key 'O Nightscout respondeu em um formato inesperado.')
     }
     $hasSgv = $entries.Count -ge 1 -and $null -ne $entries[0].PSObject.Properties["sgv"]
     $hasGlucose = $entries.Count -ge 1 -and $null -ne $entries[0].PSObject.Properties["glucose"]
     if ($entries.Count -lt 1 -or (-not $hasSgv -and -not $hasGlucose)) {
-        throw "O Nightscout conectou, mas nao retornou uma leitura de glicemia."
+        throw (Get-UlanziText -Key 'O Nightscout conectou, mas nao retornou uma leitura de glicemia.')
     }
-    return "Nightscout conectado e leitura encontrada."
+    return (Get-UlanziText -Key 'Nightscout conectado e leitura encontrada.')
 }
 
 function Test-UlanziJsonConnection {
@@ -174,22 +175,22 @@ function Test-UlanziJsonConnection {
         [Threading.CancellationToken]$CancellationToken = [Threading.CancellationToken]::None
     )
 
-    $uri = Test-UlanziWizardUrl -Value $Url -Label "A URL da fonte JSON" -RequireHttpsOutsideLocalhost
+    $uri = Test-UlanziWizardUrl -Value $Url -Label (Get-UlanziText -Key 'A URL da fonte JSON') -RequireHttpsOutsideLocalhost
     $headers = @{}
     if (-not [string]::IsNullOrWhiteSpace($Token)) { $headers.Authorization = "Bearer $Token" }
-    $response = Invoke-UlanziWizardGet -Uri $uri -Headers $headers -EndpointLabel "a fonte JSON" -CancellationToken $CancellationToken
-    if ($response.StatusCode -in @(301, 302, 307, 308)) { throw "A fonte JSON redirecionou a conexao. Informe a URL final." }
-    if ($response.StatusCode -in @(401, 403)) { throw "A fonte JSON recusou a credencial informada." }
-    if (-not $response.IsSuccess) { throw "A fonte JSON respondeu com erro HTTP $($response.StatusCode)." }
-    try { $reading = $response.Body | ConvertFrom-Json } catch { throw "A fonte JSON respondeu em um formato inesperado." }
+    $response = Invoke-UlanziWizardGet -Uri $uri -Headers $headers -EndpointLabel (Get-UlanziText -Key 'a fonte JSON') -CancellationToken $CancellationToken
+    if ($response.StatusCode -in @(301, 302, 307, 308)) { throw (Get-UlanziText -Key 'A fonte JSON redirecionou a conexao. Informe a URL final.') }
+    if ($response.StatusCode -in @(401, 403)) { throw (Get-UlanziText -Key 'A fonte JSON recusou a credencial informada.') }
+    if (-not $response.IsSuccess) { throw (Get-UlanziText -Key 'A fonte JSON respondeu com erro HTTP {0}.' -Arguments @(($($response.StatusCode)))) }
+    try { $reading = $response.Body | ConvertFrom-Json } catch { throw (Get-UlanziText -Key 'A fonte JSON respondeu em um formato inesperado.') }
     if (
         $null -eq $reading -or
         $null -eq $reading.PSObject.Properties["valueMgDl"] -or
         $null -eq $reading.PSObject.Properties["timestamp"]
     ) {
-        throw "A resposta JSON nao contem valueMgDl e timestamp."
+        throw (Get-UlanziText -Key 'A resposta JSON nao contem valueMgDl e timestamp.')
     }
-    return "Fonte JSON conectada e leitura encontrada."
+    return (Get-UlanziText -Key 'Fonte JSON conectada e leitura encontrada.')
 }
 
 function Test-UlanziAwtrixConnection {
@@ -202,19 +203,19 @@ function Test-UlanziAwtrixConnection {
         [Threading.CancellationToken]$CancellationToken = [Threading.CancellationToken]::None
     )
 
-    $baseUri = Test-UlanziWizardUrl -Value $HostUrl -Label "O endereco do TC001" -DisallowPath
+    $baseUri = Test-UlanziWizardUrl -Value $HostUrl -Label (Get-UlanziText -Key 'O endereco do TC001') -DisallowPath
     $headers = Get-UlanziBasicHeader -Username $Username -Password $Password
     $ngDeviceUri = Join-UlanziApiUrl -BaseUri $baseUri -ApiPath "/api/v1/device"
-    $ngDevice = Invoke-UlanziWizardGet -Uri $ngDeviceUri -Headers $headers -TimeoutMilliseconds $TimeoutMilliseconds -EndpointLabel "o TC001" -CancellationToken $CancellationToken
+    $ngDevice = Invoke-UlanziWizardGet -Uri $ngDeviceUri -Headers $headers -TimeoutMilliseconds $TimeoutMilliseconds -EndpointLabel (Get-UlanziText -Key 'o TC001') -CancellationToken $CancellationToken
     if ($ngDevice.StatusCode -in @(401, 403)) {
         if ($AllowAuthenticationRequired) { return "auth-required" }
-        throw "O TC001 exige usuario e senha, ou recusou os dados informados."
+        throw (Get-UlanziText -Key 'O TC001 exige usuario e senha, ou recusou os dados informados.')
     }
     if ($ngDevice.IsSuccess) {
         try { $ngIdentity = $ngDevice.Body | ConvertFrom-Json } catch { $ngIdentity = $null }
         $boardTypeProperty = if ($null -ne $ngIdentity) { $ngIdentity.PSObject.Properties["boardType"] } else { $null }
         if ($null -ne $boardTypeProperty -and [string]$boardTypeProperty.Value -ceq "awtrixng") {
-            return "AWTRIX NG conectado."
+            return (Get-UlanziText -Key 'AWTRIX NG conectado.')
         }
     }
 
@@ -222,23 +223,23 @@ function Test-UlanziAwtrixConnection {
     # version route but not the full device identity document.
     if ($ngDevice.StatusCode -in @(404, 405)) {
         $ngVersionUri = Join-UlanziApiUrl -BaseUri $baseUri -ApiPath "/api/v1/version"
-        $ngVersion = Invoke-UlanziWizardGet -Uri $ngVersionUri -Headers $headers -TimeoutMilliseconds $TimeoutMilliseconds -EndpointLabel "o TC001" -CancellationToken $CancellationToken
+        $ngVersion = Invoke-UlanziWizardGet -Uri $ngVersionUri -Headers $headers -TimeoutMilliseconds $TimeoutMilliseconds -EndpointLabel (Get-UlanziText -Key 'o TC001') -CancellationToken $CancellationToken
         if ($ngVersion.StatusCode -in @(401, 403)) {
             if ($AllowAuthenticationRequired) { return "auth-required" }
-            throw "O TC001 exige usuario e senha, ou recusou os dados informados."
+            throw (Get-UlanziText -Key 'O TC001 exige usuario e senha, ou recusou os dados informados.')
         }
-        if ($ngVersion.IsSuccess) { return "AWTRIX NG conectado (modo compativel)." }
+        if ($ngVersion.IsSuccess) { return (Get-UlanziText -Key 'AWTRIX NG conectado (modo compativel).') }
     }
 
     $CancellationToken.ThrowIfCancellationRequested()
     $legacyUri = Join-UlanziApiUrl -BaseUri $baseUri -ApiPath "/api/stats"
-    $legacy = Invoke-UlanziWizardGet -Uri $legacyUri -Headers $headers -TimeoutMilliseconds $TimeoutMilliseconds -EndpointLabel "o TC001" -CancellationToken $CancellationToken
+    $legacy = Invoke-UlanziWizardGet -Uri $legacyUri -Headers $headers -TimeoutMilliseconds $TimeoutMilliseconds -EndpointLabel (Get-UlanziText -Key 'o TC001') -CancellationToken $CancellationToken
     if ($legacy.StatusCode -in @(401, 403)) {
         if ($AllowAuthenticationRequired) { return "auth-required" }
-        throw "O TC001 exige usuario e senha, ou recusou os dados informados."
+        throw (Get-UlanziText -Key 'O TC001 exige usuario e senha, ou recusou os dados informados.')
     }
-    if ($legacy.IsSuccess) { return "AWTRIX 3 conectado." }
-    throw "O endereco respondeu, mas nao parece executar AWTRIX NG nem AWTRIX 3."
+    if ($legacy.IsSuccess) { return (Get-UlanziText -Key 'AWTRIX 3 conectado.') }
+    throw (Get-UlanziText -Key 'O endereco respondeu, mas nao parece executar AWTRIX NG nem AWTRIX 3.')
 }
 
 function Find-UlanziAwtrix {
@@ -394,13 +395,16 @@ function New-UlanziWizardHelpLink {
 }
 
 function Show-UlanziFirstRunWizard {
-    param([switch]$HasExistingConfiguration)
+    param(
+        [switch]$HasExistingConfiguration,
+        [ValidateSet("mgdl", "mmol")][string]$InitialDisplayUnits = "mgdl"
+    )
 
     [Windows.Forms.Application]::EnableVisualStyles()
     if ($HasExistingConfiguration) {
         $replace = [Windows.Forms.MessageBox]::Show(
-            "Ja existe uma configuracao. Continuar substituira os dados atuais somente depois da revisao final.",
-            "Refazer configuracao",
+            (Get-UlanziText -Key 'Ja existe uma configuracao. Continuar substituira os dados atuais somente depois da revisao final.'),
+            (Get-UlanziText -Key 'Refazer configuracao'),
             [Windows.Forms.MessageBoxButtons]::YesNo,
             [Windows.Forms.MessageBoxIcon]::Warning
         )
@@ -408,7 +412,7 @@ function Show-UlanziFirstRunWizard {
     }
 
     $form = [Windows.Forms.Form]::new()
-    $form.Text = "Primeira configuracao - Ulanzi Libre"
+    $form.Text = (Get-UlanziText -Key 'Primeira configuracao - Ulanzi Libre')
     $form.StartPosition = [Windows.Forms.FormStartPosition]::CenterScreen
     $form.ClientSize = [Drawing.Size]::new(780, 590)
     $form.MinimumSize = [Drawing.Size]::new(720, 560)
@@ -433,7 +437,7 @@ function Show-UlanziFirstRunWizard {
     $header.Height = 82
     $header.BackColor = [Drawing.ColorTranslator]::FromHtml("#1D5D7A")
     $header.Tag = "Accent"
-    $titleLabel = New-UlanziWizardLabel -Text "Configurar o Ulanzi Libre" -X 24 -Y 13 -Width 700 -Height 30 -Bold
+    $titleLabel = New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Configurar o Ulanzi Libre') -X 24 -Y 13 -Width 700 -Height 30 -Bold
     $titleLabel.Font = [Drawing.Font]::new("Segoe UI", 16, [Drawing.FontStyle]::Bold)
     $titleLabel.ForeColor = [Drawing.Color]::White
     $titleLabel.Tag = "AccentText"
@@ -458,16 +462,16 @@ function Show-UlanziFirstRunWizard {
     $progressBar.MarqueeAnimationSpeed = 24
     $progressBar.Visible = $false
     $backButton = [Windows.Forms.Button]::new()
-    $backButton.Text = "< Voltar"
+    $backButton.Text = (Get-UlanziText -Key '< Voltar')
     $backButton.Location = [Drawing.Point]::new(430, 19)
     $backButton.Size = [Drawing.Size]::new(100, 34)
     $nextButton = [Windows.Forms.Button]::new()
-    $nextButton.Text = "Avancar >"
+    $nextButton.Text = (Get-UlanziText -Key 'Avancar >')
     $nextButton.Location = [Drawing.Point]::new(538, 19)
     $nextButton.Size = [Drawing.Size]::new(105, 34)
     $nextButton.Tag = "Accent"
     $cancelButton = [Windows.Forms.Button]::new()
-    $cancelButton.Text = "Cancelar"
+    $cancelButton.Text = (Get-UlanziText -Key 'Cancelar')
     $cancelButton.Location = [Drawing.Point]::new(651, 19)
     $cancelButton.Size = [Drawing.Size]::new(100, 34)
     $navigation.Controls.AddRange(@($statusLabel, $progressBar, $backButton, $nextButton, $cancelButton))
@@ -489,36 +493,36 @@ function Show-UlanziFirstRunWizard {
     }
 
     # Page 1: welcome and the complete path.
-    $welcomeTitle = New-UlanziWizardLabel -Text "Vamos preparar tudo em um unico percurso" -X 4 -Y 4 -Width 700 -Height 34 -Bold
+    $welcomeTitle = New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Vamos preparar tudo em um unico percurso') -X 4 -Y 4 -Width 700 -Height 34 -Bold
     $welcomeTitle.Font = [Drawing.Font]::new("Segoe UI", 14, [Drawing.FontStyle]::Bold)
     $pages[0].Controls.Add($welcomeTitle)
-    $pages[0].Controls.Add((New-UlanziWizardLabel -Text "O assistente vai orientar o relogio, testar as conexoes e salvar apenas quando estiver tudo confirmado." -X 4 -Y 48 -Width 690 -Height 42))
+    $pages[0].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'O assistente vai orientar o relogio, testar as conexoes e salvar apenas quando estiver tudo confirmado.') -X 4 -Y 48 -Width 690 -Height 42))
     $welcomeCard = [Windows.Forms.Panel]::new()
     $welcomeCard.Location = [Drawing.Point]::new(4, 104)
     $welcomeCard.Size = [Drawing.Size]::new(690, 184)
     $welcomeCard.BackColor = [Drawing.ColorTranslator]::FromHtml("#F0F7FA")
     $welcomeCard.BorderStyle = [Windows.Forms.BorderStyle]::FixedSingle
     $welcomeCard.Tag = "Elevated"
-    $welcomeCard.Controls.Add((New-UlanziWizardLabel -Text "1   Preparar o TC001 com AWTRIX e Wi-Fi" -X 22 -Y 20 -Width 635 -Height 30 -Bold))
-    $welcomeCard.Controls.Add((New-UlanziWizardLabel -Text "2   Escolher e testar a fonte de glicemia" -X 22 -Y 72 -Width 635 -Height 30 -Bold))
-    $welcomeCard.Controls.Add((New-UlanziWizardLabel -Text "3   Confirmar o relogio, as preferencias e ativar o bridge" -X 22 -Y 124 -Width 635 -Height 30 -Bold))
+    $welcomeCard.Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key '1   Preparar o TC001 com AWTRIX e Wi-Fi') -X 22 -Y 20 -Width 635 -Height 30 -Bold))
+    $welcomeCard.Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key '2   Escolher e testar a fonte de glicemia') -X 22 -Y 72 -Width 635 -Height 30 -Bold))
+    $welcomeCard.Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key '3   Confirmar o relogio, as preferencias e ativar o bridge') -X 22 -Y 124 -Width 635 -Height 30 -Bold))
     $pages[0].Controls.Add($welcomeCard)
-    $welcomeNote = New-UlanziWizardLabel -Text "O USB serve para instalar o firmware e alimentar o TC001. Depois, os dados chegam pelo Wi-Fi e este computador precisa permanecer ligado." -X 4 -Y 310 -Width 690 -Height 54 -Bold
+    $welcomeNote = New-UlanziWizardLabel -Text (Get-UlanziText -Key 'O USB serve para instalar o firmware e alimentar o TC001. Depois, os dados chegam pelo Wi-Fi e este computador precisa permanecer ligado.') -X 4 -Y 310 -Width 690 -Height 54 -Bold
     $welcomeNote.ForeColor = [Drawing.ColorTranslator]::FromHtml("#1D5D7A")
     $pages[0].Controls.Add($welcomeNote)
 
     # Page 2: prepare AWTRIX and Wi-Fi. Firmware changes always remain under
     # explicit user control in the official browser flasher.
-    $pages[1].Controls.Add((New-UlanziWizardLabel -Text "Preparar o TC001" -X 4 -Y 4 -Width 680 -Height 32 -Bold))
-    $pages[1].Controls.Add((New-UlanziWizardLabel -Text "Escolha o ponto em que voce esta. Nenhuma gravacao sera iniciada automaticamente." -X 4 -Y 38 -Width 690 -Height 32))
+    $pages[1].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Preparar o TC001') -X 4 -Y 4 -Width 680 -Height 32 -Bold))
+    $pages[1].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Escolha o ponto em que voce esta. Nenhuma gravacao sera iniciada automaticamente.') -X 4 -Y 38 -Width 690 -Height 32))
     $awtrixReadyRadio = [Windows.Forms.RadioButton]::new()
     $awtrixReadyRadio.Name = "awtrixAlreadyReadyRadio"
-    $awtrixReadyRadio.Text = "Meu TC001 ja mostra AWTRIX e esta no Wi-Fi"
+    $awtrixReadyRadio.Text = (Get-UlanziText -Key 'Meu TC001 ja mostra AWTRIX e esta no Wi-Fi')
     $awtrixReadyRadio.Location = [Drawing.Point]::new(18, 74)
     $awtrixReadyRadio.Size = [Drawing.Size]::new(430, 28)
     $awtrixNeedsSetupRadio = [Windows.Forms.RadioButton]::new()
     $awtrixNeedsSetupRadio.Name = "awtrixNeedsSetupRadio"
-    $awtrixNeedsSetupRadio.Text = "Preciso instalar ou preparar o AWTRIX NG"
+    $awtrixNeedsSetupRadio.Text = (Get-UlanziText -Key 'Preciso instalar ou preparar o AWTRIX NG')
     $awtrixNeedsSetupRadio.Location = [Drawing.Point]::new(18, 106)
     $awtrixNeedsSetupRadio.Size = [Drawing.Size]::new(430, 28)
     if ($HasExistingConfiguration) {
@@ -534,29 +538,29 @@ function Show-UlanziFirstRunWizard {
     $awtrixPreparationPanel.BackColor = [Drawing.ColorTranslator]::FromHtml("#FFF8E8")
     $awtrixPreparationPanel.BorderStyle = [Windows.Forms.BorderStyle]::FixedSingle
     $awtrixPreparationPanel.Tag = "Elevated"
-    $awtrixRiskLabel = New-UlanziWizardLabel -Text "A instalacao inicial substitui o firmware e as configuracoes atuais. Faca backup do que deseja preservar e use um cabo USB de dados." -X 14 -Y 10 -Width 658 -Height 43 -Bold
+    $awtrixRiskLabel = New-UlanziWizardLabel -Text (Get-UlanziText -Key 'A instalacao inicial substitui o firmware e as configuracoes atuais. Faca backup do que deseja preservar e use um cabo USB de dados.') -X 14 -Y 10 -Width 658 -Height 43 -Bold
     $awtrixRiskLabel.ForeColor = [Drawing.ColorTranslator]::FromHtml("#704B00")
     $awtrixRiskLabel.Tag = "Warning"
-    $usbPortsStatusLabel = New-UlanziWizardLabel -Text "Verificando portas USB seriais..." -X 14 -Y 56 -Width 480 -Height 28
+    $usbPortsStatusLabel = New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Verificando portas USB seriais...') -X 14 -Y 56 -Width 480 -Height 28
     $usbPortsStatusLabel.Name = "usbPortsStatusLabel"
     $refreshUsbPortsButton = [Windows.Forms.Button]::new()
     $refreshUsbPortsButton.Name = "refreshUsbPortsButton"
-    $refreshUsbPortsButton.Text = "Atualizar USB"
+    $refreshUsbPortsButton.Text = (Get-UlanziText -Key 'Atualizar USB')
     $refreshUsbPortsButton.Location = [Drawing.Point]::new(535, 52)
     $refreshUsbPortsButton.Size = [Drawing.Size]::new(135, 31)
     $openAwtrixFlasherButton = [Windows.Forms.Button]::new()
     $openAwtrixFlasherButton.Name = "openOfficialAwtrixFlasherButton"
-    $openAwtrixFlasherButton.Text = "1. Abrir gravador oficial"
+    $openAwtrixFlasherButton.Text = (Get-UlanziText -Key '1. Abrir gravador oficial')
     $openAwtrixFlasherButton.Location = [Drawing.Point]::new(14, 101)
     $openAwtrixFlasherButton.Size = [Drawing.Size]::new(176, 36)
     $openAwtrixWifiGuideButton = [Windows.Forms.Button]::new()
     $openAwtrixWifiGuideButton.Name = "openOfficialAwtrixWifiGuideButton"
-    $openAwtrixWifiGuideButton.Text = "2. Ver como configurar Wi-Fi"
+    $openAwtrixWifiGuideButton.Text = (Get-UlanziText -Key '2. Ver como configurar Wi-Fi')
     $openAwtrixWifiGuideButton.Location = [Drawing.Point]::new(201, 101)
     $openAwtrixWifiGuideButton.Size = [Drawing.Size]::new(190, 36)
     $openAwtrixPortalButton = [Windows.Forms.Button]::new()
     $openAwtrixPortalButton.Name = "openAwtrixProvisioningPortalButton"
-    $openAwtrixPortalButton.Text = "3. Abrir 192.168.4.1"
+    $openAwtrixPortalButton.Text = (Get-UlanziText -Key '3. Abrir 192.168.4.1')
     $openAwtrixPortalButton.Location = [Drawing.Point]::new(402, 101)
     $openAwtrixPortalButton.Size = [Drawing.Size]::new(168, 36)
     $awtrixPreparationPanel.Controls.AddRange(@(
@@ -570,129 +574,139 @@ function Show-UlanziFirstRunWizard {
     $pages[1].Controls.Add($awtrixPreparationPanel)
     $awtrixReadyBox = [Windows.Forms.CheckBox]::new()
     $awtrixReadyBox.Name = "awtrixReadyBox"
-    $awtrixReadyBox.Text = "Conclui esta etapa: o TC001 mostra AWTRIX e esta conectado ao meu Wi-Fi"
+    $awtrixReadyBox.Text = (Get-UlanziText -Key 'Conclui esta etapa: o TC001 mostra AWTRIX e esta conectado ao meu Wi-Fi')
     $awtrixReadyBox.Location = [Drawing.Point]::new(4, 334)
     $awtrixReadyBox.Size = [Drawing.Size]::new(680, 42)
     $awtrixReadyBox.Checked = [bool]$HasExistingConfiguration
     $pages[1].Controls.Add($awtrixReadyBox)
 
     # Page 3: data source.
-    $pages[2].Controls.Add((New-UlanziWizardLabel -Text "De onde vem a glicemia?" -X 4 -Y 5 -Width 680 -Height 32 -Bold))
-    $pages[2].Controls.Add((New-UlanziWizardLabel -Text "Escolha a opcao usada no dia a dia. O aplicativo nunca pede sua senha da Abbott." -X 4 -Y 42 -Width 690 -Height 30))
+    $pages[2].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'De onde vem a glicemia?') -X 4 -Y 5 -Width 680 -Height 32 -Bold))
+    $pages[2].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Escolha a opcao usada no dia a dia. O aplicativo nunca pede sua senha da Abbott.') -X 4 -Y 42 -Width 690 -Height 30))
     $nightscoutRadio = [Windows.Forms.RadioButton]::new()
-    $nightscoutRadio.Text = "Nightscout (recomendado)"
+    $nightscoutRadio.Text = (Get-UlanziText -Key 'Nightscout (recomendado)')
     $nightscoutRadio.Location = [Drawing.Point]::new(18, 96)
     $nightscoutRadio.Size = [Drawing.Size]::new(350, 28)
     $nightscoutRadio.Checked = $true
     $pages[2].Controls.Add($nightscoutRadio)
-    $pages[2].Controls.Add((New-UlanziWizardLabel -Text "Usa uma instalacao Nightscout que voce ja controla e permite identificar a troca do sensor." -X 42 -Y 126 -Width 650 -Height 26))
+    $pages[2].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Usa uma instalacao Nightscout que voce ja controla e permite identificar a troca do sensor.') -X 42 -Y 126 -Width 650 -Height 26))
     $jsonRadio = [Windows.Forms.RadioButton]::new()
-    $jsonRadio.Text = "Endpoint JSON autorizado"
+    $jsonRadio.Text = (Get-UlanziText -Key 'Endpoint JSON autorizado')
     $jsonRadio.Location = [Drawing.Point]::new(18, 174)
     $jsonRadio.Size = [Drawing.Size]::new(350, 28)
     $pages[2].Controls.Add($jsonRadio)
-    $pages[2].Controls.Add((New-UlanziWizardLabel -Text "Opcao avancada para integracoes proprias que retornam valueMgDl, trend e timestamp." -X 42 -Y 204 -Width 650 -Height 26))
+    $pages[2].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Opcao avancada para integracoes proprias que retornam valueMgDl, trend e timestamp.') -X 42 -Y 204 -Width 650 -Height 26))
     $mockRadio = [Windows.Forms.RadioButton]::new()
-    $mockRadio.Text = "Somente demonstracao"
+    $mockRadio.Text = (Get-UlanziText -Key 'Somente demonstracao')
     $mockRadio.Location = [Drawing.Point]::new(18, 252)
     $mockRadio.Size = [Drawing.Size]::new(350, 28)
     $pages[2].Controls.Add($mockRadio)
-    $pages[2].Controls.Add((New-UlanziWizardLabel -Text "Mostra 112 mg/dL simulado e ficara identificado como DEMONSTRACAO. Nao use para acompanhamento real." -X 42 -Y 282 -Width 650 -Height 40))
-    $sourcePreparationHelpLink = New-UlanziWizardHelpLink -Text "Ainda nao tenho uma fonte pronta" -X 18 -Y 338 -Width 280
+    $pages[2].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Mostra 112 mg/dL simulado e ficara identificado como DEMONSTRACAO. Nao use para acompanhamento real.') -X 42 -Y 282 -Width 650 -Height 40))
+    $sourcePreparationHelpLink = New-UlanziWizardHelpLink -Text (Get-UlanziText -Key 'Ainda nao tenho uma fonte pronta') -X 18 -Y 338 -Width 280
     $sourcePreparationHelpLink.Name = "sourcePreparationHelpLink"
     $pages[2].Controls.Add($sourcePreparationHelpLink)
 
     # Page 4: source connection.
-    $sourceTitle = New-UlanziWizardLabel -Text "Conectar a fonte de glicemia" -X 4 -Y 5 -Width 680 -Height 32 -Bold
+    $sourceTitle = New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Conectar a fonte de glicemia') -X 4 -Y 5 -Width 680 -Height 32 -Bold
     $pages[3].Controls.Add($sourceTitle)
     $nightscoutPanel = [Windows.Forms.Panel]::new()
     $nightscoutPanel.Location = [Drawing.Point]::new(4, 48)
     $nightscoutPanel.Size = [Drawing.Size]::new(710, 340)
-    $nightscoutPanel.Controls.Add((New-UlanziWizardLabel -Text "URL HTTPS do Nightscout" -X 0 -Y 2 -Width 300 -Bold))
-    $nightscoutUrlHelpLink = New-UlanziWizardHelpLink -Text "Onde encontro esta URL?" -X 465 -Y 2 -Width 185
+    $nightscoutPanel.Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'URL HTTPS do Nightscout') -X 0 -Y 2 -Width 300 -Bold))
+    $nightscoutUrlHelpLink = New-UlanziWizardHelpLink -Text (Get-UlanziText -Key 'Onde encontro esta URL?') -X 465 -Y 2 -Width 185
     $nightscoutUrlHelpLink.Name = "nightscoutUrlHelpLink"
     $nightscoutUrlBox = New-UlanziWizardTextBox -X 0 -Y 28 -Width 650
     $nightscoutPanel.Controls.AddRange(@($nightscoutUrlHelpLink, $nightscoutUrlBox))
-    $nightscoutPanel.Controls.Add((New-UlanziWizardLabel -Text "Autenticacao" -X 0 -Y 72 -Width 200 -Bold))
+    $nightscoutPanel.Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Autenticacao') -X 0 -Y 72 -Width 200 -Bold))
     $nightscoutAuthBox = [Windows.Forms.ComboBox]::new()
     $nightscoutAuthBox.DropDownStyle = [Windows.Forms.ComboBoxStyle]::DropDownList
     $nightscoutAuthBox.Location = [Drawing.Point]::new(0, 99)
     $nightscoutAuthBox.Size = [Drawing.Size]::new(260, 28)
-    [void]$nightscoutAuthBox.Items.AddRange(@("Access token", "API_SECRET", "Acesso publico"))
+    [void]$nightscoutAuthBox.Items.AddRange(@("Access token", "API_SECRET", (Get-UlanziText -Key 'Acesso publico')))
     $nightscoutAuthBox.SelectedIndex = 0
-    $nightscoutAccessHelpLink = New-UlanziWizardHelpLink -Text "Como escolher e preencher?" -X 280 -Y 101 -Width 220
+    $nightscoutAccessHelpLink = New-UlanziWizardHelpLink -Text (Get-UlanziText -Key 'Como escolher e preencher?') -X 280 -Y 101 -Width 220
     $nightscoutAccessHelpLink.Name = "nightscoutAccessHelpLink"
     $nightscoutPanel.Controls.AddRange(@($nightscoutAuthBox, $nightscoutAccessHelpLink))
     $nightscoutSecretLabel = New-UlanziWizardLabel -Text "Access token" -X 0 -Y 143 -Width 220 -Bold
     $nightscoutSecretBox = New-UlanziWizardTextBox -X 0 -Y 170 -Width 420 -Password
     $nightscoutPanel.Controls.AddRange(@($nightscoutSecretLabel, $nightscoutSecretBox))
     $testSourceButton = [Windows.Forms.Button]::new()
-    $testSourceButton.Text = "Testar Nightscout"
+    $testSourceButton.Text = (Get-UlanziText -Key 'Testar Nightscout')
     $testSourceButton.Location = [Drawing.Point]::new(0, 222)
     $testSourceButton.Size = [Drawing.Size]::new(160, 36)
-    $sourceTestLabel = New-UlanziWizardLabel -Text "O teste nao salva nem mostra sua credencial." -X 175 -Y 227 -Width 465 -Height 45
+    $sourceTestLabel = New-UlanziWizardLabel -Text (Get-UlanziText -Key 'O teste nao salva nem mostra sua credencial.') -X 175 -Y 227 -Width 465 -Height 45
     $sourceTestLabel.ForeColor = $visualColors.Muted
     $nightscoutPanel.Controls.AddRange(@($testSourceButton, $sourceTestLabel))
 
     $jsonPanel = [Windows.Forms.Panel]::new()
     $jsonPanel.Location = [Drawing.Point]::new(4, 48)
     $jsonPanel.Size = [Drawing.Size]::new(710, 340)
-    $jsonPanel.Controls.Add((New-UlanziWizardLabel -Text "URL HTTPS do endpoint JSON" -X 0 -Y 2 -Width 320 -Bold))
+    $jsonPanel.Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'URL HTTPS do endpoint JSON') -X 0 -Y 2 -Width 320 -Bold))
     $jsonUrlBox = New-UlanziWizardTextBox -X 0 -Y 28 -Width 650
     $jsonPanel.Controls.Add($jsonUrlBox)
-    $jsonPanel.Controls.Add((New-UlanziWizardLabel -Text "Bearer token (opcional)" -X 0 -Y 75 -Width 260 -Bold))
+    $jsonPanel.Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Bearer token (opcional)') -X 0 -Y 75 -Width 260 -Bold))
     $jsonTokenBox = New-UlanziWizardTextBox -X 0 -Y 102 -Width 420 -Password
     $jsonPanel.Controls.Add($jsonTokenBox)
     $testJsonButton = [Windows.Forms.Button]::new()
-    $testJsonButton.Text = "Testar fonte JSON"
+    $testJsonButton.Text = (Get-UlanziText -Key 'Testar fonte JSON')
     $testJsonButton.Location = [Drawing.Point]::new(0, 154)
     $testJsonButton.Size = [Drawing.Size]::new(160, 36)
-    $jsonTestLabel = New-UlanziWizardLabel -Text "Formato esperado: valueMgDl, trend e timestamp." -X 175 -Y 159 -Width 460 -Height 45
+    $jsonTestLabel = New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Formato esperado: valueMgDl, trend e timestamp.') -X 175 -Y 159 -Width 460 -Height 45
     $jsonTestLabel.ForeColor = $visualColors.Muted
     $jsonPanel.Controls.AddRange(@($testJsonButton, $jsonTestLabel))
 
     $mockPanel = [Windows.Forms.Panel]::new()
     $mockPanel.Location = [Drawing.Point]::new(4, 48)
     $mockPanel.Size = [Drawing.Size]::new(710, 260)
-    $mockPanel.Controls.Add((New-UlanziWizardLabel -Text "O modo de demonstracao nao precisa de internet nem de credenciais." -X 0 -Y 20 -Width 670 -Height 40))
-    $mockWarning = New-UlanziWizardLabel -Text "Importante: os valores sao simulados e nao representam uma pessoa real." -X 0 -Y 82 -Width 670 -Height 40 -Bold
+    $mockPanel.Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'O modo de demonstracao nao precisa de internet nem de credenciais.') -X 0 -Y 20 -Width 670 -Height 40))
+    $mockWarning = New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Importante: os valores sao simulados e nao representam uma pessoa real.') -X 0 -Y 82 -Width 670 -Height 40 -Bold
     $mockWarning.ForeColor = $visualColors.Error
     $mockPanel.Controls.Add($mockWarning)
     $pages[3].Controls.AddRange(@($nightscoutPanel, $jsonPanel, $mockPanel))
 
     # Page 5: TC001 discovery and validation.
-    $pages[4].Controls.Add((New-UlanziWizardLabel -Text "Localizar e testar o TC001" -X 4 -Y 5 -Width 680 -Height 32 -Bold))
-    $pages[4].Controls.Add((New-UlanziWizardLabel -Text "Deixe o computador e o TC001 na mesma rede. Primeiro tente Procurar; use o IP da tela se necessario." -X 4 -Y 39 -Width 690 -Height 36))
-    $pages[4].Controls.Add((New-UlanziWizardLabel -Text "Endereco do TC001" -X 4 -Y 82 -Width 240 -Bold))
-    $awtrixAddressHelpLink = New-UlanziWizardHelpLink -Text "Onde encontro o endereco?" -X 245 -Y 82 -Width 220
+    $pages[4].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Localizar e testar o TC001') -X 4 -Y 5 -Width 680 -Height 32 -Bold))
+    $pages[4].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Deixe o computador e o TC001 na mesma rede. Primeiro tente Procurar; use o IP da tela se necessario.') -X 4 -Y 39 -Width 690 -Height 36))
+    $pages[4].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Endereco do TC001') -X 4 -Y 82 -Width 240 -Bold))
+    $awtrixAddressHelpLink = New-UlanziWizardHelpLink -Text (Get-UlanziText -Key 'Onde encontro o endereco?') -X 245 -Y 82 -Width 220
     $awtrixAddressHelpLink.Name = "awtrixAddressHelpLink"
     $pages[4].Controls.Add($awtrixAddressHelpLink)
     $awtrixHostBox = New-UlanziWizardTextBox -X 4 -Y 108 -Width 470
     $awtrixHostBox.Text = ""
     $findAwtrixButton = [Windows.Forms.Button]::new()
-    $findAwtrixButton.Text = "Procurar"
+    $findAwtrixButton.Text = (Get-UlanziText -Key 'Procurar')
     $findAwtrixButton.Location = [Drawing.Point]::new(488, 106)
     $findAwtrixButton.Size = [Drawing.Size]::new(105, 31)
     $pages[4].Controls.AddRange(@($awtrixHostBox, $findAwtrixButton))
-    $pages[4].Controls.Add((New-UlanziWizardLabel -Text "A busca usa a descoberta oficial do AWTRIX NG e nomes conhecidos; ela nao varre a rede." -X 4 -Y 143 -Width 680 -Height 30))
-    $pages[4].Controls.Add((New-UlanziWizardLabel -Text "Usuario HTTP (deixe vazio se desativado)" -X 4 -Y 187 -Width 330 -Bold))
+    $pages[4].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'A busca usa a descoberta oficial do AWTRIX NG e nomes conhecidos; ela nao varre a rede.') -X 4 -Y 143 -Width 680 -Height 30))
+    $pages[4].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Usuario HTTP (deixe vazio se desativado)') -X 4 -Y 187 -Width 330 -Bold))
     $awtrixUserBox = New-UlanziWizardTextBox -X 4 -Y 213 -Width 300
     $pages[4].Controls.Add($awtrixUserBox)
-    $pages[4].Controls.Add((New-UlanziWizardLabel -Text "Senha HTTP" -X 330 -Y 187 -Width 190 -Bold))
+    $pages[4].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Senha HTTP') -X 330 -Y 187 -Width 190 -Bold))
     $awtrixPasswordBox = New-UlanziWizardTextBox -X 330 -Y 213 -Width 300 -Password
     $pages[4].Controls.Add($awtrixPasswordBox)
     $testAwtrixButton = [Windows.Forms.Button]::new()
-    $testAwtrixButton.Text = "Testar TC001"
+    $testAwtrixButton.Text = (Get-UlanziText -Key 'Testar TC001')
     $testAwtrixButton.Location = [Drawing.Point]::new(4, 274)
     $testAwtrixButton.Size = [Drawing.Size]::new(145, 36)
-    $awtrixTestLabel = New-UlanziWizardLabel -Text "Teste a conexao antes de avancar." -X 165 -Y 279 -Width 500 -Height 45
+    $awtrixTestLabel = New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Teste a conexao antes de avancar.') -X 165 -Y 279 -Width 500 -Height 45
     $awtrixTestLabel.ForeColor = $visualColors.Muted
     $pages[4].Controls.AddRange(@($testAwtrixButton, $awtrixTestLabel))
 
     # Page 6: essential behavior.
-    $pages[5].Controls.Add((New-UlanziWizardLabel -Text "Preferencias essenciais" -X 4 -Y 5 -Width 680 -Height 32 -Bold))
-    $pages[5].Controls.Add((New-UlanziWizardLabel -Text "Estes limites controlam as cores do visor. Os limites sonoros comecam iguais e podem ser ajustados depois." -X 4 -Y 38 -Width 700 -Height 40))
-    $pages[5].Controls.Add((New-UlanziWizardLabel -Text "Cor de glicemia baixa (mg/dL)" -X 4 -Y 90 -Width 250 -Bold))
+    $pages[5].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Preferencias essenciais') -X 4 -Y 5 -Width 680 -Height 32 -Bold))
+    $pages[5].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Estes limites controlam as cores do visor. Os limites sonoros comecam iguais e podem ser ajustados depois.') -X 4 -Y 38 -Width 700 -Height 40))
+    $pages[5].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Unidade das leituras') -X 390 -Y 90 -Width 280 -Bold))
+    $displayUnitsBox = [Windows.Forms.ComboBox]::new()
+    $displayUnitsBox.Name = "displayUnitsControl"
+    $displayUnitsBox.DropDownStyle = [Windows.Forms.ComboBoxStyle]::DropDownList
+    $displayUnitsBox.Location = [Drawing.Point]::new(390, 118)
+    $displayUnitsBox.Size = [Drawing.Size]::new(130, 28)
+    [void]$displayUnitsBox.Items.AddRange(@("mg/dL", "mmol/L"))
+    $displayUnitsBox.SelectedIndex = if ($InitialDisplayUnits -eq "mmol") { 1 } else { 0 }
+    $pages[5].Controls.Add($displayUnitsBox)
+    $pages[5].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'A unidade altera as leituras. Os limites desta tela continuam em mg/dL.') -X 530 -Y 118 -Width 165 -Height 88))
+    $pages[5].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Cor de glicemia baixa (mg/dL)') -X 4 -Y 90 -Width 250 -Bold))
     $lowBox = [Windows.Forms.NumericUpDown]::new()
     $lowBox.Location = [Drawing.Point]::new(260, 87)
     $lowBox.Size = [Drawing.Size]::new(100, 28)
@@ -700,7 +714,7 @@ function Show-UlanziFirstRunWizard {
     $lowBox.Maximum = 300
     $lowBox.Value = 70
     $pages[5].Controls.Add($lowBox)
-    $pages[5].Controls.Add((New-UlanziWizardLabel -Text "Cor de glicemia alta (mg/dL)" -X 4 -Y 132 -Width 250 -Bold))
+    $pages[5].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Cor de glicemia alta (mg/dL)') -X 4 -Y 132 -Width 250 -Bold))
     $highBox = [Windows.Forms.NumericUpDown]::new()
     $highBox.Location = [Drawing.Point]::new(260, 129)
     $highBox.Size = [Drawing.Size]::new(100, 28)
@@ -708,7 +722,7 @@ function Show-UlanziFirstRunWizard {
     $highBox.Maximum = 600
     $highBox.Value = 180
     $pages[5].Controls.Add($highBox)
-    $pages[5].Controls.Add((New-UlanziWizardLabel -Text "Considerar dado antigo depois de" -X 4 -Y 174 -Width 250 -Bold))
+    $pages[5].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Considerar dado antigo depois de') -X 4 -Y 174 -Width 250 -Bold))
     $staleBox = [Windows.Forms.NumericUpDown]::new()
     $staleBox.Location = [Drawing.Point]::new(260, 171)
     $staleBox.Size = [Drawing.Size]::new(100, 28)
@@ -716,14 +730,14 @@ function Show-UlanziFirstRunWizard {
     $staleBox.Maximum = 240
     $staleBox.Value = 15
     $pages[5].Controls.Add($staleBox)
-    $pages[5].Controls.Add((New-UlanziWizardLabel -Text "minutos" -X 370 -Y 174 -Width 100))
-    $pages[5].Controls.Add((New-UlanziWizardLabel -Text "Duracao do sensor Libre" -X 4 -Y 216 -Width 250 -Bold))
+    $pages[5].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'minutos') -X 370 -Y 174 -Width 100))
+    $pages[5].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Duracao do sensor Libre') -X 4 -Y 216 -Width 250 -Bold))
     $sensorDurationBox = [Windows.Forms.ComboBox]::new()
     $sensorDurationBox.Name = "sensorDurationControl"
     $sensorDurationBox.DropDownStyle = [Windows.Forms.ComboBoxStyle]::DropDownList
     $sensorDurationBox.Location = [Drawing.Point]::new(260, 212)
     $sensorDurationBox.Size = [Drawing.Size]::new(145, 28)
-    [void]$sensorDurationBox.Items.AddRange(@("Selecione a duracao...", "14 dias", "15 dias", "Personalizado"))
+    [void]$sensorDurationBox.Items.AddRange(@((Get-UlanziText -Key 'Selecione a duracao...'), (Get-UlanziText -Key '14 dias'), (Get-UlanziText -Key '15 dias'), (Get-UlanziText -Key 'Personalizado')))
     $sensorDurationBox.SelectedIndex = 0
     $sensorCustomBox = [Windows.Forms.NumericUpDown]::new()
     $sensorCustomBox.Name = "sensorCustomDurationControl"
@@ -732,21 +746,21 @@ function Show-UlanziFirstRunWizard {
     $sensorCustomBox.Minimum = 1
     $sensorCustomBox.Maximum = 30
     $sensorCustomBox.Visible = $false
-    $sensorCustomDaysLabel = New-UlanziWizardLabel -Text "dias" -X 510 -Y 216 -Width 55
+    $sensorCustomDaysLabel = New-UlanziWizardLabel -Text (Get-UlanziText -Key 'dias') -X 510 -Y 216 -Width 55
     $sensorCustomDaysLabel.Visible = $false
     $pages[5].Controls.AddRange(@($sensorDurationBox, $sensorCustomBox, $sensorCustomDaysLabel))
-    $pages[5].Controls.Add((New-UlanziWizardLabel -Text "Confira a duracao na embalagem ou no aplicativo do Libre; ela varia conforme o modelo." -X 260 -Y 244 -Width 420 -Height 32))
+    $pages[5].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Confira a duracao na embalagem ou no aplicativo do Libre; ela varia conforme o modelo.') -X 260 -Y 244 -Width 420 -Height 32))
     $alarmEnabledBox = [Windows.Forms.CheckBox]::new()
-    $alarmEnabledBox.Text = "Ativar alarmes sonoros de glicemia"
+    $alarmEnabledBox.Text = (Get-UlanziText -Key 'Ativar alarmes sonoros de glicemia')
     $alarmEnabledBox.Location = [Drawing.Point]::new(4, 282)
     $alarmEnabledBox.Size = [Drawing.Size]::new(420, 30)
     $alarmEnabledBox.Checked = $false
     $pages[5].Controls.Add($alarmEnabledBox)
-    $pages[5].Controls.Add((New-UlanziWizardLabel -Text "As regras sonoras pre-selecionadas so terao efeito depois de ativar esta opcao." -X 28 -Y 316 -Width 640 -Height 34))
+    $pages[5].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'As regras sonoras pre-selecionadas so terao efeito depois de ativar esta opcao.') -X 28 -Y 316 -Width 640 -Height 34))
 
     # Page 7: review.
-    $pages[6].Controls.Add((New-UlanziWizardLabel -Text "Revisar, salvar e ativar" -X 4 -Y 5 -Width 680 -Height 32 -Bold))
-    $pages[6].Controls.Add((New-UlanziWizardLabel -Text "Confira os dados abaixo. Senhas e tokens nunca aparecem nesta revisao." -X 4 -Y 40 -Width 690 -Height 30))
+    $pages[6].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Revisar, salvar e ativar') -X 4 -Y 5 -Width 680 -Height 32 -Bold))
+    $pages[6].Controls.Add((New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Confira os dados abaixo. Senhas e tokens nunca aparecem nesta revisao.') -X 4 -Y 40 -Width 690 -Height 30))
     $reviewBox = [Windows.Forms.TextBox]::new()
     $reviewBox.Location = [Drawing.Point]::new(4, 82)
     $reviewBox.Size = [Drawing.Size]::new(690, 228)
@@ -756,7 +770,7 @@ function Show-UlanziFirstRunWizard {
     $reviewBox.BackColor = [Drawing.ColorTranslator]::FromHtml("#F7F9FA")
     $reviewBox.Font = [Drawing.Font]::new("Segoe UI", 10)
     $pages[6].Controls.Add($reviewBox)
-    $alarmReviewWarning = New-UlanziWizardLabel -Text "ATENCAO: os alarmes sonoros estao DESATIVADOS. O TC001 nao emitira alertas de glicemia." -X 4 -Y 318 -Width 690 -Height 40 -Bold
+    $alarmReviewWarning = New-UlanziWizardLabel -Text (Get-UlanziText -Key 'ATENCAO: os alarmes sonoros estao DESATIVADOS. O TC001 nao emitira alertas de glicemia.') -X 4 -Y 318 -Width 690 -Height 40 -Bold
     $alarmReviewWarning.Name = "alarmDisabledReviewWarning"
     $alarmReviewWarning.BackColor = [Drawing.ColorTranslator]::FromHtml("#FFF4CE")
     $alarmReviewWarning.ForeColor = [Drawing.ColorTranslator]::FromHtml("#704B00")
@@ -765,7 +779,7 @@ function Show-UlanziFirstRunWizard {
     $alarmReviewWarning.TextAlign = [Drawing.ContentAlignment]::MiddleLeft
     $alarmReviewWarning.Visible = $false
     $pages[6].Controls.Add($alarmReviewWarning)
-    $reviewNote = New-UlanziWizardLabel -Text "Ao concluir, o Windows protege as credenciais; o painel valida os arquivos e inicia o bridge." -X 4 -Y 365 -Width 690 -Height 24 -Bold
+    $reviewNote = New-UlanziWizardLabel -Text (Get-UlanziText -Key 'Ao concluir, o Windows protege as credenciais; o painel valida os arquivos e inicia o bridge.') -X 4 -Y 365 -Width 690 -Height 24 -Bold
     $reviewNote.ForeColor = [Drawing.ColorTranslator]::FromHtml("#1D5D7A")
     $pages[6].Controls.Add($reviewNote)
 
@@ -781,7 +795,7 @@ function Show-UlanziFirstRunWizard {
         SourceTestPassed = $false
         AwtrixTestPassed = $false
     }
-    $stepNames = @("Preparacao", "AWTRIX NG", "Fonte", "Conexao fonte", "TC001", "Preferencias", "Revisao")
+    $stepNames = @((Get-UlanziText -Key 'Preparacao'), "AWTRIX NG", (Get-UlanziText -Key 'Fonte'), (Get-UlanziText -Key 'Conexao fonte'), "TC001", (Get-UlanziText -Key 'Preferencias'), (Get-UlanziText -Key 'Revisao'))
     $getSource = {
         if ($jsonRadio.Checked) { return "json" }
         if ($mockRadio.Checked) { return "mock" }
@@ -824,11 +838,11 @@ function Show-UlanziFirstRunWizard {
     $refreshUsbPorts = {
         $serialPorts = @(Get-UlanziWizardSerialPorts)
         if ($serialPorts.Count -eq 0) {
-            $usbPortsStatusLabel.Text = "Nenhuma porta serial apareceu. Confira se o cabo USB transmite dados."
+            $usbPortsStatusLabel.Text = (Get-UlanziText -Key 'Nenhuma porta serial apareceu. Confira se o cabo USB transmite dados.')
             $usbPortsStatusLabel.ForeColor = $visualColors.Error
         } else {
             $portList = $serialPorts -join ", "
-            $usbPortsStatusLabel.Text = "Windows encontrou: $portList. Confirme a porta no navegador."
+            $usbPortsStatusLabel.Text = (Get-UlanziText -Key 'Windows encontrou: {0}. Confirme a porta no navegador.' -Arguments @(($portList)))
             $usbPortsStatusLabel.ForeColor = $visualColors.Success
         }
     }
@@ -838,33 +852,34 @@ function Show-UlanziFirstRunWizard {
     }
     $refreshReview = {
         $source = & $getSource
-        $sourceDescription = if ($source -eq "nightscout") { "Nightscout" } elseif ($source -eq "json") { "Endpoint JSON" } else { "Demonstracao (dados simulados)" }
-        $sourceAddress = if ($source -eq "nightscout") { $nightscoutUrlBox.Text.Trim() } elseif ($source -eq "json") { $jsonUrlBox.Text.Trim() } else { "Nao se aplica" }
-        $credential = "Nao configurada"
+        $sourceDescription = if ($source -eq "nightscout") { "Nightscout" } elseif ($source -eq "json") { "Endpoint JSON" } else { (Get-UlanziText -Key 'Demonstracao (dados simulados)') }
+        $sourceAddress = if ($source -eq "nightscout") { $nightscoutUrlBox.Text.Trim() } elseif ($source -eq "json") { $jsonUrlBox.Text.Trim() } else { (Get-UlanziText -Key 'Nao se aplica') }
+        $credential = (Get-UlanziText -Key 'Nao configurada')
         if ($source -eq "nightscout") {
             $auth = & $getNightscoutAuth
-            $credential = if ($auth -eq "public") { "Acesso publico" } elseif ($auth -eq "api-secret") { "API_SECRET protegido" } else { "Access token protegido" }
+            $credential = if ($auth -eq "public") { (Get-UlanziText -Key 'Acesso publico') } elseif ($auth -eq "api-secret") { (Get-UlanziText -Key 'API_SECRET protegido') } else { (Get-UlanziText -Key 'Access token protegido') }
         } elseif ($source -eq "json" -and -not [string]::IsNullOrWhiteSpace($jsonTokenBox.Text)) {
-            $credential = "Bearer token protegido"
+            $credential = (Get-UlanziText -Key 'Bearer token protegido')
         }
-        $awtrixCredential = if ([string]::IsNullOrWhiteSpace($awtrixUserBox.Text)) { "Autenticacao desativada" } else { "Usuario e senha protegidos" }
+        $awtrixCredential = if ([string]::IsNullOrWhiteSpace($awtrixUserBox.Text)) { (Get-UlanziText -Key 'Autenticacao desativada') } else { (Get-UlanziText -Key 'Usuario e senha protegidos') }
         $sensorLifetimeDays = & $getSensorLifetimeDays
-        $sensorLifetimeDescription = if ($null -eq $sensorLifetimeDays) { "Nao escolhida" } else { "$sensorLifetimeDays dias" }
-        $alarmStatus = if ($alarmEnabledBox.Checked) { "ATIVADOS" } else { "DESATIVADOS - o TC001 nao emitira alertas de glicemia" }
+        $sensorLifetimeDescription = if ($null -eq $sensorLifetimeDays) { (Get-UlanziText -Key 'Nao escolhida') } else { (Get-UlanziText -Key '{0} dias' -Arguments @(($sensorLifetimeDays))) }
+        $alarmStatus = if ($alarmEnabledBox.Checked) { (Get-UlanziText -Key 'ATIVADOS') } else { (Get-UlanziText -Key 'DESATIVADOS - o TC001 nao emitira alertas de glicemia') }
         $reviewBox.Text = @(
-            "Fonte: $sourceDescription",
-            "Endereco da fonte: $sourceAddress",
-            "Credencial da fonte: $credential",
+            (Get-UlanziText -Key 'Fonte: {0}' -Arguments @(($sourceDescription))),
+            (Get-UlanziText -Key 'Endereco da fonte: {0}' -Arguments @(($sourceAddress))),
+            (Get-UlanziText -Key 'Credencial da fonte: {0}' -Arguments @(($credential))),
             "",
             "TC001: $($awtrixHostBox.Text.Trim())",
-            "Acesso ao TC001: $awtrixCredential",
+            (Get-UlanziText -Key 'Acesso ao TC001: {0}' -Arguments @(($awtrixCredential))),
             "",
-            "Cor baixa no visor: $([int]$lowBox.Value) mg/dL",
-            "Cor alta no visor: $([int]$highBox.Value) mg/dL",
-            "Dado antigo: $([int]$staleBox.Value) minutos",
-            "Duracao do sensor: $sensorLifetimeDescription",
-            "Alarmes sonoros: $alarmStatus",
-            "Setas de queda: para baixo ou diagonal abaixo de 90 mg/dL (quando os alarmes estiverem ativados)"
+            (Get-UlanziText -Key 'Unidade das leituras: {0}' -Arguments @(($($displayUnitsBox.SelectedItem)))),
+            (Get-UlanziText -Key 'Cor baixa no visor: {0} mg/dL' -Arguments @(($([int]$lowBox.Value)))),
+            (Get-UlanziText -Key 'Cor alta no visor: {0} mg/dL' -Arguments @(($([int]$highBox.Value)))),
+            (Get-UlanziText -Key 'Dado antigo: {0} minutos' -Arguments @(($([int]$staleBox.Value)))),
+            (Get-UlanziText -Key 'Duracao do sensor: {0}' -Arguments @(($sensorLifetimeDescription))),
+            (Get-UlanziText -Key 'Alarmes sonoros: {0}' -Arguments @(($alarmStatus))),
+            (Get-UlanziText -Key 'Setas de queda: para baixo ou diagonal abaixo de 90 mg/dL (quando os alarmes estiverem ativados)')
         ) -join [Environment]::NewLine
         $alarmReviewWarning.Visible = -not $alarmEnabledBox.Checked
     }
@@ -874,9 +889,9 @@ function Show-UlanziFirstRunWizard {
         foreach ($page in $pages) { $page.Visible = $false }
         $pages[$Step].Visible = $true
         $pages[$Step].BringToFront()
-        $stepLabel.Text = "Etapa $($Step + 1) de 7 - $($stepNames[$Step])"
+        $stepLabel.Text = (Get-UlanziText -Key 'Etapa {0} de 7 - {1}' -Arguments @(($($Step + 1)), ($($stepNames[$Step]))))
         $backButton.Enabled = $Step -gt 0
-        $nextButton.Text = if ($Step -eq 6) { "Salvar e ativar" } else { "Avancar >" }
+        $nextButton.Text = if ($Step -eq 6) { (Get-UlanziText -Key 'Salvar e ativar') } else { (Get-UlanziText -Key 'Avancar >') }
         $statusLabel.Text = ""
         if ($Step -eq 1) { & $refreshAwtrixPreparation }
         if ($Step -eq 3) { & $refreshSourcePanel }
@@ -888,10 +903,11 @@ function Show-UlanziFirstRunWizard {
     # closing the window remain responsive without Application.DoEvents.
     $workerScriptPath = Join-Path $PSScriptRoot "primeira-configuracao-ui.ps1"
     $workerScript = @'
-param($ScriptPath, $Operation, $Payload, $CancellationToken)
+param($ScriptPath, $Operation, $Payload, $CancellationToken, $Language = "en")
 $ErrorActionPreference = "Stop"
 try {
     . $ScriptPath
+    [void](Set-UlanziLanguage -Language $Language)
     $CancellationToken.ThrowIfCancellationRequested()
     $message = ""
     $data = $null
@@ -907,21 +923,21 @@ try {
         "find-awtrix" {
             $data = Find-UlanziAwtrix -CurrentAddress $Payload.CurrentAddress -CancellationToken $CancellationToken
             if ($null -eq $data) {
-                throw "Nenhum TC001 foi encontrado automaticamente. Digite o IP mostrado no relogio e tente novamente."
+                throw (Get-UlanziText -Key 'Nenhum TC001 foi encontrado automaticamente. Digite o IP mostrado no relogio e tente novamente.')
             }
-            $message = "TC001 encontrado."
+            $message = (Get-UlanziText -Key 'TC001 encontrado.')
         }
         "test-awtrix" {
             $operationOutput = @(Test-UlanziAwtrixConnection -HostUrl $Payload.HostUrl -Username $Payload.Username -Password $Payload.Password -CancellationToken $CancellationToken)
             $message = [string]$operationOutput[-1]
         }
-        default { throw "Operacao de conexao desconhecida." }
+        default { throw (Get-UlanziText -Key 'Operacao de conexao desconhecida.') }
     }
     $CancellationToken.ThrowIfCancellationRequested()
     [pscustomobject]@{ Status = "success"; Message = $message; Data = $data }
 } catch {
     if ($CancellationToken.IsCancellationRequested) {
-        [pscustomobject]@{ Status = "cancelled"; Message = "Operacao cancelada."; Data = $null }
+        [pscustomobject]@{ Status = "cancelled"; Message = (Get-UlanziText -Key 'Operacao cancelada.'); Data = $null }
     } else {
         [pscustomobject]@{ Status = "error"; Message = [string]$_.Exception.Message; Data = $null }
     }
@@ -949,7 +965,7 @@ try {
         $backButton.Enabled = -not $Busy -and $state.Step -gt 0
         $nextButton.Enabled = -not $Busy
         $progressBar.Visible = $Busy
-        $cancelButton.Text = if ($Busy) { "Cancelar teste" } else { "Cancelar" }
+        $cancelButton.Text = if ($Busy) { (Get-UlanziText -Key 'Cancelar teste') } else { (Get-UlanziText -Key 'Cancelar') }
         $cancelButton.Enabled = $true
         if ($Busy) {
             & $setStatus $Message $false
@@ -965,9 +981,9 @@ try {
         } elseif ($operationState.CancelDeadlineUtc -eq [DateTime]::MinValue) {
             $operationState.CancelDeadlineUtc = [DateTime]::UtcNow.AddMilliseconds($operationCancelGraceMilliseconds)
         }
-        $statusLabel.Text = "Cancelando com seguranca..."
+        $statusLabel.Text = (Get-UlanziText -Key 'Cancelando com seguranca...')
         $statusLabel.ForeColor = $visualColors.Muted
-        $cancelButton.Text = "Cancelando..."
+        $cancelButton.Text = (Get-UlanziText -Key 'Cancelando...')
         $cancelButton.Enabled = $false
     }
     $startOperation = {
@@ -995,6 +1011,7 @@ try {
             [void]$workerPowerShell.AddArgument($Operation)
             [void]$workerPowerShell.AddArgument($Payload)
             [void]$workerPowerShell.AddArgument($operationState.Cancellation.Token)
+            [void]$workerPowerShell.AddArgument((Get-UlanziLanguage))
             $operationState.PowerShell = $workerPowerShell
             $operationTimer.Start()
             $operationState.AsyncResult = $workerPowerShell.BeginInvoke()
@@ -1013,7 +1030,7 @@ try {
             & $setBusyUi $false
             & $OnCompleted ([pscustomobject]@{
                 Status = "error"
-                Message = "Nao foi possivel iniciar o teste. Tente novamente."
+                Message = (Get-UlanziText -Key 'Nao foi possivel iniciar o teste. Tente novamente.')
                 Data = $null
             })
         }
@@ -1038,7 +1055,7 @@ try {
                 # BeginStop is intentionally asynchronous. EndStop and Dispose
                 # happen only after the timer observes completion.
                 $operationState.StopAsyncResult = $workerPowerShell.BeginStop($null, $null)
-                $statusLabel.Text = "Encerrando a operacao..."
+                $statusLabel.Text = (Get-UlanziText -Key 'Encerrando a operacao...')
             } catch {
                 # The pipeline may have completed between IsCompleted and
                 # BeginStop. EndInvoke below remains the source of truth.
@@ -1063,15 +1080,15 @@ try {
             $outputs = @($workerPowerShell.EndInvoke($asyncResult))
             if ($outputs.Count -gt 0) { $result = $outputs[-1] }
             if ($null -eq $result -or $null -eq $result.PSObject.Properties["Status"]) {
-                throw "O teste terminou sem retornar um resultado."
+                throw (Get-UlanziText -Key 'O teste terminou sem retornar um resultado.')
             }
         } catch {
             $result = if ($cancellation.IsCancellationRequested) {
-                [pscustomobject]@{ Status = "cancelled"; Message = "Operacao cancelada."; Data = $null }
+                [pscustomobject]@{ Status = "cancelled"; Message = (Get-UlanziText -Key 'Operacao cancelada.'); Data = $null }
             } else {
                 [pscustomobject]@{
                     Status = "error"
-                    Message = "Nao foi possivel concluir o teste. Tente novamente."
+                    Message = (Get-UlanziText -Key 'Nao foi possivel concluir o teste. Tente novamente.')
                     Data = $null
                 }
             }
@@ -1097,7 +1114,7 @@ try {
         try {
             & $completion $result
         } catch {
-            & $setStatus "O resultado do teste nao pode ser exibido. Tente novamente." $true
+            & $setStatus (Get-UlanziText -Key 'O resultado do teste nao pode ser exibido. Tente novamente.') $true
         }
     })
 
@@ -1105,7 +1122,7 @@ try {
         param([string]$Page, [string]$FailureMessage)
         try {
             Open-UlanziWizardSafePage -Page $Page
-            & $setStatus "Pagina aberta no navegador. Volte a este assistente quando terminar." $false
+            & $setStatus (Get-UlanziText -Key 'Pagina aberta no navegador. Volte a este assistente quando terminar.') $false
         } catch {
             & $setStatus $FailureMessage $true
         }
@@ -1116,89 +1133,89 @@ try {
     $openAwtrixFlasherButton.add_Click({
         $confirmation = [Windows.Forms.MessageBox]::Show(
             $form,
-            "A instalacao inicial do AWTRIX NG substitui o firmware e remove configuracoes atuais do TC001.`r`n`r`nO Ulanzi Libre apenas abrira a pagina oficial: voce ainda escolhera a porta e confirmara a gravacao no navegador. Faca backup antes se quiser preservar o firmware original.`r`n`r`nDeseja abrir a ferramenta oficial?",
-            "Instalar AWTRIX NG com seguranca",
+            (Get-UlanziText -Key 'Wizard.FirmwareConfirm'),
+            (Get-UlanziText -Key 'Instalar AWTRIX NG com seguranca'),
             [Windows.Forms.MessageBoxButtons]::YesNo,
             [Windows.Forms.MessageBoxIcon]::Warning
         )
         if ($confirmation -eq [Windows.Forms.DialogResult]::Yes) {
-            & $openSafePage "awtrix-flashing" "Nao foi possivel abrir a pagina oficial do AWTRIX NG. Confira seu navegador e tente novamente."
+            & $openSafePage "awtrix-flashing" (Get-UlanziText -Key 'Nao foi possivel abrir a pagina oficial do AWTRIX NG. Confira seu navegador e tente novamente.')
         }
     })
     $openAwtrixWifiGuideButton.add_Click({
-        & $openSafePage "awtrix-first-boot" "Nao foi possivel abrir as instrucoes oficiais de Wi-Fi. Confira seu navegador e tente novamente."
+        & $openSafePage "awtrix-first-boot" (Get-UlanziText -Key 'Nao foi possivel abrir as instrucoes oficiais de Wi-Fi. Confira seu navegador e tente novamente.')
     })
     $openAwtrixPortalButton.add_Click({
-        & $openSafePage "awtrix-provisioning" "Conecte o computador a rede awtrixng-* e tente abrir 192.168.4.1 novamente."
+        & $openSafePage "awtrix-provisioning" (Get-UlanziText -Key 'Conecte o computador a rede awtrixng-* e tente abrir 192.168.4.1 novamente.')
     })
 
     $nightscoutUrlHelpLink.add_LinkClicked({
         $helpText = @(
-            "Use o endereco principal que voce abre no navegador para acessar o Nightscout.",
+            (Get-UlanziText -Key 'Use o endereco principal que voce abre no navegador para acessar o Nightscout.'),
             "",
-            "Copie desde https:// ate o nome do site. Nao inclua /api/..., ?token=... nem qualquer senha.",
+            (Get-UlanziText -Key 'Copie desde https:// ate o nome do site. Nao inclua /api/..., ?token=... nem qualquer senha.'),
             "",
-            "Se o Nightscout esta em outro computador ou na internet, use um endereco HTTPS."
+            (Get-UlanziText -Key 'Se o Nightscout esta em outro computador ou na internet, use um endereco HTTPS.')
         ) -join [Environment]::NewLine
         [void][Windows.Forms.MessageBox]::Show(
             $form,
             $helpText,
-            "Ajuda - URL do Nightscout",
+            (Get-UlanziText -Key 'Ajuda - URL do Nightscout'),
             [Windows.Forms.MessageBoxButtons]::OK,
             [Windows.Forms.MessageBoxIcon]::Information
         )
     })
     $sourcePreparationHelpLink.add_LinkClicked({
         $helpText = @(
-            "Para usar dados reais, voce precisa ter um Nightscout que abra no navegador e ja mostre leituras, ou um endpoint JSON autorizado.",
+            (Get-UlanziText -Key 'Para usar dados reais, voce precisa ter um Nightscout que abra no navegador e ja mostre leituras, ou um endpoint JSON autorizado.'),
             "",
-            "O Ulanzi Libre nao pede nem armazena sua senha Abbott ou LibreLinkUp. A criacao e alimentacao do Nightscout sao etapas externas e variam conforme o servico escolhido.",
+            (Get-UlanziText -Key 'O Ulanzi Libre nao pede nem armazena sua senha Abbott ou LibreLinkUp. A criacao e alimentacao do Nightscout sao etapas externas e variam conforme o servico escolhido.'),
             "",
-            "Se a fonte ainda nao estiver pronta, cancele sem medo e volte a este mesmo assistente depois. Nenhuma configuracao e substituida antes de Salvar e ativar.",
+            (Get-UlanziText -Key 'Se a fonte ainda nao estiver pronta, cancele sem medo e volte a este mesmo assistente depois. Nenhuma configuracao e substituida antes de Salvar e ativar.'),
             "",
-            "Somente demonstracao serve para conferir o relogio, mas nao representa uma leitura real."
+            (Get-UlanziText -Key 'Somente demonstracao serve para conferir o relogio, mas nao representa uma leitura real.')
         ) -join [Environment]::NewLine
         [void][Windows.Forms.MessageBox]::Show(
             $form,
             $helpText,
-            "Preparar a fonte de glicemia",
+            (Get-UlanziText -Key 'Preparar a fonte de glicemia'),
             [Windows.Forms.MessageBoxButtons]::OK,
             [Windows.Forms.MessageBoxIcon]::Information
         )
     })
     $nightscoutAccessHelpLink.add_LinkClicked({
         $helpText = @(
-            "Access token (recomendado): entre no Nightscout com seu API_SECRET, abra o menu, escolha Admin Tools e Add New Subject. Crie um acesso com a funcao readable, salve e copie o token. Nao use a funcao admin.",
-            "Cole somente o valor do token, sem escrever token=.",
+            (Get-UlanziText -Key 'Access token (recomendado): entre no Nightscout com seu API_SECRET, abra o menu, escolha Admin Tools e Add New Subject. Crie um acesso com a funcao readable, salve e copie o token. Nao use a funcao admin.'),
+            (Get-UlanziText -Key 'Cole somente o valor do token, sem escrever token=.'),
             "",
-            "API_SECRET: escolha esta opcao somente se quiser usar o segredo original configurado no Nightscout. O aplicativo faz a protecao necessaria; nao cole um hash.",
+            (Get-UlanziText -Key 'API_SECRET: escolha esta opcao somente se quiser usar o segredo original configurado no Nightscout. O aplicativo faz a protecao necessaria; nao cole um hash.'),
             "",
-            "Acesso publico: escolha apenas se o Nightscout permite consultar a glicemia sem credencial.",
+            (Get-UlanziText -Key 'Acesso publico: escolha apenas se o Nightscout permite consultar a glicemia sem credencial.'),
             "",
-            "A credencial fica oculta nesta tela e nao aparece na revisao."
+            (Get-UlanziText -Key 'A credencial fica oculta nesta tela e nao aparece na revisao.')
         ) -join [Environment]::NewLine
         [void][Windows.Forms.MessageBox]::Show(
             $form,
             $helpText,
-            "Ajuda - acesso ao Nightscout",
+            (Get-UlanziText -Key 'Ajuda - acesso ao Nightscout'),
             [Windows.Forms.MessageBoxButtons]::OK,
             [Windows.Forms.MessageBoxIcon]::Information
         )
     })
     $awtrixAddressHelpLink.add_LinkClicked({
         $helpText = @(
-            "Primeiro, deixe o computador e o TC001 conectados a mesma rede Wi-Fi e use Procurar. A busca envia apenas o pacote oficial FIND_AWTRIXNG e tenta alguns nomes conhecidos.",
+            (Get-UlanziText -Key 'Primeiro, deixe o computador e o TC001 conectados a mesma rede Wi-Fi e use Procurar. A busca envia apenas o pacote oficial FIND_AWTRIXNG e tenta alguns nomes conhecidos.'),
             "",
-            "Quando o AWTRIX entra no Wi-Fi, o TC001 mostra AWTRIX e o endereco IP. Digite-o neste formato: http://192.168.1.50",
+            (Get-UlanziText -Key 'Quando o AWTRIX entra no Wi-Fi, o TC001 mostra AWTRIX e o endereco IP. Digite-o neste formato: http://192.168.1.50'),
             "",
-            "Se a tela mostrar AP MODE, volte a etapa AWTRIX NG, conecte-se a rede awtrixng-* e conclua o Wi-Fi em 192.168.4.1.",
+            (Get-UlanziText -Key 'Se a tela mostrar AP MODE, volte a etapa AWTRIX NG, conecte-se a rede awtrixng-* e conclua o Wi-Fi em 192.168.4.1.'),
             "",
-            "Informe somente o endereco, sem adicionar /api ou outro caminho."
+            (Get-UlanziText -Key 'Informe somente o endereco, sem adicionar /api ou outro caminho.')
         ) -join [Environment]::NewLine
         [void][Windows.Forms.MessageBox]::Show(
             $form,
             $helpText,
-            "Ajuda - endereco do TC001",
+            (Get-UlanziText -Key 'Ajuda - endereco do TC001'),
             [Windows.Forms.MessageBoxButtons]::OK,
             [Windows.Forms.MessageBoxIcon]::Information
         )
@@ -1219,21 +1236,21 @@ try {
     $awtrixPasswordBox.add_TextChanged({ $state.AwtrixTestPassed = $false })
     $testSourceButton.add_Click({
         $state.SourceTestPassed = $false
-        $sourceTestLabel.Text = "Testando conexao..."
+        $sourceTestLabel.Text = (Get-UlanziText -Key 'Testando conexao...')
         $sourceTestLabel.ForeColor = $visualColors.Muted
         $payload = [pscustomobject]@{
             BaseUrl = $nightscoutUrlBox.Text
             Authentication = (& $getNightscoutAuth)
             Secret = $nightscoutSecretBox.Text
         }
-        & $startOperation "nightscout" $payload "Conectando ao Nightscout..." {
+        & $startOperation "nightscout" $payload (Get-UlanziText -Key 'Conectando ao Nightscout...') {
             param($result)
             if ($result.Status -eq "success") {
                 $state.SourceTestPassed = $true
                 $sourceTestLabel.Text = $result.Message
                 $sourceTestLabel.ForeColor = $visualColors.Success
             } elseif ($result.Status -eq "cancelled") {
-                $sourceTestLabel.Text = "Teste cancelado. Revise os dados ou tente novamente."
+                $sourceTestLabel.Text = (Get-UlanziText -Key 'Teste cancelado. Revise os dados ou tente novamente.')
                 $sourceTestLabel.ForeColor = $visualColors.Muted
             } else {
                 $sourceTestLabel.Text = $result.Message
@@ -1243,20 +1260,20 @@ try {
     })
     $testJsonButton.add_Click({
         $state.SourceTestPassed = $false
-        $jsonTestLabel.Text = "Testando conexao..."
+        $jsonTestLabel.Text = (Get-UlanziText -Key 'Testando conexao...')
         $jsonTestLabel.ForeColor = $visualColors.Muted
         $payload = [pscustomobject]@{
             Url = $jsonUrlBox.Text
             Token = $jsonTokenBox.Text
         }
-        & $startOperation "json" $payload "Conectando a fonte JSON..." {
+        & $startOperation "json" $payload (Get-UlanziText -Key 'Conectando a fonte JSON...') {
             param($result)
             if ($result.Status -eq "success") {
                 $state.SourceTestPassed = $true
                 $jsonTestLabel.Text = $result.Message
                 $jsonTestLabel.ForeColor = $visualColors.Success
             } elseif ($result.Status -eq "cancelled") {
-                $jsonTestLabel.Text = "Teste cancelado. Revise os dados ou tente novamente."
+                $jsonTestLabel.Text = (Get-UlanziText -Key 'Teste cancelado. Revise os dados ou tente novamente.')
                 $jsonTestLabel.ForeColor = $visualColors.Muted
             } else {
                 $jsonTestLabel.Text = $result.Message
@@ -1265,21 +1282,21 @@ try {
         }
     })
     $findAwtrixButton.add_Click({
-        $awtrixTestLabel.Text = "Procurando por nomes conhecidos..."
+        $awtrixTestLabel.Text = (Get-UlanziText -Key 'Procurando por nomes conhecidos...')
         $awtrixTestLabel.ForeColor = $visualColors.Muted
         $payload = [pscustomobject]@{ CurrentAddress = $awtrixHostBox.Text }
-        & $startOperation "find-awtrix" $payload "Procurando o TC001 na rede..." {
+        & $startOperation "find-awtrix" $payload (Get-UlanziText -Key 'Procurando o TC001 na rede...') {
             param($result)
             if ($result.Status -eq "success") {
                 $awtrixHostBox.Text = [string]$result.Data.Address
                 $awtrixTestLabel.Text = if ([bool]$result.Data.AuthenticationRequired) {
-                    "TC001 encontrado. Informe usuario e senha para testar."
+                    (Get-UlanziText -Key 'TC001 encontrado. Informe usuario e senha para testar.')
                 } else {
-                    "TC001 encontrado. Use Testar TC001 para confirmar."
+                    (Get-UlanziText -Key 'TC001 encontrado. Use Testar TC001 para confirmar.')
                 }
                 $awtrixTestLabel.ForeColor = $visualColors.Success
             } elseif ($result.Status -eq "cancelled") {
-                $awtrixTestLabel.Text = "Busca cancelada. Digite o IP do TC001 ou tente novamente."
+                $awtrixTestLabel.Text = (Get-UlanziText -Key 'Busca cancelada. Digite o IP do TC001 ou tente novamente.')
                 $awtrixTestLabel.ForeColor = $visualColors.Muted
             } else {
                 $awtrixTestLabel.Text = $result.Message
@@ -1289,21 +1306,21 @@ try {
     })
     $testAwtrixButton.add_Click({
         $state.AwtrixTestPassed = $false
-        $awtrixTestLabel.Text = "Testando conexao..."
+        $awtrixTestLabel.Text = (Get-UlanziText -Key 'Testando conexao...')
         $awtrixTestLabel.ForeColor = $visualColors.Muted
         $payload = [pscustomobject]@{
             HostUrl = $awtrixHostBox.Text
             Username = $awtrixUserBox.Text
             Password = $awtrixPasswordBox.Text
         }
-        & $startOperation "test-awtrix" $payload "Conectando ao TC001..." {
+        & $startOperation "test-awtrix" $payload (Get-UlanziText -Key 'Conectando ao TC001...') {
             param($result)
             if ($result.Status -eq "success") {
                 $state.AwtrixTestPassed = $true
                 $awtrixTestLabel.Text = $result.Message
                 $awtrixTestLabel.ForeColor = $visualColors.Success
             } elseif ($result.Status -eq "cancelled") {
-                $awtrixTestLabel.Text = "Teste cancelado. Confira o endereco e tente novamente."
+                $awtrixTestLabel.Text = (Get-UlanziText -Key 'Teste cancelado. Confira o endereco e tente novamente.')
                 $awtrixTestLabel.ForeColor = $visualColors.Muted
             } else {
                 $awtrixTestLabel.Text = $result.Message
@@ -1333,26 +1350,26 @@ try {
         try {
             if ($state.Step -eq 1) {
                 if (-not $awtrixReadyBox.Checked) {
-                    throw "Confirme que o TC001 ja mostra AWTRIX e esta conectado ao seu Wi-Fi."
+                    throw (Get-UlanziText -Key 'Confirme que o TC001 ja mostra AWTRIX e esta conectado ao seu Wi-Fi.')
                 }
             } elseif ($state.Step -eq 3) {
                 $source = & $getSource
                 if ($source -eq "nightscout") {
-                    [void](Test-UlanziWizardUrl -Value $nightscoutUrlBox.Text -Label "A URL do Nightscout" -RequireHttpsOutsideLocalhost)
-                    if ((& $getNightscoutAuth) -ne "public" -and [string]::IsNullOrWhiteSpace($nightscoutSecretBox.Text)) { throw "Informe a credencial do Nightscout." }
-                    if (-not $state.SourceTestPassed) { throw "Use Testar Nightscout e confirme a conexao antes de avancar." }
+                    [void](Test-UlanziWizardUrl -Value $nightscoutUrlBox.Text -Label (Get-UlanziText -Key 'A URL do Nightscout') -RequireHttpsOutsideLocalhost)
+                    if ((& $getNightscoutAuth) -ne "public" -and [string]::IsNullOrWhiteSpace($nightscoutSecretBox.Text)) { throw (Get-UlanziText -Key 'Informe a credencial do Nightscout.') }
+                    if (-not $state.SourceTestPassed) { throw (Get-UlanziText -Key 'Use Testar Nightscout e confirme a conexao antes de avancar.') }
                 } elseif ($source -eq "json") {
-                    [void](Test-UlanziWizardUrl -Value $jsonUrlBox.Text -Label "A URL da fonte JSON" -RequireHttpsOutsideLocalhost)
-                    if (-not $state.SourceTestPassed) { throw "Use Testar fonte JSON e confirme a conexao antes de avancar." }
+                    [void](Test-UlanziWizardUrl -Value $jsonUrlBox.Text -Label (Get-UlanziText -Key 'A URL da fonte JSON') -RequireHttpsOutsideLocalhost)
+                    if (-not $state.SourceTestPassed) { throw (Get-UlanziText -Key 'Use Testar fonte JSON e confirme a conexao antes de avancar.') }
                 }
             } elseif ($state.Step -eq 4) {
-                [void](Test-UlanziWizardUrl -Value $awtrixHostBox.Text -Label "O endereco do TC001" -DisallowPath)
-                if ([string]::IsNullOrWhiteSpace($awtrixUserBox.Text) -and -not [string]::IsNullOrEmpty($awtrixPasswordBox.Text)) { throw "Informe o usuario do TC001 ou apague a senha." }
-                if (-not $state.AwtrixTestPassed) { throw "Use Testar TC001 e confirme a conexao antes de avancar." }
+                [void](Test-UlanziWizardUrl -Value $awtrixHostBox.Text -Label (Get-UlanziText -Key 'O endereco do TC001') -DisallowPath)
+                if ([string]::IsNullOrWhiteSpace($awtrixUserBox.Text) -and -not [string]::IsNullOrEmpty($awtrixPasswordBox.Text)) { throw (Get-UlanziText -Key 'Informe o usuario do TC001 ou apague a senha.') }
+                if (-not $state.AwtrixTestPassed) { throw (Get-UlanziText -Key 'Use Testar TC001 e confirme a conexao antes de avancar.') }
             } elseif ($state.Step -eq 5) {
-                if ($highBox.Value -le $lowBox.Value) { throw "O limite alto deve ser maior que o limite baixo." }
+                if ($highBox.Value -le $lowBox.Value) { throw (Get-UlanziText -Key 'O limite alto deve ser maior que o limite baixo.') }
                 if ($null -eq (& $getSensorLifetimeDays)) {
-                    throw "Escolha a duracao do seu sensor Libre antes de avancar."
+                    throw (Get-UlanziText -Key 'Escolha a duracao do seu sensor Libre antes de avancar.')
                 }
             }
             if ($state.Step -lt 6) {
@@ -1364,7 +1381,7 @@ try {
             $authentication = & $getNightscoutAuth
             $sensorLifetimeDays = & $getSensorLifetimeDays
             if ($null -eq $sensorLifetimeDays) {
-                throw "Volte para Preferencias e escolha a duracao do seu sensor Libre."
+                throw (Get-UlanziText -Key 'Volte para Preferencias e escolha a duracao do seu sensor Libre.')
             }
             $toSecureString = {
                 param([string]$Value)
@@ -1381,6 +1398,7 @@ try {
                 NightscoutApiSecret = if ($source -eq "nightscout" -and $authentication -eq "api-secret") { & $toSecureString $nightscoutSecretBox.Text } else { $null }
                 JsonSourceUrl = if ($source -eq "json") { $jsonUrlBox.Text.Trim() } else { "" }
                 JsonToken = if ($source -eq "json") { & $toSecureString $jsonTokenBox.Text } else { $null }
+                DisplayUnits = if ($displayUnitsBox.SelectedIndex -eq 1) { "mmol" } else { "mgdl" }
                 LowThreshold = [string][int]$lowBox.Value
                 HighThreshold = [string][int]$highBox.Value
                 StaleMinutes = [string][int]$staleBox.Value

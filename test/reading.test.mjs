@@ -4,6 +4,7 @@ import { buildDisplayState, normalizeReading, normalizeTrend } from "../src/read
 
 const NOW = new Date("2026-08-20T12:00:00.000Z");
 const config = {
+  language: "pt-BR",
   staleAfterMinutes: 15,
   pollIntervalSeconds: 60,
   lowThresholdMgDl: 70,
@@ -157,18 +158,18 @@ test("converte para mmol/L somente quando configurado", () => {
 });
 
 test("rejeita valor e timestamp inválidos antes do payload", () => {
-  assert.throws(() => normalizeReading({ valueMgDl: Number.NaN, timestamp: NOW }), /valor/);
-  assert.throws(() => normalizeReading({ valueMgDl: true, timestamp: NOW }), /valor/);
-  assert.throws(() => normalizeReading({ valueMgDl: [112], timestamp: NOW }), /valor/);
-  assert.throws(() => normalizeReading({ valueMgDl: 112, timestamp: "inválido" }), /horário/);
-  assert.throws(() => normalizeReading({ valueMgDl: 112, timestamp: true }), /horário/);
+  assert.throws(() => normalizeReading({ valueMgDl: Number.NaN, timestamp: NOW }), { code: "INVALID_READING" });
+  assert.throws(() => normalizeReading({ valueMgDl: true, timestamp: NOW }), { code: "INVALID_READING" });
+  assert.throws(() => normalizeReading({ valueMgDl: [112], timestamp: NOW }), { code: "INVALID_READING" });
+  assert.throws(() => normalizeReading({ valueMgDl: 112, timestamp: "inválido" }), { code: "INVALID_READING_TIME" });
+  assert.throws(() => normalizeReading({ valueMgDl: 112, timestamp: true }), { code: "INVALID_READING_TIME" });
   assert.throws(
     () => normalizeReading({ valueMgDl: 112, timestamp: NOW, isLow: "false" }),
     /isLow/,
   );
   assert.throws(
     () => normalizeReading({ valueMgDl: 112, timestamp: NOW, isLow: true, isHigh: true }),
-    /alta e baixa/,
+    { code: "CONFLICTING_READING_FLAGS" },
   );
 });
 

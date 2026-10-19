@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
@@ -18,6 +20,45 @@ function sourceBetween(startMarker, endMarker) {
 function functionSource(name, nextName) {
   return sourceBetween(`function ${name} {`, `function ${nextName} {`);
 }
+
+test("PowerShell atomically replaces existing command and stop files", {
+  skip: process.platform !== "win32",
+}, async () => {
+  const temporaryRoot = await mkdtemp(join(tmpdir(), "ulanzi-command-replace-"));
+  const psQuote = (value) => `'${String(value).replaceAll("'", "''")}'`;
+  const extract = (name) => {
+    const match = script.match(new RegExp(`function ${name} \\{[\\s\\S]*?^\\}`, "m"));
+    assert.ok(match, `missing ${name}`);
+    return match[0];
+  };
+  try {
+    const command = `
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+$runtimePath = ${psQuote(temporaryRoot)}
+$commandPath = Join-Path $runtimePath 'command.json'
+$stopRequestPath = Join-Path $runtimePath 'stop.json'
+${extract("Write-StopBridgeRequest")}
+${extract("Write-RuntimeCommand")}
+Write-StopBridgeRequest -TargetInstanceId 'before'
+Write-StopBridgeRequest -TargetInstanceId 'after'
+Write-RuntimeCommand -Command 'read-device-sound' -RequestId 'request-before' -TargetInstanceId 'instance'
+Write-RuntimeCommand -Command 'read-device-sound' -RequestId 'request-after' -TargetInstanceId 'instance'
+`;
+    const result = spawnSync("powershell.exe", [
+      "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-EncodedCommand",
+      Buffer.from(command, "utf16le").toString("base64"),
+    ], { encoding: "utf8", windowsHide: true, timeout: 15_000 });
+    assert.equal(result.status, 0, result.stderr);
+    const stop = JSON.parse(await readFile(join(temporaryRoot, "stop.json"), "utf8"));
+    const request = JSON.parse(await readFile(join(temporaryRoot, "command.json"), "utf8"));
+    assert.equal(stop.targetInstanceId, "after");
+    assert.equal(request.requestId, "request-after");
+    assert.deepEqual((await readdir(temporaryRoot)).sort(), ["command.json", "stop.json"]);
+  } finally {
+    await rm(temporaryRoot, { recursive: true, force: true });
+  }
+});
 
 test("reinicio interativo usa maquina de estados sem espera bloqueante", () => {
   const start = functionSource("Start-Bridge", "Test-BridgeRestartBusy");

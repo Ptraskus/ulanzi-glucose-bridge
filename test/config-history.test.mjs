@@ -7,6 +7,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import test from "node:test";
+import { setAppLanguage } from "../src/i18n.mjs";
+setAppLanguage("pt-BR");
 import {
   createConfigSnapshot,
   listConfigSnapshots,

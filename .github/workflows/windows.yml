@@ -1,0 +1,46 @@
+name: Windows validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+    defaults:
+      run:
+        shell: powershell
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: ${{ matrix.node }}
+          package-manager-cache: false
+      - name: Check JavaScript syntax
+        run: npm.cmd run check
+      - name: Run automated tests
+        run: npm.cmd test
+      - name: Check first-run prerequisites
+        run: .\scripts\launch-app.ps1 -Check
+      - name: Run the offline demonstration
+        run: npm.cmd run demo
+      - name: Validate the public package allowlist
+        run: |
+          $version = (Get-Content -Raw package.json | ConvertFrom-Json).version
+          .\scripts\build-release.ps1 -Version $version -SkipInstaller

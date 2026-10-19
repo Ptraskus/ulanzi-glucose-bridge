@@ -19,7 +19,7 @@ function runPowerShell(command) {
   const result = spawnSync(
     "powershell.exe",
     ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-STA", "-Command", command],
-    { cwd: projectRoot, encoding: "utf8", timeout: 20_000, windowsHide: true },
+    { cwd: projectRoot, encoding: "utf8", timeout: 20_000, windowsHide: true, env: { ...process.env, ULANZI_UI_LANGUAGE: "pt-BR" } },
   );
   assert.equal(result.status, 0, `PowerShell falhou:\n${result.stderr}\n${result.stdout}`);
   return result.stdout.trim();
@@ -45,7 +45,7 @@ function sourceBetween(source, startMarker, endMarker) {
 function initialMenuText(variableName) {
   const escapedName = variableName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const declaration = new RegExp(
-    `\\$${escapedName}\\s*=\\s*\\[Windows\\.Forms\\.ToolStripMenuItem\\]::new\\(\"([^\"]+)\"\\)`,
+    `\\$${escapedName}\\s*=\\s*\\[Windows\\.Forms\\.ToolStripMenuItem\\]::new\\(\\(Get-UlanziText -Key '([^']+)'\\)\\)`,
   );
   const match = trayScript.match(declaration);
   assert.ok(match, `declaracao de ${variableName} nao encontrada`);
@@ -54,7 +54,7 @@ function initialMenuText(variableName) {
 
 test("painel oferece cinco areas e os temas Sistema, Claro e Escuro", () => {
   const navigationBlock = sourceBetween(panelScript, "$navigationItems = @(", "for ($index =");
-  const areas = [...navigationBlock.matchAll(/@\(\s*"[^"]+"\s*,\s*"([^"]+)"\s*\)/g)]
+  const areas = [...navigationBlock.matchAll(/@\(\s*"[^"]+"\s*,\s*\(Get-UlanziText -Key '([^']+)'\)\s*\)/g)]
     .map((match) => normalizedText(match[1]));
 
   assert.deepEqual(areas, [
@@ -65,9 +65,9 @@ test("painel oferece cinco areas e os temas Sistema, Claro e Escuro", () => {
     "suporte",
   ]);
 
-  const themeOptions = panelScript.match(/\$themeCombo\.Items\.AddRange\(\s*@\(([^)]*)\)\s*\)/s);
+  const themeOptions = panelScript.match(/\$themeCombo\.Items\.AddRange\(([^\r\n]+)\)/);
   assert.ok(themeOptions, "opcoes do seletor de tema nao encontradas");
-  const labels = [...themeOptions[1].matchAll(/"([^"]+)"/g)].map((match) => normalizedText(match[1]));
+  const labels = [...themeOptions[1].matchAll(/Get-UlanziText -Key '([^']+)'/g)].map((match) => normalizedText(match[1]));
   assert.equal(labels.length, 3);
   assert.match(labels[0], /^(sistema|usar tema do windows)$/);
   assert.deepEqual(labels.slice(1), ["claro", "escuro"]);
@@ -210,9 +210,9 @@ test("reinicio em segundo plano aparece como progresso e nao como falha", () => 
   assert.match(refreshStatus, /Get-UlanziPanelProperty\s+-Object\s+\$health\s+-Name\s+"Busy"/);
   assert.match(refreshStatus, /\$state\.RuntimeBusy\s*=\s*\$runtimeBusy/);
   assert.match(refreshStatus, /\$footerProgress\.Visible\s*=\s*\$true/);
-  assert.match(refreshStatus, /\$overallLabel\.Text\s*=\s*"Reiniciando a conexao"/);
+  assert.match(refreshStatus, /\$overallLabel\.Text\s*=\s*\(Get-UlanziText -Key 'Reiniciando a conexao'\)/);
   assert.match(refreshStatus, /\$overallLabel\.Tag\s*=\s*"Warning"/);
-  assert.match(refreshStatus, /"Reiniciando"\s+\$healthText\s+"warning"/);
+  assert.match(refreshStatus, /\(Get-UlanziText -Key 'Reiniciando'\)\s+\$healthText\s+"warning"/);
 });
 
 test("configuracao do painel usa assinatura de arquivo e loading acessivel", () => {
@@ -221,7 +221,7 @@ test("configuracao do painel usa assinatura de arquivo e loading acessivel", () 
   const editorRead = refreshConfiguration.indexOf('Start-UlanziConfigEditorOperation -Command "read"');
   assert.ok(cacheGuard >= 0 && cacheGuard < editorRead, "guarda de cache nao antecede a leitura Node");
   assert.match(refreshConfiguration, /ConfigurationStamp/);
-  assert.match(refreshConfiguration, /BeginBusy\s+"Carregando configuracao segura/);
+  assert.match(refreshConfiguration, /BeginBusy\s+\(Get-UlanziText -Key 'Carregando configuracao segura/);
   assert.match(refreshConfiguration, /EndBusy/);
   assert.match(refreshConfiguration, /ConfigurationOperation/);
   assert.match(refreshConfiguration, /Complete-UlanziConfigEditorOperation/);
@@ -345,7 +345,7 @@ test("identidade visual de glicose e estados dos cards permanecem leves e sem bi
 
   const cardFactory = sourceBetween(panelScript, "function New-UlanziPanelCard", "function New-UlanziPanelFeature");
   assert.match(cardFactory, /\$indicator\.Width\s*=\s*if[\s\S]*?\{\s*4\s*\}/);
-  assert.match(cardFactory, /AccessibleName\s*=\s*"Indicador de estado/);
+  assert.match(cardFactory, /AccessibleName\s*=\s*\(Get-UlanziText -Key 'Indicador de estado/);
   assert.match(panelScript, /Som do TC001/);
 });
 
@@ -533,6 +533,8 @@ test("painel mostra apenas campos explicitos e nunca imprime configuracao ou seg
     [...panelScript.matchAll(/\$values\.([A-Z][A-Z0-9_]*)/g)].map((match) => match[1]),
   );
   const safeSummaryFields = new Set([
+    "APP_LANGUAGE",
+    "DISPLAY_UNITS",
     "GLUCOSE_ALARM_ENABLED",
     "GLUCOSE_ALARM_SOUND_PROFILE",
     "GLUCOSE_ALARM_DOUBLE_UP_ENABLED",
@@ -546,8 +548,8 @@ test("painel mostra apenas campos explicitos e nunca imprime configuracao ou seg
     "POLL_INTERVAL_SECONDS",
   ]);
   assert.deepEqual([...directConfigFields].filter((field) => !safeSummaryFields.has(field)), []);
-  assert.match(panelScript, /setas para baixo abaixo de \$\(\$values\.GLUCOSE_ALARM_DOWN_THRESHOLD_MGDL\) mg\/dL/);
-  assert.match(panelScript, /"down" \{ "queda" \}/);
+  assert.match(panelScript, /Get-UlanziText -Key 'setas para baixo abaixo de \{0\} mg\/dL' -Arguments[^\r\n]+\$values\.GLUCOSE_ALARM_DOWN_THRESHOLD_MGDL/);
+  assert.match(panelScript, /"down" \{ \(Get-UlanziText -Key 'queda'\) \}/);
 
   assert.doesNotMatch(panelScript, /NIGHTSCOUT_TOKEN|NIGHTSCOUT_API_SECRET|AWTRIX_PASSWORD|AWTRIX_TOKEN|API_KEY|CLIENT_SECRET/);
   assert.doesNotMatch(panelScript, /\.Text\s*=\s*\$(?:values|readResult|runtimeStatus)\b/);

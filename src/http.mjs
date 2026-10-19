@@ -1,12 +1,9 @@
 import { BridgeError, HttpError } from "./errors.mjs";
+import { tr } from "./i18n.mjs";
 
-function endpointLabel(url) {
-  try {
-    const parsed = new URL(url);
-    return `${parsed.hostname}${parsed.pathname}`;
-  } catch {
-    return "endpoint configurado";
-  }
+function endpointLabel() {
+  // Hostnames and paths may identify a person or contain credentials.
+  return tr("configured endpoint", "endpoint configurado");
 }
 
 export async function fetchResponse(url, options = {}) {
@@ -34,7 +31,7 @@ export async function fetchResponse(url, options = {}) {
     });
   } catch (cause) {
     if (options.signal?.aborted) {
-      throw new BridgeError(`operação cancelada ao acessar ${endpointLabel(url)}`, {
+      throw new BridgeError(tr("request to {0} was cancelled", "operação cancelada ao acessar {0}", [endpointLabel()]), {
         code: "HTTP_ABORTED",
         retryable: false,
         cause,
@@ -43,8 +40,8 @@ export async function fetchResponse(url, options = {}) {
     const timedOut = cause?.name === "TimeoutError" || cause?.name === "AbortError";
     throw new BridgeError(
       timedOut
-        ? `tempo limite ao acessar ${endpointLabel(url)}`
-        : `não foi possível acessar ${endpointLabel(url)}`,
+        ? tr("request to {0} timed out", "tempo limite ao acessar {0}", [endpointLabel()])
+        : tr("could not reach {0}", "não foi possível acessar {0}", [endpointLabel()]),
       { code: timedOut ? "HTTP_TIMEOUT" : "HTTP_NETWORK", cause },
     );
   }
@@ -59,7 +56,7 @@ export async function fetchJson(url, options = {}) {
       data = JSON.parse(text);
     } catch (cause) {
       if (response.ok) {
-        throw new BridgeError(`resposta inválida de ${endpointLabel(url)} (JSON esperado)`, {
+        throw new BridgeError(tr("invalid response from {0} (expected JSON)", "resposta inválida de {0} (JSON esperado)", [endpointLabel()]), {
           code: "INVALID_JSON_RESPONSE",
           cause,
         });
@@ -68,7 +65,7 @@ export async function fetchJson(url, options = {}) {
   }
 
   if (!response.ok) {
-    const fallback = `HTTP ${response.status} em ${endpointLabel(url)}`;
+    const fallback = tr("HTTP {0} from {1}", "HTTP {0} em {1}", [response.status, endpointLabel()]);
     // Não reutilize mensagens fornecidas pelo servidor aqui: alguns serviços
     // ecoam tokens ou outros dados da requisição no corpo de erro.
     throw new HttpError(fallback, {
@@ -86,7 +83,7 @@ export async function fetchOk(url, options = {}) {
   // device-provided body in errors because it may echo request secrets.
   await response.text();
   if (!response.ok) {
-    throw new HttpError(`HTTP ${response.status} em ${endpointLabel(url)}`, {
+    throw new HttpError(tr("HTTP {0} from {1}", "HTTP {0} em {1}", [response.status, endpointLabel()]), {
       status: response.status,
       code: response.status === 401 ? "UNAUTHORIZED" : "HTTP_ERROR",
       retryable: response.status === 429 || response.status >= 500,

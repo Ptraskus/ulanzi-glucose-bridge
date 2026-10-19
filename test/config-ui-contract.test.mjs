@@ -23,7 +23,7 @@ function runPowerShell(command) {
   const result = spawnSync(
     "powershell.exe",
     ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-STA", "-Command", command],
-    { cwd: projectRoot, encoding: "utf8", timeout: 20_000, windowsHide: true },
+    { cwd: projectRoot, encoding: "utf8", timeout: 20_000, windowsHide: true, env: { ...process.env, ULANZI_UI_LANGUAGE: "pt-BR" } },
   );
   assert.equal(result.status, 0, `PowerShell falhou:\n${result.stderr}\n${result.stdout}`);
   return result.stdout.trim();
@@ -54,10 +54,10 @@ test("aviso da tela acompanha exatamente os campos que reiniciam episodios", () 
 });
 
 test("tela organiza cada ajuste pela tarefa do usuario", () => {
-  assert.match(uiScript, /TabPage\]::new\("Alertas e som"\)/);
-  assert.match(uiScript, /TabPage\]::new\("Comportamento"\)/);
-  assert.match(uiScript, /TabPage\]::new\("Tela e sensor"\)/);
-  assert.match(uiScript, /TabPage\]::new\("Conexao e avisos"\)/);
+  assert.match(uiScript, /TabPage\]::new\(\(Get-UlanziText -Key 'Alertas e som'\)\)/);
+  assert.match(uiScript, /TabPage\]::new\(\(Get-UlanziText -Key 'Comportamento'\)\)/);
+  assert.match(uiScript, /TabPage\]::new\(\(Get-UlanziText -Key 'Tela e sensor'\)\)/);
+  assert.match(uiScript, /TabPage\]::new\(\(Get-UlanziText -Key 'Conexao e avisos'\)\)/);
   assert.match(uiScript, /\$alarmLowControl[^\r\n]+GLUCOSE_ALARM_LOW_THRESHOLD_MGDL/);
   assert.match(uiScript, /\$alarmHighControl[^\r\n]+GLUCOSE_ALARM_HIGH_THRESHOLD_MGDL/);
   assert.match(uiScript, /\$downControl[^\r\n]+GLUCOSE_ALARM_DOWN_THRESHOLD_MGDL/);
@@ -113,7 +113,7 @@ test("telas focadas usam o tema atual quando o modulo visual esta disponivel", (
 });
 
 test("bandeja oferece a tela e reinicia somente depois de um salvamento alterado", () => {
-  assert.match(trayScript, /ToolStripMenuItem\]::new\("Configuracoes\.\.\."\)/);
+  assert.match(trayScript, /ToolStripMenuItem\]::new\(\(Get-UlanziText -Key 'Configuracoes\.\.\.'\)\)/);
   assert.match(trayScript, /Show-UlanziConfigurationDialog/);
   assert.match(trayScript, /if \(\$result\.Changed -ne \$true\)/);
   assert.match(trayScript, /Start-Bridge/);
@@ -131,7 +131,7 @@ test("salvamento pela bandeja atualiza um painel que ja esteja aberto", () => {
 });
 
 test("salvamento deixa claro que tambem aplica e confirma os valores gravados", () => {
-  assert.match(uiScript, /\$saveButton\.Text\s*=\s*"Salvar e aplicar"/);
+  assert.match(uiScript, /\$saveButton\.Text\s*=\s*\(Get-UlanziText -Key 'Salvar e aplicar'\)/);
 
   const dialogStart = uiScript.indexOf("function Show-UlanziConfigurationDialog {");
   assert.notEqual(dialogStart, -1, "dialogo de configuracoes nao encontrado");
@@ -163,8 +163,8 @@ test("configuracao e volume mostram progresso indeterminado acessivel sem invent
   assert.equal(progressDeclarations.length, 2);
   assert.match(uiScript, /\$saveProgress\.Style\s*=\s*\[Windows\.Forms\.ProgressBarStyle\]::Marquee/);
   assert.match(uiScript, /\$volumeProgress\.Style\s*=\s*\[Windows\.Forms\.ProgressBarStyle\]::Marquee/);
-  assert.match(uiScript, /\$saveProgress\.AccessibleName\s*=\s*"Progresso do salvamento da configuracao"/);
-  assert.match(uiScript, /\$volumeProgress\.AccessibleName\s*=\s*"Progresso da operacao de som"/);
+  assert.match(uiScript, /\$saveProgress\.AccessibleName\s*=\s*\(Get-UlanziText -Key 'Progresso do salvamento da configuracao'\)/);
+  assert.match(uiScript, /\$volumeProgress\.AccessibleName\s*=\s*\(Get-UlanziText -Key 'Progresso da operacao de som'\)/);
   assert.match(uiScript, /Etapa 1 de 2:/);
   assert.match(uiScript, /Etapa 2 de 2:/);
   assert.doesNotMatch(uiScript, /\$(?:saveProgress|volumeProgress)\.Value\s*=/);
@@ -233,7 +233,7 @@ test("controle do som geral preserva o protocolo em uma interface enxuta", () =>
   const volumeDialog = uiScript.slice(dialogStart, dialogEnd);
 
   assert.match(uiScript, /Discreto \(~0,6 s\)[^\r\n]+Normal \(~1,2 s\)[^\r\n]+Reforcado \(~2,1 s\)/);
-  assert.match(trayScript, /ToolStripMenuItem\]::new\("Ligar ou desligar som do TC001\.\.\."\)/);
+  assert.match(trayScript, /ToolStripMenuItem\]::new\(\(Get-UlanziText -Key 'Ligar ou desligar som do TC001\.\.\.'\)\)/);
   assert.match(trayScript, /Show-UlanziVolumeDialog/);
   assert.match(trayScript, /"read-device-sound"/);
   assert.match(trayScript, /"write-device-sound"/);
@@ -246,7 +246,7 @@ test("controle do som geral preserva o protocolo em uma interface enxuta", () =>
   assert.doesNotMatch(volumeDialog, /\$warningPanel|\$volumeTitleLabel|\$volumeValueLabel/);
   assert.match(uiScript, /GLUCOSE_ALARM_SOUND_PROFILE/);
   assert.match(uiScript, /Add-UlanziChoiceSetting/);
-  assert.match(volumeDialog, /\$applyButton\.Text = "Salvar"/);
+  assert.match(volumeDialog, /\$applyButton\.Text = \(Get-UlanziText -Key 'Salvar'\)/);
   assert.match(volumeDialog, /Salvar e testar/);
   assert.match(volumeDialog, /Som ligado e teste confirmado/);
   assert.match(volumeDialog, /\$soundEnabledControl\.TabIndex = 0/);

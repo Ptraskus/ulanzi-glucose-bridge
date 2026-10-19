@@ -9,6 +9,8 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $envPath = Join-Path $projectRoot ".env"
+. (Join-Path $PSScriptRoot "ui-language.ps1")
+[void](Initialize-UlanziLanguage -EnvPath $envPath)
 $secretsPath = Join-Path $projectRoot ".secrets"
 $vaultPath = Join-Path $secretsPath "vault.json"
 $allowedSecretVariables = @{
@@ -35,7 +37,7 @@ if (-not $isDiagnosticRun) {
         $ownsInstanceMutex = $true
     }
     if (-not $ownsInstanceMutex) {
-        Write-Host "O Ulanzi Libre Bridge ja esta em execucao."
+        Write-Host (Get-UlanziText -Key 'O Ulanzi Libre Bridge ja esta em execucao.')
         $instanceMutex.Dispose()
         exit 0
     }
@@ -71,10 +73,10 @@ try {
     $configGeneration = Get-ConfigGeneration
     $vaultExists = Test-Path -LiteralPath $vaultPath
     if (-not [string]::IsNullOrWhiteSpace($configGeneration) -and -not $vaultExists) {
-        throw "A configuracao exige um cofre que nao foi encontrado. Execute configurar.cmd novamente."
+        throw (Get-UlanziText -Key 'A configuracao exige um cofre que nao foi encontrado. Execute configurar.cmd novamente.')
     }
     if ([string]::IsNullOrWhiteSpace($configGeneration) -and $vaultExists) {
-        throw "O cofre nao corresponde a configuracao atual. Execute configurar.cmd novamente."
+        throw (Get-UlanziText -Key 'O cofre nao corresponde a configuracao atual. Execute configurar.cmd novamente.')
     }
     if ($vaultExists) {
         # A geracao protegida isola o processo de segredos herdados por acaso.
@@ -86,12 +88,12 @@ try {
             [string]::IsNullOrWhiteSpace([string]$vault.generation) -or
             $configGeneration -cne [string]$vault.generation
         ) {
-            throw "Configuracao e cofre pertencem a geracoes diferentes. Execute configurar.cmd novamente."
+            throw (Get-UlanziText -Key 'Configuracao e cofre pertencem a geracoes diferentes. Execute configurar.cmd novamente.')
         }
         foreach ($property in $vault.secrets.PSObject.Properties) {
             $variable = $property.Name
             if (-not $allowedSecretVariables.ContainsKey($variable)) {
-                throw "O cofre contem uma variavel nao permitida. Execute configurar.cmd novamente."
+                throw (Get-UlanziText -Key 'O cofre contem uma variavel nao permitida. Execute configurar.cmd novamente.')
             }
             Set-EnvironmentFromProtectedValue -ProtectedValue ([string]$property.Value) -Variable $variable
         }

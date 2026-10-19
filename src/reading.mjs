@@ -1,4 +1,5 @@
 import { BridgeError } from "./errors.mjs";
+import { tr } from "./i18n.mjs";
 
 export const TRENDS = new Set([
   "double-up",
@@ -57,10 +58,10 @@ export function normalizeTrend(value) {
   return TRENDS.has(candidate) ? candidate : "unknown";
 }
 
-export function normalizeReading(input, source = "desconhecida") {
+export function normalizeReading(input, source = "unknown") {
   const valueMgDl = input?.valueMgDl;
   if (typeof valueMgDl !== "number" || !Number.isFinite(valueMgDl) || valueMgDl <= 0 || valueMgDl > 1000) {
-    throw new BridgeError("a fonte retornou um valor de glicemia inválido", {
+    throw new BridgeError(tr("The source returned an invalid glucose value", "a fonte retornou um valor de glicemia inválido"), {
       code: "INVALID_READING",
       retryable: false,
     });
@@ -77,21 +78,21 @@ export function normalizeReading(input, source = "desconhecida") {
     timestamp = new Date(Number.NaN);
   }
   if (!Number.isFinite(timestamp.getTime())) {
-    throw new BridgeError("a fonte retornou um horário de leitura inválido", {
+    throw new BridgeError(tr("The source returned an invalid reading timestamp", "a fonte retornou um horário de leitura inválido"), {
       code: "INVALID_READING_TIME",
       retryable: false,
     });
   }
   for (const flag of ["isHigh", "isLow"]) {
     if (input?.[flag] !== undefined && typeof input[flag] !== "boolean") {
-      throw new BridgeError(`a fonte retornou ${flag} com tipo inválido`, {
+      throw new BridgeError(tr("The source returned {0} with an invalid type", "a fonte retornou {0} com tipo inválido", [flag]), {
         code: "INVALID_READING_FLAG",
         retryable: false,
       });
     }
   }
   if (input?.isHigh === true && input?.isLow === true) {
-    throw new BridgeError("a fonte marcou a mesma leitura como alta e baixa", {
+    throw new BridgeError(tr("The source marked the same reading as both high and low", "a fonte marcou a mesma leitura como alta e baixa"), {
       code: "CONFLICTING_READING_FLAGS",
       retryable: false,
     });
@@ -140,7 +141,9 @@ function sensorTiming(sensorSession, config, now) {
 function replacementState(reading, timing, config, now) {
   return {
     kind: "replace-sensor",
-    text: "TROCAR",
+    text: tr("CHANGE", "TROCAR", [], config.language ?? "en"),
+    displayUnits: config.displayUnits,
+    language: config.language ?? "en",
     textColor: config.colors.sensorEnded ?? config.colors.unavailable,
     trend: null,
     lifetimeMs: Math.max(config.pollIntervalSeconds * 3_000, 20 * 60_000),
@@ -160,7 +163,9 @@ export function buildDisplayState(reading, config, now = new Date(), sensorSessi
     if (timing?.remainingMs <= 0) return replacementState(reading, timing, config, now);
     return {
       kind: "unavailable",
-      text: "SEM DADO",
+      text: tr("NO DATA", "SEM DADO", [], config.language ?? "en"),
+      displayUnits: config.displayUnits,
+      language: config.language ?? "en",
       textColor: config.colors.unavailable,
       // Keep the explicit no-data state visible through the maximum 15-minute
       // source backoff plus network jitter. It still disappears if the bridge dies.
@@ -195,6 +200,8 @@ export function buildDisplayState(reading, config, now = new Date(), sensorSessi
   return {
     kind,
     text: `${displayValue(reading.valueMgDl, config.displayUnits)} ${TREND_SYMBOLS[reading.trend]}`,
+    displayUnits: config.displayUnits,
+    language: config.language ?? "en",
     trend: reading.trend,
     textColor,
     lifetimeMs,
