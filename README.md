@@ -1,10 +1,26 @@
 ﻿# Ulanzi Glucose Bridge
 
-**Your glucose reading on an Ulanzi TC001, with a local Windows companion app.**
+**Your glucose reading and trend arrow, large and easy to see on an Ulanzi TC001.**
 
 [Português (Brasil)](README.pt-BR.md) · [Report an issue](https://github.com/Ptraskus/ulanzi-glucose-bridge/issues) · [Releases](https://github.com/Ptraskus/ulanzi-glucose-bridge/releases)
 
-The bridge reads an authorized Nightscout or JSON source and shows the glucose value, trend and reading status on the TC001. It works with the reading format supplied by the source, independently of the CGM manufacturer. The Windows app includes guided setup, a dashboard, optional alerts, a floating display and troubleshooting tools.
+See your glucose reading at a glance on the clock. This Windows app takes the readings already available on your Nightscout site and sends the value and trend arrow to the TC001 over your local network. A guided setup walks you through connecting them.
+
+![Ulanzi TC001 showing a large 113 and a right-pointing trend arrow](assets/ulanzi-tc001-display.jpeg)
+
+*Photo of the clock in use: a large glucose value and a clearly separated trend arrow.*
+
+## Why use this version?
+
+- **Large numbers that use the full display height.** On AWTRIX NG, the digits are drawn pixel by pixel at 8 pixels tall, using all 8 rows of the TC001's 32 × 8 display.
+- **A prominent arrow beside the reading.** The arrow has its own 7 × 8 pixel grid. Its shape varies with the trend, with spacing to keep it distinct from the number.
+- **Space focused on the reading.** The number and arrow are positioned together according to the width of the value. The unit label stays off the clock display, leaving room for the value and trend; choose mg/dL or mmol/L in the app.
+- **Colors that show the configured range.** The number and arrow change color according to your settings. An unavailable or old reading shows **NO DATA**.
+- **Setup through buttons and forms.** Choose the language, connect Nightscout, find the clock and test the connections without typing terminal commands.
+- **Useful controls on the computer.** Check reading and connection status, open an optional floating display, choose mg/dL or mmol/L and configure optional sound alerts.
+- **No project account or subscription.** The app runs locally and uses the data source you already have.
+
+The custom large-digit layout described above is used with **AWTRIX NG**. **AWTRIX 3** is also supported, using text mode; its appearance can differ. Sensor compatibility depends on current, valid readings reaching your source; see [CGM compatibility](#cgm-compatibility).
 
 **Windows 10 1809+ / Windows 11 · Node.js 22+ · English by default, Brazilian Portuguese available · mg/dL or mmol/L · [MIT license](LICENSE)**
 
@@ -12,60 +28,84 @@ The bridge reads an authorized Nightscout or JSON source and shows the glucose v
 
 > This is a supplementary display, not a medical device. Keep using your official apps, their alarms and your usual monitoring tools. Do not use this app or the TC001 as your only basis for treatment decisions. Initial thresholds are software defaults, not clinical recommendations.
 
-## Quick start on Windows
+[Go to the setup steps](#step-by-step-on-windows) · [Solve a problem](#troubleshooting)
 
-You do not need Git, an account for this app, or `npm install`.
+## Before you begin
 
-1. Install **Node.js LTS, version 22 or newer**, using the Windows installer from the [official Node.js download page](https://nodejs.org/en/download). Keep its default PATH option. Skip this step if a suitable Node.js version is already installed.
-2. Download the repository using **Code > Download ZIP** on GitHub.
-3. Right-click the ZIP and choose **Extract All**. Keep the extracted folder in a writable location such as your Documents folder. Open the folder containing `Start.cmd`; do not run it inside the ZIP or from `Program Files`.
-4. Double-click **`Start.cmd`**. The launcher checks Node.js, then opens the dashboard. Select **Set up now** when the app asks for initial configuration.
-5. Select your language and glucose unit, choose a source, enter the TC001 address and complete the connection tests. Review the settings before saving. **Automatic sound alerts start disabled.**
+There are three parts: **Nightscout** is the website supplying your readings, **the bridge** is this app on your computer, and **AWTRIX** is the software running on the clock. The bridge does not connect directly to your sensor.
 
-For subsequent use, open `Start.cmd` again. The app stays in the Windows notification area; closing the panel does not quit it. Use **Exit** from its tray menu to stop the app. The computer must remain awake, connected to the source and TC001, with the app running.
+| What you need | In plain language |
+| --- | --- |
+| A Windows computer | Windows 10 version 1809 or newer, or Windows 11, with Windows PowerShell 5.1 and WinForms. The desktop app is Windows-only; packaged runtimes target x64. |
+| Node.js 22 or newer | The software that runs the bridge. Install it once, as explained below. |
+| An Ulanzi TC001 with AWTRIX | Use AWTRIX NG for the large-digit layout, or AWTRIX 3 for text mode. The original Ulanzi software is not supported. The wizard includes guidance if you still need to prepare the clock. |
+| A Nightscout site already showing current readings | Open your site in the browser and check that readings are arriving. Have its address and access token or `API_SECRET` ready if required. An authorized JSON source is also supported. |
+| A shared local network | The computer and clock need to communicate, usually through the same home router. Guest Wi-Fi can block this even when both devices have internet access. |
 
-`Configure.cmd` opens the setup wizard directly. The original Portuguese commands, `configurar.cmd` and `iniciar.cmd`, remain available for compatibility. `iniciar.cmd` runs the bridge in a visible console; it does not open the dashboard.
+**The computer must stay on, awake and connected, with the app running, for readings to keep reaching the clock.** Closing the app's panel is fine; shutting down or putting the computer to sleep stops delivery.
+
+If you do not have a working Nightscout site yet, start with the [Nightscout setup guide](GUIA-NIGHTSCOUT.md). Installing this bridge does not create a Nightscout server or configure the connection between your sensor and Nightscout.
+
+## Step by step on Windows
+
+You do not need to program, install Git, type terminal commands or run `npm install`.
+
+### 1. Install the software that runs the app
+
+Open the [official Node.js download page](https://nodejs.org/en/download), download the **Windows installer for Node.js LTS, version 22 or newer**, and run it. Keep the default options, including the option to add Node.js to PATH. You only need to do this once; skip it if a suitable version is already installed.
+
+### 2. Download and extract the app
+
+1. Open [this repository on GitHub](https://github.com/Ptraskus/ulanzi-glucose-bridge).
+2. Click **Code**, then **Download ZIP**.
+3. Find the downloaded ZIP, right-click it and choose **Extract All**.
+4. Extract it to a folder you can keep, such as **Documents**. Open the extracted folder containing `Start.cmd`.
+
+Do not run the app from inside the ZIP or place it in `Program Files`: it needs the extracted files and permission to save its settings.
+
+### 3. Open the app
+
+Double-click **`Start.cmd`**. If Windows hides file extensions, it may appear simply as **Start**. The launcher checks Node.js and opens the dashboard. Select **Set up now**.
 
 If Windows blocks a downloaded script, verify that it came from this repository and review the warning. Do not disable system protection globally. Managed work or school computers may require assistance from their administrator.
 
-### Try it without an account or clock
+### 4. Follow the setup wizard
 
-Open PowerShell in the extracted folder and run:
+Use **Next** to move through the screens. The table below follows their order; button names assume you selected English.
 
-```powershell
-npm.cmd run demo
-```
-
-This simulates **112 mg/dL**, prints the display payload and exits without contacting a real source or sending anything to a clock. It does not create configuration or credentials. It is a terminal demonstration; the full graphical setup still requires a TC001 for its device checks. Existing `.env` preferences can affect formatting, but the demo always uses the mock source with device delivery disabled.
-
-### Future installer and portable packages
-
-When a release includes a signed `Ulanzi-Glucose-Bridge-Setup-<version>.exe`, verify its publisher and the release checksums, then run it. It installs for the current user, offers English or Portuguese, and can create a desktop shortcut and start with Windows. A package marked `portable-node` includes Node.js and needs no separate runtime installation; extract it completely and open `Start.cmd`.
-
-The GitHub **Source code (zip)** download does **not** include Node.js. Do not confuse it with a `portable-node` release asset. See [release and signing instructions](PUBLICACAO.md) for maintainers.
-
-The bundled runtime contains Node.js and its license, without npm. To run the terminal demo from that package without installing Node globally:
-
-```powershell
-.\runtime\node\node.exe .\src\index.mjs --source=mock --once --dry-run
-```
-
-## What you need
-
-| Item | Requirement |
+| Step | What to do |
 | --- | --- |
-| Computer | Windows 10 version 1809 or newer; Windows PowerShell 5.1 and WinForms. The desktop app is Windows-only. Packaged runtimes target x64. |
-| Clock | Ulanzi TC001 with AWTRIX NG or AWTRIX 3, reachable from the computer on your local network. Original Ulanzi firmware is not supported. |
-| Data source | An already working Nightscout instance or authorized JSON endpoint. A mock source is available for testing. |
-| Network | Access to the data source and the TC001. The computer and clock must be able to communicate; guest network isolation can prevent this. |
+| Language | Choose **English** or **Português (Brasil)**. |
+| Prepare the clock | If AWTRIX is installed and connected to Wi-Fi, select that option and confirm completion. Otherwise, follow the preparation guidance and the official AWTRIX link. Installing AWTRIX replaces the clock's software and settings: back up first and use a USB data cable. The bridge does not install firmware automatically. |
+| Choose the source | Select **Nightscout (recommended)** to use your existing Nightscout readings. |
+| Connect Nightscout | Enter the main HTTPS address you open in your browser, such as `https://my-nightscout.example`. This is an example: use your own address, without `/api/v1/...` or credentials. Choose the appropriate access method and paste the token into its separate field, or choose `API_SECRET` and enter the original secret. Use public access only if your site allows it. |
+| Test the source | Click **Test Nightscout** and wait for confirmation that it connected and found a reading before continuing. Check the reading's time on your Nightscout site too: connecting successfully does not guarantee fresh data. |
+| Find the clock | Click **Search**. If it does not find the TC001, enter the IP address shown by AWTRIX, for example `http://192.168.1.50`. **That address is only an example; use your own clock's IP.** Enter its HTTP username and password only if you enabled that protection. |
+| Test the clock | Click **Test TC001** and wait for confirmation before continuing. |
+| Choose preferences | Choose **mg/dL** or **mmol/L** and review the display ranges. **Automatic sound alerts start off.** Sensor-expiry estimation is optional and also starts off; leave it disabled unless you have a reliable sensor-start event and know your model's duration. |
+| Review and finish | Check the summary, then click **Save and activate**. The bridge can now start sending readings to the clock. |
 
-### CGM compatibility
+### 5. Check the result
+
+With a current reading and both connections working, the clock should show **your glucose value and trend arrow**. Compare the value and reading time with Nightscout, and check source and clock status on the dashboard. **NO DATA** means a reading is unavailable or too old; see [Troubleshooting](#troubleshooting).
+
+A successful connection test checks communication. Look at the actual clock to confirm the display, and test its sound separately if you enable alerts.
+
+## Everyday use
+
+Open **`Start.cmd`** whenever you want to run the app. It stays in the Windows notification area, near the system clock; closing the panel does not quit it. Reopen the panel from that icon, or choose **Exit** from its menu to stop the app.
+
+Keep the computer awake and connected to the source and TC001. Use the dashboard to check the latest reading, its age and connection status. You can change display settings and optional alerts later, without repeating the entire initial setup.
+
+`Configure.cmd` opens the setup wizard directly. The original Portuguese commands, `configurar.cmd` and `iniciar.cmd`, remain available for compatibility. `iniciar.cmd` runs the bridge in a visible console; it does not open the dashboard.
+
+## CGM compatibility
 
 The bridge uses Nightscout's standard glucose-reading API; it does not identify or restrict the sensor manufacturer. A CGM can be used when its uploader or integration already provides current, valid glucose readings to your Nightscout instance. The bridge reads the value, timestamp and trend, without depending on manufacturer-specific device metadata. See Nightscout's [uploader documentation](https://nightscout.github.io/uploader/setup/) for the source side of that connection.
 
 This is compatibility through the data source, not a claim that every sensor or uploader has been physically tested with the bridge. The application does not pair with a sensor or sign in to a manufacturer's cloud account. Installing and maintaining a sensor uploader or Nightscout server is a separate task. An authorized JSON endpoint is another supported input. See [Nightscout setup](GUIA-NIGHTSCOUT.md).
 
-If the TC001 needs compatible firmware, setup links to the [official AWTRIX NG flashing tool](https://blueforcer.github.io/awtrix-ng/getting-started/flashing/). Read its instructions and back up the device first: replacing firmware can erase the existing software and settings. The bridge does not silently flash firmware or choose a serial port.
+If the TC001 needs compatible firmware, setup links to the [official AWTRIX NG flashing tool](https://blueforcer.github.io/awtrix-ng/getting-started/flashing/). The browser asks you to choose a serial port and confirm installation; read its instructions and back up the device first.
 
 ## How it works
 
@@ -81,7 +121,7 @@ The app validates the reading timestamp, checks its age, determines the display 
 
 ## Setup and everyday settings
 
-Have your TC001 address, the source URL, and any required access token ready. Enter credentials only in the local wizard. Sensor-expiry estimation is optional and starts disabled; enable it only with the duration for your model and a reliable sensor-start event. Verify what you see and hear during the clock tests: a successful HTTP request alone cannot confirm the LEDs or buzzer worked.
+The dashboard groups settings into the areas below. Enter credentials only in the local wizard.
 
 | Area | What you can do |
 | --- | --- |
@@ -181,6 +221,34 @@ Existing Windows installation and preference folders may retain their old names.
 | Updates unavailable | A signed release channel is not configured; check GitHub for source changes. |
 
 ## Development and validation
+
+<details>
+<summary>Try the terminal demonstration without an account or clock</summary>
+
+Open PowerShell in the extracted folder and run:
+
+```powershell
+npm.cmd run demo
+```
+
+This simulates **112 mg/dL**, prints the display payload and exits without contacting a real source or sending anything to a clock. It does not create configuration or credentials. It is a terminal demonstration; the full graphical setup still requires a TC001 for its device checks. Existing `.env` preferences can affect formatting, but the demo always uses the mock source with device delivery disabled.
+
+</details>
+
+<details>
+<summary>Future installer and portable packages</summary>
+
+When a release includes a signed `Ulanzi-Glucose-Bridge-Setup-<version>.exe`, verify its publisher and the release checksums, then run it. It installs for the current user, offers English or Portuguese, and can create a desktop shortcut and start with Windows. A package marked `portable-node` includes Node.js and needs no separate runtime installation; extract it completely and open `Start.cmd`.
+
+The GitHub **Source code (zip)** download does **not** include Node.js. Do not confuse it with a `portable-node` release asset. See [release and signing instructions](PUBLICACAO.md) for maintainers.
+
+The bundled runtime contains Node.js and its license, without npm. To run the terminal demo from that package without installing Node globally:
+
+```powershell
+.\runtime\node\node.exe .\src\index.mjs --source=mock --once --dry-run
+```
+
+</details>
 
 ```powershell
 # Optional alternative to Download ZIP

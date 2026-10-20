@@ -1,63 +1,104 @@
 ﻿# Ulanzi Glucose Bridge
 
-**Sua glicemia no Ulanzi TC001, com um aplicativo local para Windows.**
+**Sua glicemia em números grandes, com a seta de tendência ao lado, no Ulanzi TC001.**
 
 [English — documentação completa](README.md) · [Relatar problema](https://github.com/Ptraskus/ulanzi-glucose-bridge/issues) · [Releases](https://github.com/Ptraskus/ulanzi-glucose-bridge/releases)
 
-O aplicativo consulta uma fonte Nightscout ou JSON autorizada e mostra valor, tendência e estado da leitura no TC001. Inclui assistente, painel, mostrador flutuante, alertas opcionais, diagnóstico e recuperação de configuração.
+Veja a glicemia e sua tendência de relance no relógio. O Ulanzi Glucose Bridge é um aplicativo para Windows que busca a leitura no seu Nightscout e a envia ao TC001 pela rede local. Também aceita uma fonte JSON autorizada para integrações próprias.
+
+![Ulanzi TC001 exibindo 113 em números grandes e uma seta horizontal à direita](assets/ulanzi-tc001-display.jpeg)
+
+*Foto do relógio em uso: o valor e a seta dividem o visor, com destaque para a leitura.*
 
 **Windows 10 1809+ / Windows 11 · Node.js 22+ · Inglês como padrão, português disponível · mg/dL ou mmol/L · [Licença MIT](LICENSE)**
 
-> O download público ainda é o código-fonte. Não há instalador Windows assinado publicado. Use as instruções abaixo; um instalador gerado para testes internos não equivale a uma distribuição pública assinada.
+[Ir para o passo a passo](#passo-a-passo-no-windows) · [Resolver um problema](#privacidade-e-suporte)
+
+## O que esta versão oferece
+
+- **Números que usam toda a altura do visor.** No AWTRIX NG, os dígitos são desenhados pixel a pixel e ocupam as 8 linhas da tela de 32 × 8 pixels. Isso dá destaque ao valor e facilita a leitura de relance.
+- **Seta grande ao lado da glicemia.** A tendência tem um desenho próprio em uma área de até 7 × 8 pixels. A posição acompanha a largura do valor, com espaço entre números e seta para manter os dois legíveis.
+- **Espaço dedicado ao essencial.** O conjunto de números e seta é posicionado conforme o espaço disponível. O visor mostra o valor e a tendência, sem gastar espaço com o nome da unidade; você escolhe mg/dL ou mmol/L no aplicativo.
+- **Cores para identificar a faixa.** Valor e seta mudam de cor conforme os limites configurados. Quando a leitura está indisponível ou antiga, o aplicativo mostra `SEM DADO`.
+- **Configuração por janelas, em português.** O assistente orienta a conexão, procura o relógio e testa a fonte. Depois, o painel reúne ajustes, diagnóstico e recuperação de configuração.
+- **Recursos opcionais para o dia a dia.** Mostrador flutuante no Windows e alertas sonoros configuráveis. O processamento acontece no seu computador, sem conta própria do aplicativo, anúncios ou telemetria do projeto.
+
+**Para usar o desenho de números grandes e seta descrito acima, o relógio precisa estar com AWTRIX NG.** O AWTRIX 3 também é compatível, mas recebe a leitura em modo texto e a aparência pode ser diferente.
 
 > Uso complementar: este aplicativo não é um dispositivo médico. Continue usando os aplicativos oficiais, seus alarmes e os métodos habituais de monitoramento. Não use o TC001 como única referência para decisões de tratamento. Os limites iniciais são padrões do software, não recomendações clínicas.
 
-## Instalar e abrir
+## Antes de começar
 
-Não é necessário usar Git nem executar `npm install`.
+| Você precisa de | Em palavras simples |
+| --- | --- |
+| Um computador Windows | Windows 10 versão 1809 ou mais recente, ou Windows 11. Ele executa o aplicativo e precisa ficar ligado, sem suspender, para continuar enviando as leituras. |
+| Um Ulanzi TC001 com AWTRIX | AWTRIX é o software instalado dentro do relógio, também chamado de firmware. O software original da Ulanzi não é compatível. O assistente orienta o preparo se necessário. |
+| Computador e relógio na mesma rede local | O TC001 recebe os dados pelo Wi-Fi. O computador pode usar Wi-Fi ou cabo, desde que consiga se comunicar com o relógio. |
+| Nightscout já recebendo suas leituras | É o site que reúne os dados do seu sensor. Tenha o endereço do site e, se exigido, um token de acesso ou `API_SECRET` — a credencial usada para permitir a leitura. |
 
-1. Instale o **Node.js LTS 22 ou mais recente** para Windows pelo [site oficial](https://nodejs.org/en/download), mantendo a opção de adicioná-lo ao PATH. Pule esta etapa se já estiver instalado.
-2. No GitHub, escolha **Code > Download ZIP**.
-3. Clique com o botão direito no ZIP e escolha **Extrair Tudo**. Guarde a pasta extraída em um local gravável, como Documentos. Não execute dentro do ZIP nem em `Program Files`.
-4. Abra a pasta que contém **`Start.cmd`** e dê dois cliques nesse arquivo. Ele verifica o Node.js e abre o painel. Na primeira vez, clique em **Set up now**.
-5. No assistente, selecione **Português (Brasil)** e sua unidade de glicemia. Escolha a fonte, preencha a conexão e teste o TC001. A estimativa de término do sensor é opcional e começa desligada; só ative com a duração correta do modelo e eventos confiáveis de início. Revise antes de salvar. **Os alarmes automáticos começam desligados.**
+O caminho dos dados é: **sensor → Nightscout → aplicativo no Windows → relógio**. A conexão do sensor ao Nightscout precisa estar funcionando antes; este aplicativo cuida do trecho entre a fonte e o relógio. Ele não se conecta diretamente ao sensor nem pede a senha da conta do fabricante.
 
-Para usar novamente, abra `Start.cmd`. Fechar o painel mantém o aplicativo na bandeja do Windows; use **Encerrar** no menu da bandeja para pará-lo. O computador precisa continuar acordado, conectado à fonte e ao TC001, com o aplicativo aberto.
+**Ainda não tem Nightscout?** Consulte o [guia de integração](GUIA-NIGHTSCOUT.md), em inglês, antes de configurar leituras reais. Quem já tem outra integração pode usar uma fonte JSON autorizada. Para apenas conhecer o funcionamento, há uma demonstração no final deste documento.
 
-`Configure.cmd` abre diretamente o assistente. Os comandos antigos `configurar.cmd` e `iniciar.cmd` continuam funcionando; `iniciar.cmd` executa a ponte em um terminal visível, sem abrir o painel.
+## Passo a passo no Windows
+
+Para configurar pelo assistente, você não precisa programar, usar Git, digitar comandos ou executar `npm install`.
+
+> O download público é o código-fonte em ZIP. Ainda não há instalador Windows assinado publicado. O caminho abaixo permite abrir o aplicativo a partir da pasta extraída.
+
+### 1. Instale o Node.js uma vez
+
+O Node.js é o programa que permite executar este aplicativo. Baixe o **instalador para Windows da versão LTS, 22 ou mais recente**, pelo [site oficial do Node.js](https://nodejs.org/en/download). Abra o instalador e mantenha as opções padrão, incluindo **Add to PATH**. Se já tiver uma versão compatível instalada, pule esta etapa.
+
+### 2. Baixe e extraia o aplicativo
+
+1. Abra a [página do projeto no GitHub](https://github.com/Ptraskus/ulanzi-glucose-bridge).
+2. Acima da lista de arquivos, clique no botão **Code** e depois em **Download ZIP**.
+3. Na pasta Downloads do Windows, clique com o botão direito no ZIP e escolha **Extrair Tudo**.
+4. Escolha uma pasta sua, como **Documentos**, e conclua a extração. Abra a pasta extraída até encontrar o arquivo `Start.cmd`.
+
+Extraia a pasta inteira; o aplicativo precisa dos demais arquivos. Não abra `Start.cmd` de dentro do ZIP nem guarde o projeto em `Program Files`.
+
+### 3. Abra o painel
+
+Dê dois cliques em **`Start.cmd`**. Se o Windows esconder as extensões, ele pode aparecer apenas como **Start**. O aplicativo verifica o Node.js e abre o painel.
+
+Na primeira abertura, clique em **Set up now** (Configurar agora). Selecione **Português (Brasil)** quando aparecer a escolha de idioma.
 
 Caso o Windows bloqueie um script baixado, confira a procedência e o aviso. Não desative a proteção do sistema globalmente. Computadores gerenciados podem exigir suporte do administrador.
 
-### Demonstração sem conta ou relógio
+### 4. Siga as telas do assistente
 
-Abra o PowerShell na pasta extraída:
+| Etapa | O que fazer |
+| --- | --- |
+| Preparar o relógio | Se ele já mostra AWTRIX e está conectado ao Wi-Fi, marque essa opção. Caso contrário, siga os botões do assistente para instalar o AWTRIX e configurar o Wi-Fi. A instalação do firmware pode apagar a configuração anterior: faça backup antes e use um cabo USB de dados. |
+| Escolher a fonte | Selecione **Nightscout** se esse é o site que já recebe as leituras do seu sensor. A opção JSON é para quem já tem uma integração própria. |
+| Conectar a fonte | Informe o endereço principal do seu Nightscout, começando com `https://`, sem `/api/...` nem `?token=...`. Escolha a autenticação usada no seu site e preencha a credencial no campo separado. Em **Access token**, cole só o valor do token. Clique em **Testar Nightscout** antes de avançar. |
+| Encontrar o TC001 | Clique em **Procurar**. Se ele não for encontrado, digite o endereço IP do relógio, no formato `http://192.168.1.50`. Esse endereço é apenas um exemplo: use o IP do seu TC001. Preencha usuário e senha HTTP somente se estiverem configurados no AWTRIX, depois clique em **Testar TC001**. |
+| Escolher preferências | Selecione **mg/dL** ou **mmol/L** e revise os limites de cor. Os alarmes automáticos começam desligados. A estimativa de término do sensor também é opcional e começa desligada; só ative com a duração correta do modelo e eventos confiáveis de início. |
+| Concluir | Confira o resumo e clique em **Salvar e ativar**. O aplicativo salva a configuração e inicia o envio das leituras. |
 
-```powershell
-npm.cmd run demo
-```
+Os links **Onde encontro esta URL?**, **Como escolher e preencher?** e **Onde encontro o endereço?**, dentro do assistente, explicam os campos. Para preparar o relógio, ele abre a [ferramenta oficial do AWTRIX NG](https://blueforcer.github.io/awtrix-ng/getting-started/flashing/); nenhuma gravação de firmware começa automaticamente.
 
-O comando simula **112 mg/dL**, imprime o resultado e encerra. Não consulta fonte real, não envia ao relógio nem cria credenciais. A demonstração é no terminal; o assistente gráfico completo exige TC001 para os testes do dispositivo. Preferências existentes no `.env` podem afetar a apresentação, mas a fonte continua simulada e o envio fica desativado.
+### 5. Confira o resultado
 
-### Pacotes futuros
+Com uma leitura atual e conexões funcionando, o relógio deve exibir **o valor da glicemia e a tendência**. No painel, confira a leitura e os estados da fonte e do relógio. Compare também o horário da leitura com o Nightscout: conseguir conectar não garante que o site esteja recebendo dados novos.
 
-Quando houver instalador assinado nos Releases, verifique o publicador e os checksums antes de instalar. Um ZIP com `portable-node` no nome inclui o Node.js; basta extraí-lo completamente e abrir `Start.cmd`. O ZIP do código-fonte do GitHub **não inclui** o Node.js.
+Se aparecer `SEM DADO`, confira a conexão e o horário da última leitura na fonte. Se quiser alertas sonoros, ative-os na área **Alertas** e faça o teste de som em **Suporte**, verificando o som no próprio relógio.
 
-O runtime do pacote inclui `node.exe` e sua licença, sem npm. Para a demonstração nesse pacote, use `.\runtime\node\node.exe .\src\index.mjs --source=mock --once --dry-run` no PowerShell.
+## Como usar no dia a dia
 
-O instalador oferece inglês ou português e atalhos opcionais na área de trabalho e na inicialização do Windows. Instala apenas para o usuário atual. A desinstalação preserva os dados locais por padrão.
+- **Para abrir:** dê dois cliques em `Start.cmd`.
+- **Para deixar funcionando:** mantenha o computador ligado, sem suspender, conectado à fonte e ao TC001. Os dados chegam ao relógio pela rede; o USB serve para alimentação e, no preparo inicial, instalação do firmware.
+- **Para fechar só o painel:** use o X da janela. O aplicativo continua na bandeja do Windows, a área de ícones perto do relógio do computador; o ícone pode estar dentro da seta de ícones ocultos.
+- **Para parar o aplicativo:** use **Encerrar** no menu do ícone da bandeja.
+- **Para mudar ajustes:** use o painel e clique em **Salvar e aplicar**. Para refazer a conexão, use **Conexões** ou abra `Configure.cmd`.
 
-## O que preparar
+## Compatibilidade com sensores
 
-- Windows 10 versão 1809 ou mais recente. A interface é exclusiva de Windows; os pacotes com runtime são x64.
-- Ulanzi TC001 com AWTRIX NG ou AWTRIX 3. O firmware original da Ulanzi não é compatível.
-- Comunicação entre computador e TC001 na rede local.
-- Nightscout já funcionando ou endpoint JSON autorizado.
+A aplicação lê o formato padrão do Nightscout, independentemente da marca do sensor de glicose (CGM). Outros sensores podem ser usados quando seu uploader — o programa que envia as leituras — ou integração já fornece dados atuais e válidos ao Nightscout. A ponte utiliza valor, horário e tendência; não depende de metadados específicos do fabricante. Consulte a [documentação de uploaders do Nightscout](https://nightscout.github.io/uploader/setup/) para preparar essa conexão.
 
-A aplicação lê o formato padrão do Nightscout, independentemente da marca do CGM. Outros sensores podem ser usados quando seu uploader ou integração já envia leituras atuais e válidas ao Nightscout. A ponte utiliza valor, horário e tendência; não depende de metadados específicos do fabricante. Consulte a [documentação de uploaders do Nightscout](https://nightscout.github.io/uploader/setup/) para preparar essa conexão.
-
-Essa compatibilidade depende da fonte de dados e não significa que todos os modelos tenham sido testados fisicamente. A aplicação não conecta diretamente ao sensor nem solicita credenciais da nuvem do fabricante. Preparar Nightscout e seu uploader é uma etapa separada; um endpoint JSON autorizado também é aceito. Consulte o [guia de integração](GUIA-NIGHTSCOUT.md), em inglês.
-
-Se precisar trocar o firmware, o assistente abre a [ferramenta oficial do AWTRIX NG](https://blueforcer.github.io/awtrix-ng/getting-started/flashing/). Leia as instruções e faça backup: a troca pode apagar software e configurações do relógio. O aplicativo não grava firmware silenciosamente.
+Essa compatibilidade depende da fonte de dados e não significa que todos os modelos tenham sido testados fisicamente. Preparar Nightscout e seu uploader é uma etapa separada. Um endpoint JSON autorizado também é aceito, no formato descrito no [README em inglês](README.md#sources-and-reading-states).
 
 ## Idioma, unidade e preferências
 
@@ -106,3 +147,36 @@ O TC001 usa HTTP local; mantenha-o em uma rede confiável, sem expor sua API à 
 Revise relatórios exportados antes de anexá-los a uma issue. Vulnerabilidades devem ser relatadas pelo [canal privado](https://github.com/Ptraskus/ulanzi-glucose-bridge/security/advisories/new), sem publicar dados pessoais.
 
 Para desenvolvimento, execute `npm.cmd run check` e `npm.cmd test` no Windows. Testes automatizados não substituem a validação física no TC001. As instruções de empacotamento e assinatura estão em [PUBLICACAO.md](PUBLICACAO.md), em inglês.
+
+## Opções adicionais
+
+<details>
+<summary>Demonstração sem conta ou relógio (opcional, pelo PowerShell)</summary>
+
+Abra o PowerShell na pasta extraída:
+
+```powershell
+npm.cmd run demo
+```
+
+O comando simula **112 mg/dL**, imprime o resultado e encerra. Não consulta fonte real, não envia ao relógio nem cria credenciais. A demonstração é no terminal; o assistente gráfico completo exige TC001 para os testes do dispositivo. Preferências existentes no `.env` podem afetar a apresentação, mas a fonte continua simulada e o envio fica desativado.
+
+</details>
+
+<details>
+<summary>Instalador e pacotes futuros</summary>
+
+Quando houver instalador assinado nos Releases, verifique o publicador e os checksums antes de instalar. Um ZIP com `portable-node` no nome inclui o Node.js; basta extraí-lo completamente e abrir `Start.cmd`. O ZIP do código-fonte do GitHub **não inclui** o Node.js. Os pacotes com Node.js incluído são para Windows x64.
+
+O runtime do pacote inclui `node.exe` e sua licença, sem npm. Para a demonstração nesse pacote, use `.\runtime\node\node.exe .\src\index.mjs --source=mock --once --dry-run` no PowerShell.
+
+O instalador oferece inglês ou português e atalhos opcionais na área de trabalho e na inicialização do Windows. Instala apenas para o usuário atual. A desinstalação preserva os dados locais por padrão. Um instalador gerado para testes internos não equivale a uma distribuição pública assinada.
+
+</details>
+
+<details>
+<summary>Comandos antigos e configuração direta</summary>
+
+`Configure.cmd` abre diretamente o assistente. Os comandos antigos `configurar.cmd` e `iniciar.cmd` continuam funcionando; `iniciar.cmd` executa a ponte em um terminal visível, sem abrir o painel. Para o uso normal com janelas, abra `Start.cmd`.
+
+</details>

@@ -1,4 +1,4 @@
-# Allowlist literal do pacote público. Um arquivo novo nunca entra automaticamente.
+# Explicit public package allowlist. New files are never included automatically.
 .env.example
 Start.cmd
 Configure.cmd
@@ -14,6 +14,7 @@ LICENSE
 SECURITY.md
 PRIVACY.md
 assets/ulanzi-glucose.ico
+assets/ulanzi-tc001-display.jpeg
 src/awtrix-client.mjs
 src/config.mjs
 src/config-editor.mjs
